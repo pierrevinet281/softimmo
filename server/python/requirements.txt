@@ -1,0 +1,6 @@
+# Lead Gen Python workers — all permissive licenses (Apache-2.0 / MIT / BSD / ISC)
+requests==2.32.3          # Apache-2.0 — HTTP
+beautifulsoup4==4.12.3    # MIT — HTML parsing
+lxml==5.3.0               # BSD-3 — fast parser backend
+dnspython==2.7.0          # ISC — MX / DNS lookups
+phonenumbers==8.13.52     # Apache-2.0 — phone parse / format / type

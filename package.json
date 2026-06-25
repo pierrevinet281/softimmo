@@ -1,0 +1,26 @@
+{
+  "name": "softimmo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Softimmo — SaaS d'assistance au courtage immobilier (Québec) : analyse de propriété, évaluation, offre de services, marketing, trousse de soutien, et enrichissement de contacts.",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c green,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspace web run build",
+    "start": "npm --workspace server run start",
+    "migrate": "node server/src/db/migrate.js",
+    "seed": "node server/src/db/seed.js",
+    "setup:python": "node scripts/setup-python.mjs",
+    "setup:python:unix": "node scripts/setup-python.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

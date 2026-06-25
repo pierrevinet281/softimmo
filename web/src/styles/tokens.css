@@ -1,0 +1,85 @@
+/* Netritious design tokens. Source of truth for colors, fonts, radii. Light + dark
+   via [data-theme]. Always reference var(--color-*) — never hardcode hex. */
+:root,
+[data-theme='light'] {
+  --color-bg-page: #f3f3f3;
+  --color-bg-primary: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-secondary: #f3f3f3;
+  --color-bg-elevated: #fafafa;
+  --color-bg-floating: #ffffff;
+  --color-border: #e4e6e7;
+  --color-border-subtle: #f0f1f1;
+  --color-text-primary: #283032;
+  --color-text-secondary: #525759;
+  --color-text-tertiary: #8e9396;
+  --color-text-muted: #c0c4c6;
+  --color-text-inverted: #ffffff;
+
+  --color-accent: #07d581;
+  --color-accent-hover: #00c877;
+  --color-accent-subtle: #e6fbf3;
+  --color-accent-mint: #32ffc7;
+  --color-accent-blue: #67c8fa;
+  --color-info: #67c8fa;
+  --color-success: #07d581;
+  --color-warning: #f5a623;
+  --color-danger: #e8453c;
+  --color-danger-soft: #ee7b72;
+  --color-neutral: #5f6568;
+  --color-success-subtle: #f0fdf4;
+  --color-warning-subtle: #fffbeb;
+  --color-danger-subtle: #fef2f2;
+  --color-info-subtle: #ebf7ff;
+
+  --font-display: 'Outfit', 'Manrope', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 28px; --space-8: 32px;
+  --space-10: 40px; --space-12: 48px; --space-16: 64px;
+
+  --shadow-card: 0 1px 2px rgba(40, 48, 50, 0.04), 0 1px 3px rgba(40, 48, 50, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(40, 48, 50, 0.08);
+  --shadow-floating: 0 8px 30px rgba(40, 48, 50, 0.12);
+  --shadow-focus-ring: 0 0 0 3px rgba(7, 213, 129, 0.1);
+
+  --transition-fast: 0.15s ease;
+  --transition-mid: 0.22s ease;
+
+  --sidebar-width: 248px;
+  --sidebar-collapsed-width: 64px;
+}
+
+[data-theme='dark'] {
+  --color-bg-page: #3a3f41;
+  --color-bg-primary: #283032;
+  --color-bg-card: #283032;
+  --color-bg-secondary: #3a3f41;
+  --color-bg-elevated: #4a5052;
+  --color-bg-floating: #4a5052;
+  --color-border: #4a5052;
+  --color-border-subtle: #3a3f41;
+  --color-text-primary: #f3f3f3;
+  --color-text-secondary: #aeaeb2;
+  --color-text-tertiary: #6e7375;
+  --color-text-muted: #a0a4a6;
+  --color-text-inverted: #283032;
+
+  --color-accent-subtle: #0d2b20;
+  --color-success-subtle: #142b1a;
+  --color-warning-subtle: #2b2014;
+  --color-danger-subtle: #2b1414;
+  --color-info-subtle: #0d1f2b;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-floating: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --shadow-focus-ring: 0 0 0 3px rgba(7, 213, 129, 0.18);
+}

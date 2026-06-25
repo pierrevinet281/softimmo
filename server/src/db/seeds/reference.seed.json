@@ -1,0 +1,52 @@
+{
+  "disposable_domain": [
+    "mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com",
+    "trashmail.com", "yopmail.com", "getnada.com", "throwawaymail.com", "maildrop.cc",
+    "temp-mail.org", "fakeinbox.com", "sharklasers.com", "dispostable.com",
+    "mailnesia.com", "mintemail.com", "spamgourmet.com", "tempinbox.com",
+    "mohmal.com", "emailondeck.com", "moakt.com"
+  ],
+  "free_provider": [
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "icloud.com",
+    "live.com", "msn.com", "protonmail.com", "proton.me", "gmx.com", "gmx.net",
+    "yandex.com", "mail.com", "zoho.com", "hotmail.fr", "yahoo.fr", "outlook.fr",
+    "laposte.net", "orange.fr", "free.fr", "videotron.ca", "sympatico.ca", "bell.net",
+    "rogers.com", "shaw.ca", "hey.com", "fastmail.com"
+  ],
+  "role_local": [
+    "info", "contact", "sales", "support", "admin", "hello", "office", "team",
+    "marketing", "help", "service", "billing", "hr", "jobs", "careers", "press",
+    "noreply", "no-reply", "webmaster", "postmaster", "enquiries", "general",
+    "accounts", "accounting", "finance", "legal", "privacy", "abuse", "media",
+    "newsletter", "subscribe", "feedback", "reception", "mail", "email"
+  ],
+  "seniority": [
+    { "value": "chief", "meta": { "seniority": "C-level" } },
+    { "value": "ceo", "meta": { "seniority": "C-level" } },
+    { "value": "cto", "meta": { "seniority": "C-level" } },
+    { "value": "cfo", "meta": { "seniority": "C-level" } },
+    { "value": "coo", "meta": { "seniority": "C-level" } },
+    { "value": "cmo", "meta": { "seniority": "C-level" } },
+    { "value": "founder", "meta": { "seniority": "C-level" } },
+    { "value": "owner", "meta": { "seniority": "C-level" } },
+    { "value": "president", "meta": { "seniority": "C-level" } },
+    { "value": "partner", "meta": { "seniority": "C-level" } },
+    { "value": "vp", "meta": { "seniority": "VP" } },
+    { "value": "vice president", "meta": { "seniority": "VP" } },
+    { "value": "svp", "meta": { "seniority": "VP" } },
+    { "value": "evp", "meta": { "seniority": "VP" } },
+    { "value": "director", "meta": { "seniority": "Director" } },
+    { "value": "head of", "meta": { "seniority": "Director" } },
+    { "value": "manager", "meta": { "seniority": "Manager" } },
+    { "value": "lead", "meta": { "seniority": "Manager" } },
+    { "value": "engineer", "meta": { "seniority": "IC" } },
+    { "value": "developer", "meta": { "seniority": "IC" } },
+    { "value": "analyst", "meta": { "seniority": "IC" } },
+    { "value": "specialist", "meta": { "seniority": "IC" } },
+    { "value": "coordinator", "meta": { "seniority": "IC" } },
+    { "value": "associate", "meta": { "seniority": "IC" } },
+    { "value": "representative", "meta": { "seniority": "IC" } },
+    { "value": "assistant", "meta": { "seniority": "IC" } },
+    { "value": "intern", "meta": { "seniority": "IC" } }
+  ]
+}
