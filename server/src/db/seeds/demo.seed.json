@@ -1,0 +1,49 @@
+{
+  "companies": [
+    {
+      "ref": "northwind",
+      "name": "Northwind Marine",
+      "domain": "northwindmarine.com",
+      "website": "https://northwindmarine.com",
+      "industry": "Recreational Boating",
+      "size": "11-50",
+      "location": "Toronto, ON",
+      "country": "Canada",
+      "description": "Boat dealer and marina services.",
+      "status": "enriched",
+      "source": "demo"
+    },
+    {
+      "ref": "lakeside",
+      "name": "Lakeside Powersports",
+      "domain": "lakesidepowersports.ca",
+      "industry": "Powersports Retail",
+      "location": "Barrie, ON",
+      "country": "Canada",
+      "status": "new",
+      "source": "demo"
+    }
+  ],
+  "contacts": [
+    {
+      "company_ref": "northwind",
+      "full_name": "Jane Harbor",
+      "title": "VP of Sales",
+      "email": "jane.harbor@northwindmarine.com",
+      "email_status": "valid",
+      "phone": "+1 416-555-0142",
+      "phone_type": "landline",
+      "linkedin": "https://www.linkedin.com/in/jane-harbor",
+      "location": "Toronto, ON",
+      "status": "verified",
+      "source": "demo"
+    },
+    {
+      "company_ref": "lakeside",
+      "full_name": "Marc Dubois",
+      "title": "General Manager",
+      "status": "new",
+      "source": "demo"
+    }
+  ]
+}
