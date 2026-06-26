@@ -14,7 +14,22 @@ const DISCLAIMER_FR = "Le présent document constitue une opinion de la valeur m
 
 const KIND_TONE = { sold: 'success', active: 'info', expired: 'warning' };
 
-function comparablesConfig(t, inclOptions) {
+// Champs des caractéristiques catégorielles (selects) + âges (nombres), dérivés des paramètres.
+function buildFeatureFields(params) {
+  const fields = [];
+  for (const [key, cfg] of Object.entries(params?.features || {})) {
+    fields.push({
+      key, label: cfg.label || prettyIncl(key), type: 'select', half: true,
+      options: [{ value: '', label: '—' }, ...Object.keys(cfg.options || {}).map((o) => ({ value: o, label: prettyIncl(o) }))],
+    });
+  }
+  for (const [key, cfg] of Object.entries(params?.age_features || {})) {
+    fields.push({ key, label: cfg.label || prettyIncl(key), type: 'number', half: true });
+  }
+  return fields;
+}
+
+function comparablesConfig(t, inclOptions, featureFields = []) {
   const kindOpts = [
     { value: 'sold', label: t('ev.kind.sold') },
     { value: 'active', label: t('ev.kind.active') },
@@ -49,6 +64,7 @@ function comparablesConfig(t, inclOptions) {
       { key: 'year_built', label: t('d.bld.year'), type: 'number', half: true },
       { key: 'municipal_assessment', label: t('ev.assessment'), type: 'number', half: true },
       { key: 'days_on_market', label: 'JSM', type: 'number', half: true },
+      ...featureFields,
       { key: 'weight', label: t('ev.weight'), type: 'number', half: true },
       { key: 'rating', label: t('ev.rating'), type: 'select', options: ratingOpts, half: true },
       { key: 'inclusions', label: t('ev.inclusions'), type: 'inclusions', options: inclOptions },
@@ -113,6 +129,8 @@ function ParamsPanel({ params, onChange, onSave, saving, city, genre }) {
   const { t } = useI18n();
   const setScalar = (k, v) => onChange({ ...params, [k]: v === '' ? null : Number(v) });
   const setIncl = (k, v) => onChange({ ...params, inclusions: { ...params.inclusions, [k]: v === '' ? 0 : Number(v) } });
+  const setFeatPct = (feat, opt, v) => onChange({ ...params, features: { ...params.features, [feat]: { ...params.features[feat], options: { ...params.features[feat].options, [opt]: v === '' ? 0 : Number(v) / 100 } } } });
+  const setAgePct = (key, v) => onChange({ ...params, age_features: { ...params.age_features, [key]: { ...params.age_features[key], pct_per_year: v === '' ? 0 : Number(v) / 100 } } });
   const applyRatios = (r) => onChange({ ...params, sale_to_list_ratio: r.sale_to_list_ratio ?? params.sale_to_list_ratio, sale_to_assessment_ratio: r.sale_to_assessment_ratio ?? params.sale_to_assessment_ratio });
   return (
     <details className="card" style={{ marginBottom: 16 }}>
@@ -136,6 +154,34 @@ function ParamsPanel({ params, onChange, onSave, saving, city, genre }) {
           </div>
         ))}
       </div>
+
+      {/* Caractéristiques catégorielles : valeur marché en % par option (éditable). */}
+      <div className="section-label">{t('ev.featPct')}</div>
+      {Object.entries(params.features || {}).map(([feat, cfg]) => (
+        <div key={feat} style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{cfg.label || prettyIncl(feat)}</div>
+          <div className="field-row">
+            {Object.entries(cfg.options || {}).map(([opt, pct]) => (
+              <div className="field" key={opt} style={{ marginBottom: 8 }}>
+                <label>{prettyIncl(opt)} (%)</label>
+                <input className="input" type="number" step={0.1} value={pct == null ? '' : +(pct * 100).toFixed(2)} onChange={(e) => setFeatPct(feat, opt, e.target.value)} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Âges (fenêtres, toiture) : % du prix par an d'écart. */}
+      <div className="section-label">{t('ev.agePct')}</div>
+      <div className="field-row">
+        {Object.entries(params.age_features || {}).map(([key, cfg]) => (
+          <div className="field" key={key}>
+            <label>{cfg.label || prettyIncl(key)} (%/an)</label>
+            <input className="input" type="number" step={0.1} value={cfg.pct_per_year == null ? '' : +(cfg.pct_per_year * 100).toFixed(2)} onChange={(e) => setAgePct(key, e.target.value)} />
+          </div>
+        ))}
+      </div>
+
       <Button variant="outline" size="sm" icon={Save} onClick={onSave} disabled={saving}>{t('ev.saveParams')}</Button>
     </details>
   );
@@ -144,6 +190,17 @@ function ParamsPanel({ params, onChange, onSave, saving, city, genre }) {
 function prettyIncl(key) {
   const s = String(key).replace(/_/g, ' ');
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Lien vers Google Maps pour une adresse de comparable (ouverture dans un nouvel onglet).
+function mapsUrl(s) {
+  const q = [s.address, s.city].filter(Boolean).join(', ');
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+}
+function AddressLink({ s, className }) {
+  const label = s.address || s.id;
+  if (!s.address) return <span className={className}>{label}</span>;
+  return <a className={className} href={mapsUrl(s)} target="_blank" rel="noreferrer" title="Voir sur Google Maps">{label}</a>;
 }
 
 // ─────────────────────────── Grille d'ajustements ventilée (comps en colonnes) ───────────────────────────
@@ -169,7 +226,7 @@ function AdjustmentGrid({ sold, clientView }) {
             <th>{t('ev.characteristic')}</th>
             {comps.map((s) => (
               <th key={s.id} className="num" style={s.excluded ? { textDecoration: 'line-through', opacity: 0.6 } : undefined}>
-                {s.address || s.id}
+                <AddressLink s={s} />
               </th>
             ))}
           </tr>
@@ -202,7 +259,9 @@ function ExplainedBreakdown({ sold, clientView }) {
       {comps.map((s) => (
         <details key={s.id} className="card" style={{ padding: 14 }}>
           <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
-            {s.address || s.id} — {money(s.soldPrice)} → <strong>{money(Math.round(s.adjustedPrice / (clientView ? 1000 : 1)) * (clientView ? 1000 : 1))}</strong>
+            <AddressLink s={s} />
+            {s.centris_no && <span className="muted mono" style={{ fontWeight: 400, marginLeft: 8 }}>No Centris {s.centris_no}</span>}
+            {' '}— {money(s.soldPrice)} → <strong>{money(Math.round(s.adjustedPrice / (clientView ? 1000 : 1)) * (clientView ? 1000 : 1))}</strong>
           </summary>
           <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
             {s.adjustments.map((l, i) => <li key={i}>{l.explanation}</li>)}
@@ -349,11 +408,20 @@ export default function Evaluation() {
   if (paramData && !params) setParams(paramData.params);
   if (bundle && subject == null) {
     const livable = (bundle.buildings || []).reduce((s, x) => s + (Number(x.livable_area) || 0), 0) || '';
-    const year = (bundle.buildings || []).find((x) => x.year_built)?.year_built ?? '';
-    setSubject({ living_area: livable, year_built: year, inclusions: {}, municipal_assessment: bundle.property?.municipal_assessment ?? '' });
+    const b0 = (bundle.buildings || []).find((x) => x.year_built) || (bundle.buildings || [])[0] || {};
+    setSubject({
+      living_area: livable, year_built: b0.year_built ?? '', inclusions: {},
+      municipal_assessment: bundle.property?.municipal_assessment ?? '',
+      // Caractéristiques pré-remplies depuis le bâtiment principal (éditables).
+      foundation: b0.foundation ?? '', cladding: b0.exterior_cladding ?? '',
+      windows_type: b0.fenestration ?? '', flooring: b0.flooring ?? '',
+      windows_age: '', roof_age: '',
+    });
   }
 
-  const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).map((k) => ({ value: k, label: prettyIncl(k) })), [params]);
+  const boolIncl = useMemo(() => new Set(params?.boolean_inclusions || []), [params]);
+  const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).map((k) => ({ value: k, label: prettyIncl(k), boolean: boolIncl.has(k) })), [params, boolIncl]);
+  const featureFields = useMemo(() => buildFeatureFields(params), [params]);
 
   const putParams = useMutation({
     mutationFn: (p) => api.put('/acm/params', p),
@@ -406,6 +474,20 @@ export default function Evaluation() {
               <div className="field"><label>{t('d.bld.year')}</label><input className="input" type="number" value={subject.year_built ?? ''} onChange={(e) => setSubject({ ...subject, year_built: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
               <div className="field"><label>{t('ev.assessment')}</label><input className="input" type="number" value={subject.municipal_assessment ?? ''} onChange={(e) => setSubject({ ...subject, municipal_assessment: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
             </div>
+            <div className="field-row">
+              {featureFields.map((f) => (
+                <div className="field" key={f.key}>
+                  <label>{f.label}</label>
+                  {f.type === 'select' ? (
+                    <Select value={subject[f.key] ?? ''} onChange={(e) => setSubject({ ...subject, [f.key]: e.target.value })}>
+                      {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </Select>
+                  ) : (
+                    <input className="input" type="number" value={subject[f.key] ?? ''} onChange={(e) => setSubject({ ...subject, [f.key]: e.target.value === '' ? '' : Number(e.target.value) })} />
+                  )}
+                </div>
+              ))}
+            </div>
             <div className="field" style={{ marginBottom: 0 }}>
               <label>{t('ev.inclusions')} ({t('ev.inclQty')})</label>
               <InclusionsField value={subject.inclusions} options={inclOptions} onChange={(v) => setSubject({ ...subject, inclusions: v })} />
@@ -415,7 +497,7 @@ export default function Evaluation() {
           {/* 2. Comparables */}
           <div className="section-label">{t('ev.comparables')}</div>
           <EntityTable
-            cfg={comparablesConfig(t, inclOptions)}
+            cfg={comparablesConfig(t, inclOptions, featureFields)}
             propertyId={propertyId}
             items={bundle?.comparables || []}
             onChanged={refetchComps}

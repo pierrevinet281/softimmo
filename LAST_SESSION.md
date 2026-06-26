@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 10 sessions, tout sur `main`) :**
+**Où on en est (après 11 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,32 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 11 — Évaluation : caractéristiques catégorielles + UX comparables (2026-06-26)
+
+### Réalisé (retours utilisateur)
+- **Caractéristiques catégorielles avec ajustements % marché** (défauts éditables) : **fondation**
+  (béton/blocs/pieux/pierre), **revêtement extérieur** (brique +3 %, pierre +5 %, aluminium 0 %…),
+  **type de fenêtres** (PVC/hybride/aluminium/bois), **type de planchers** (bois franc +3 %…).
+  Ajustement = (% sujet − % comp) × prix vendu. Moteur `acm.js` (§5), seed `features`,
+  colonnes comparables, champs sujet + comparable, **édition des % dans Paramètres**.
+- **Âges fenêtres / toiture** : `age_features` (%/an du prix × écart d'âge) — champs sujet +
+  comparable, % éditables.
+- **Inclusions** : ajout **sauna** et **cabanon** ; **sous-sol fini** (et climatisation,
+  thermopompe) en **case à cocher** (booléen via `boolean_inclusions`), pas en quantité.
+- **Liens Google Maps** : adresses cliquables dans la grille d'ajustements ET la ventilation
+  expliquée (`AddressLink`). **N° Centris** affiché à côté de l'adresse dans la ventilation.
+- Fusion en profondeur des paramètres (`lib/acmParams.js`) pour overrides partiels des `features`
+  / `age_features`. **i18n FR/EN**. **Vérifs** : `vite build` OK ; moteur testé (cladding +15 000,
+  fenêtres +10 000, toiture +7 500, sauna +7 000, sous-sol +15 000 = 54 500 $) ; HTTP compute OK.
+
+### Décisions (session 11)
+- Les **matériaux** (fondation/revêtement/fenêtres/planchers) sont **saisis manuellement** sur les
+  comparables (le PDF Matrix « 4 par page » ne les expose pas de façon fiable) ; pré-remplis sur
+  le sujet depuis le bâtiment principal.
+- % stockés en fraction (0.03) ; l'UI affiche/édite en points de % (3,0).
 
 ---
 

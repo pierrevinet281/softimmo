@@ -125,6 +125,48 @@ export function adjustComparable(subject, comp, params, asOf) {
     });
   }
 
+  // 5) Caractéristiques catégorielles (fondation, revêtement, fenêtres, planchers) : chaque
+  // option a une valeur marché en % ; ajustement = (% sujet − % comp) × prix vendu.
+  const features = params.features || {};
+  for (const [key, cfg] of Object.entries(features)) {
+    const opts = cfg.options || {};
+    const sOpt = subject[key];
+    const cOpt = c[key];
+    if (!sOpt || !cOpt || sOpt === cOpt) continue;
+    const sPct = n(opts[sOpt]) ?? 0;
+    const cPct = n(opts[cOpt]) ?? 0;
+    if (sPct === cPct) continue;
+    const delta = sPct - cPct;
+    const amount = delta * (c.soldPrice ?? 0);
+    lines.push({
+      key: `feat_${key}`, label: cfg.label || prettyIncl(key),
+      subject: `${prettyIncl(sOpt)} (${sPct >= 0 ? '+' : ''}${(sPct * 100).toFixed(1)} %)`,
+      comp: `${prettyIncl(cOpt)} (${cPct >= 0 ? '+' : ''}${(cPct * 100).toFixed(1)} %)`,
+      delta, unit: '%', rate: delta, amount,
+      explanation: `${cfg.label || prettyIncl(key)} : sujet « ${prettyIncl(sOpt)} » vs comparable « ${prettyIncl(cOpt)} » `
+        + `(écart ${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)} % du prix) ; on ${amount >= 0 ? 'ajoute' : 'retranche'} `
+        + `${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.`,
+    });
+  }
+
+  // 6) Âges des fenêtres / de la toiture : (âge comp − âge sujet) × %/an × prix vendu.
+  const ageFeatures = params.age_features || {};
+  for (const [key, cfg] of Object.entries(ageFeatures)) {
+    const pct = n(cfg.pct_per_year) ?? 0;
+    const sAge = n(subject[key]);
+    const cAge = n(c[key]);
+    if (!pct || sAge == null || cAge == null) continue;
+    const delta = cAge - sAge;
+    if (delta === 0) continue;
+    const amount = delta * pct * (c.soldPrice ?? 0);
+    lines.push({
+      key: `agef_${key}`, label: cfg.label || prettyIncl(key),
+      subject: sAge, comp: cAge, delta, unit: 'an', rate: pct, amount,
+      explanation: `${cfg.label || prettyIncl(key)} : ${Math.abs(delta)} an(s) de ${delta > 0 ? 'plus (comparable plus vieux)' : 'moins'} ; `
+        + `à ${(pct * 100).toFixed(2)} %/an du prix, on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.`,
+    });
+  }
+
   const total = lines.reduce((s, l) => s + l.amount, 0);
   const adjustedPrice = (c.soldPrice ?? 0) + total;
   return { lines, total, adjustedPrice };

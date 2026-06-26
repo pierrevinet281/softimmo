@@ -80,6 +80,7 @@ export function inclusionsToMap(value) {
 }
 
 // Champ d'inclusions avec QUANTITÉ par élément (ex. 4 foyers, 2 piscines). Stocké {clé:qté}.
+// Les options marquées `boolean` (ex. sous-sol fini) sont des cases à cocher (0/1).
 export function InclusionsField({ value, options, onChange }) {
   const map = inclusionsToMap(value);
   const setQty = (key, q) => {
@@ -91,8 +92,12 @@ export function InclusionsField({ value, options, onChange }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
       {options.map((o) => (
         <label key={o.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-          <input type="number" min={0} className="input" style={{ width: 56, padding: '4px 6px' }}
-            value={map[o.value] ?? 0} onChange={(e) => setQty(o.value, Math.max(0, parseInt(e.target.value, 10) || 0))} />
+          {o.boolean ? (
+            <input type="checkbox" className="checkbox" checked={(map[o.value] ?? 0) > 0} onChange={(e) => setQty(o.value, e.target.checked ? 1 : 0)} />
+          ) : (
+            <input type="number" min={0} className="input" style={{ width: 56, padding: '4px 6px' }}
+              value={map[o.value] ?? 0} onChange={(e) => setQty(o.value, Math.max(0, parseInt(e.target.value, 10) || 0))} />
+          )}
           {o.label}
         </label>
       ))}

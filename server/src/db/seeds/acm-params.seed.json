@@ -14,11 +14,36 @@
     "piscine_creusee": 25000,
     "piscine_hors_terre": 8000,
     "spa": 6000,
+    "sauna": 7000,
     "foyer": 5000,
     "garage": 20000,
     "abri_auto": 8000,
+    "cabanon": 4000,
     "sous_sol_fini": 15000,
     "climatisation": 4000,
     "thermopompe": 4000
+  },
+  "boolean_inclusions": ["sous_sol_fini", "climatisation", "thermopompe"],
+  "features": {
+    "foundation": {
+      "label": "Fondation",
+      "options": { "beton": 0, "blocs": -0.02, "pieux": -0.03, "pierre": -0.01 }
+    },
+    "cladding": {
+      "label": "Revêtement extérieur",
+      "options": { "brique": 0.03, "pierre": 0.05, "aluminium": 0, "vinyle": 0, "bois": 0.01, "fibrociment": 0.02, "crepi": 0.01 }
+    },
+    "windows_type": {
+      "label": "Type de fenêtres",
+      "options": { "pvc": 0, "hybride": 0.01, "aluminium": -0.01, "bois": 0.02 }
+    },
+    "flooring": {
+      "label": "Type de planchers",
+      "options": { "bois_franc": 0.03, "ceramique": 0.01, "lamine": 0, "vinyle": 0, "tapis": -0.01 }
+    }
+  },
+  "age_features": {
+    "windows_age": { "label": "Âge des fenêtres", "pct_per_year": 0.002 },
+    "roof_age": { "label": "Âge de la toiture", "pct_per_year": 0.003 }
   }
 }
