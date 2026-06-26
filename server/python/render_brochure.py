@@ -100,9 +100,46 @@ F_SB = "Sg-SB" if _reg("Sg-SB", os.path.join(WF, "seguisb.ttf")) else F_BOLD
 # Marge extérieure (haut/gauche/droite/bas) — rien ne touche le bord (sécurité d'impression).
 MO = 30
 
+# Cadre fixe du héros de pied (page 2/3) — identique pour tous les modèles (cf. _page2_footer).
+HERO_W, HERO_H = 196, 200
+
 def T(y):
     """Coordonnée 'depuis le haut' (sous la marge supérieure) → coordonnée ReportLab (du bas)."""
     return PH - MO - y
+
+
+# ── Transform : gabarit PowerPoint (540×720 pt = 7,5×10 po) → page Lettre (612×792 pt) ──
+# Échelle UNIFORME (les carrés restent carrés) qui remplit la largeur ; léger recentrage
+# vertical. Toutes les positions des brochures sont définies dans l'espace PowerPoint
+# (cf. extract_pptx_layout.py) puis projetées ici — c'est le socle du « round-trip » PPTX.
+PPTX_W, PPTX_H = 540.0, 720.0
+# Échelle ajustée à la HAUTEUR (la page Lettre est plus haute en ratio) : la mise en page
+# remplit toute la hauteur sans rien rogner en bas (pied page 2), avec de fines marges
+# latérales centrées (~9 pt). Échelle uniforme → les carrés restent carrés.
+PSCALE = PH / PPTX_H   # = 1,1
+HSHIFT = (PW - PPTX_W * PSCALE) / 2.0   # ≈ 9 : centrage horizontal
+
+
+def PX(x):
+    return x * PSCALE + HSHIFT
+
+
+def PSc(v):
+    return v * PSCALE
+
+
+def PY(y):
+    """y pptx (depuis le haut) → y ReportLab du BORD HAUT de l'élément."""
+    return PH - y * PSCALE
+
+
+def pbox(x, y, w, h):
+    """Boîte pptx (coin haut-gauche) → (x, y, w, h) ReportLab (coin bas-gauche)."""
+    return PX(x), PY(y) - PSc(h), PSc(w), PSc(h)
+
+
+def pfont(sz):
+    return sz * PSCALE
 
 
 def _cover(img, tw, th):
@@ -224,7 +261,7 @@ THEMES = {
         "banner": "medal", "banner_bg": BLUE, "title_fg": WHITE, "title_upper": False, "sub_fg": WHITE,
         "label_bg": BLUE_LABEL, "label_fg": WHITE, "value_bg": VAL, "value_fg": INK,
         "rule": LINE, "price_bg": RED, "price_fg": WHITE, "bar": RED, "qr_color": RED,
-        "p2_banner_bg": RED, "p2_title_fg": WHITE, "desc_bg": HexColor("#D5DEEF"),
+        "p2_banner_bg": RED, "p2_title_fg": WHITE, "desc_bg": HexColor("#C6D1E6"),
         "th_bg": BLUE, "th_fg": WHITE, "row_alt": VAL, "row": HexColor("#EEF1F7"), "row_fg": INK,
         # Actifs : logo eXp (bannière), médaille « Propriété Sélectionnée », héros « SuperPierre » (bas p.2).
         "logo_default": asset("unifamilial", "exp_logo_white.png"),
@@ -245,243 +282,249 @@ THEMES = {
 
 
 # ───────────────────────────── Page 1 ─────────────────────────────
-def page1(c, d, th):
-    M = MO
+# Positions issues du gabarit PowerPoint (espace 540×720), projetées en Lettre via pbox().
+def _luxe_header(c, d, th, title):
+    """Bannière luxe : titre or à gauche + verrou logo « eXp · COLLECTION DE LUXE » à droite."""
     img = d.get("images", {})
-    broker = d.get("broker", {})
+    tx = PX(33.75); tw = PSc(282.0)
+    draw_fit(c, title, tx, PY(44), tw, F_BOLD, pfont(20), th["title_fg"], min_size=12)
+    draw_fit(c, d.get("city", ""), tx, PY(62), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
+    draw_fit(c, d.get("summary_line", ""), tx, PY(79), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
+    logo = img.get("logo") or th.get("logo_default")
+    if logo and os.path.exists(logo):
+        lim = _load(logo, rgb=False); dw = PSc(180); dh = dw * (lim.size[1] / lim.size[0])
+        c.drawImage(ImageReader(lim), PX(520.15) - dw, PY(58) - dh / 2, dw, dh, mask="auto")
+    else:
+        c.setFillColor(LX_GOLD); c.setFont(F_REG, pfont(17))
+        c.drawRightString(PX(520.15), PY(52), "COLLECTION"); c.drawRightString(PX(520.15), PY(72), "DE LUXE")
 
-    # Bannière (variante selon le thème) — insérée dans la marge (ne touche pas les bords).
-    bh = 96
-    c.setFillColor(th["banner_bg"]); c.rect(M, T(bh), PW - 2 * M, bh, fill=1, stroke=0)
+
+def page1(c, d, th):
+    img = d.get("images", {}); broker = d.get("broker", {})
     title = d.get("title", "")
     if th["title_upper"]:
         title = title.upper()
 
+    # Bannière (Rectangle 7)
+    c.setFillColor(th["banner_bg"]); c.rect(*pbox(19.84, 16.76, 500.31, 82.49), fill=1, stroke=0)
+
     if th["banner"] == "luxe":
-        # Titre or à gauche ; verrou logo « eXp · COLLECTION DE LUXE » à droite (pas de médaille).
-        tx = M
-        title_w = PW / 2 + 10 - tx
-        draw_fit(c, title, tx, T(40), title_w, F_BOLD, 24, th["title_fg"], min_size=14)
-        draw_fit(c, d.get("city", ""), tx, T(60), title_w, F_REG, 12, th["sub_fg"], min_size=9)
-        draw_fit(c, d.get("summary_line", ""), tx, T(78), title_w, F_REG, 12, th["sub_fg"], min_size=9)
-        logo = img.get("logo") or th.get("logo_default")
-        if logo and os.path.exists(logo):
-            lw = 250; lh = lw / 3.69  # ratio du verrou (≈3.69)
-            c.drawImage(ImageReader(_load(logo, rgb=False)), PW - M - lw, T(bh / 2 + lh / 2), lw, lh, mask="auto")
-        else:
-            c.setFillColor(LX_GOLD); c.setFont(F_REG, 17)
-            c.drawRightString(PW - M, T(46), "COLLECTION"); c.drawRightString(PW - M, T(66), "DE LUXE")
+        _luxe_header(c, d, th, title)
     else:
+        # Logo eXp (Image 8) — ajusté par hauteur, aspect préservé, ancré sur la boîte PPTX.
         logo = img.get("logo") or th.get("logo_default")
-        tx = M + 175
+        lx, ly, lw0, lh = pbox(33.75, 30.38, 84.39, 53.79)
         if logo and os.path.exists(logo):
-            lim = _trim_alpha(_load(logo, rgb=False))  # rogne la marge → largeur réelle exacte
-            lh = 66; lw = lh * (lim.size[0] / lim.size[1])  # taille par hauteur, aspect préservé
-            c.drawImage(ImageReader(lim), M, T(bh) + (bh - lh) / 2, lw, lh, mask="auto")
-            tx = M + lw + 14  # titre juste après le logo
-        else:
-            c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
-            c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
-        title_w = PW - M - 167 - tx  # largeur dispo jusqu'à la médaille (ms 155 + écart)
-        draw_fit(c, title, tx, T(34), title_w, F_BOLD, 24, th["title_fg"], min_size=15)
-        draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, th["sub_fg"], min_size=9)
-        draw_fit(c, d.get("summary_line", ""), tx, T(74), title_w, F_REG, 13, th["sub_fg"], min_size=9)
-        # La médaille est dessinée APRÈS les images (plus bas) pour que ses rubans débordent
-        # par-dessus la photo/carte (cf. brochure de référence).
+            lim = _trim_alpha(_load(logo, rgb=False))
+            c.drawImage(ImageReader(lim), lx, ly, lh * (lim.size[0] / lim.size[1]), lh, mask="auto")
+        # Titre / ville / résumé (ZoneTexte 21)
+        tx = PX(132.04); tw = PSc(282.0)
+        draw_fit(c, title, tx, PY(42), tw, F_BOLD, pfont(20), th["title_fg"], min_size=12)
+        draw_fit(c, d.get("city", ""), tx, PY(61), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
+        draw_fit(c, d.get("summary_line", ""), tx, PY(78), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
 
-    # Images : photo (gauche) + carte (droite) — hautes pour remplir la page (8,5×11).
-    iy_top = bh + 14; iw_h = 250
-    gap = 12; lw = (PW - 2 * M - gap) * 0.56; rw = (PW - 2 * M - gap) - lw
-    draw_image(c, img.get("hero"), M, T(iy_top + iw_h), lw, iw_h, border=0.8)
-    draw_image(c, img.get("map"), M + lw + gap, T(iy_top + iw_h), rw, iw_h, border=0.8)
+    # Photo (Image 9) + carte (Image 20) — contour noir fin.
+    draw_image(c, img.get("hero"), *pbox(19.84, 110.54, 299.94, 224.96), border=0.8)
+    draw_image(c, img.get("map"), *pbox(328.0, 110.54, 192.16, 224.96), border=0.8)
 
-    # Médaille « Propriété Sélectionnée » (modèle unifamilial) : centre du badge aligné sur le
-    # centre vertical de la bande ; rubans débordant sous la bande, par-dessus l'image.
+    # Médaille (badge Image 26 + rubans Image 36) — son sommet déborde au-dessus de la bannière.
     if th["banner"] == "medal":
         medal = img.get("medal") or th.get("medal_default")
+        mx = PX(387.34); mw = PSc(146.72)
         if medal and os.path.exists(medal):
-            # ms=155 : avec le cercle à 0,31 du haut du PNG, aligner le SOMMET de la médaille sur
-            # le haut de la bande place le cercle pile au centre vertical de la bande (0,31·155≈48
-            # = bh/2) — donc pas de débordement vers le haut, et les rubans débordent sur la carte.
-            ms = 155
-            c.drawImage(ImageReader(_load(medal, rgb=False)), PW - M - ms, T(0) - ms, ms, ms, mask="auto")
-        else:
-            band_center = T(bh / 2.0)
-            mx = PW - M - 50
-            c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, band_center, 46, fill=1, stroke=0)
-            c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, band_center, 46, fill=0, stroke=1)
-            c.setFillColor(WHITE); c.setFont(F_SB, 8)
-            c.drawCentredString(mx, band_center + 3, "Propriété"); c.drawCentredString(mx, band_center - 9, "Sélectionnée")
+            mim = _load(medal, rgb=False)
+            dh = mw * (mim.size[1] / mim.size[0])
+            c.drawImage(ImageReader(mim), mx, PY(12.14) - dh, mw, dh, mask="auto")
 
-    # Adresse + MLS + filet
-    ay = iy_top + iw_h + 30
-    draw_fit(c, d.get("address", ""), M, T(ay), PW - 2 * M, F_BOLD, 16, INK, min_size=11)
+    # Adresse + MLS (Rectangle 47) + filet (Connecteur 99)
+    draw_fit(c, d.get("address", ""), PX(26.72), PY(356), PSc(486.41), F_BOLD, pfont(16), INK, min_size=11)
     if d.get("mls"):
-        draw_fit(c, "MLS : %s" % d["mls"], M, T(ay + 18), PW - 2 * M, F_REG, 11, INK2, min_size=8)
-    c.setStrokeColor(th["rule"]); c.setLineWidth(2.5); c.line(M, T(ay + 30), PW - M, T(ay + 30))
+        draw_fit(c, "MLS : %s" % d["mls"], PX(26.72), PY(374), PSc(486.41), F_REG, pfont(11), INK2, min_size=8)
+    c.setStrokeColor(th["rule"]); c.setLineWidth(2.2)
+    c.line(PX(19.58), PY(392.9), PX(19.58 + 500.69), PY(392.9))
 
-    # Grille de spécifications (2 colonnes de paires libellé/valeur)
-    gy = ay + 48
+    # Grille de spécifications — colonnes/rangées issues du PPTX (Rectangles 48-88).
+    ch = 24.13
+    rows_y = [413.43 + i * 29.7 for i in range(5)]
+    cols = [(31.69, 136.89, 175.06, 87.15), (277.16, 136.89, 421.22, 86.45)]
     left = d.get("specs_left", []); right = d.get("specs_right", [])
-    rows = max(len(left), len(right)); rh = 28; rgap = 8
-    colw = (PW - 2 * M - 24) / 2  # 2 demi-largeurs (chaque = libellé + valeur)
-    lab_w = colw * 0.52; val_w = colw - lab_w
 
-    def cell(x, yt, pair):
-        if not pair:
-            return
-        label, value = pair[0], str(pair[1]) if pair[1] is not None else ""
-        ty = T(yt + rh) + rh / 2 - 4
-        c.setFillColor(th["label_bg"]); c.rect(x, T(yt + rh), lab_w - 4, rh, fill=1, stroke=0)
-        draw_fit(c, label, x + 10, ty, lab_w - 24, F_REG, 10.5, th["label_fg"], min_size=7.5)
-        c.setFillColor(th["value_bg"]); c.rect(x + lab_w, T(yt + rh), val_w, rh, fill=1, stroke=0)
-        draw_fit(c, value, x + lab_w + 10, ty, val_w - 20, F_REG, 10.5, th["value_fg"], min_size=7.5)
+    def cell(px, pw, ry, text, fill, fg):
+        x, y, w, h = pbox(px, ry, pw, ch)
+        c.setFillColor(fill); c.rect(x, y, w, h, fill=1, stroke=0)
+        draw_fit(c, text, x + 10, y + h / 2 - pfont(12) * 0.34, w - 18, F_REG, pfont(12), fg, min_size=7.5)
 
-    for i in range(rows):
-        yt = gy + i * (rh + rgap)
-        if i < len(left):
-            cell(M, yt, left[i])
-        if i < len(right):
-            cell(M + colw + 24, yt, right[i])
+    for i, ry in enumerate(rows_y):
+        for col, specs in zip(cols, (left, right)):
+            if i < len(specs):
+                lab = specs[i][0]; val = "" if specs[i][1] is None else str(specs[i][1])
+                cell(col[0], col[1], ry, lab, th["label_bg"], th["label_fg"])
+                cell(col[2], col[3], ry, val, th["value_bg"], th["value_fg"])
 
-    # Pied : courtier (gauche) + bloc prix rouge (droite) + barre rouge
-    fy = gy + rows * (rh + rgap) + 28
-    # Photo du courtier : fournie, sinon portrait par défaut embarqué (fond blanc).
-    bphoto = broker.get("photo") or asset("broker", "portrait.png")
-    draw_image(c, bphoto, M, T(fy + 70), 70, 70, radius=4)
-    bx = M + 84; bw = PW / 2 - 10 - bx  # largeur dispo avant le bloc prix
-    draw_fit(c, broker.get("name", ""), bx, T(fy + 14), bw, F_BOLD, 15, INK, min_size=10)
-    for i, ln in enumerate([broker.get("title", ""), broker.get("subtitle", ""), broker.get("agency", "")]):
-        if ln:
-            draw_fit(c, ln, bx, T(fy + 28 + i * 12), bw, F_REG, 9, INK2, min_size=7)
-    if broker.get("phone"):
-        draw_fit(c, "T : %s" % broker["phone"], bx, T(fy + 66), bw, F_BOLD, 9, INK, min_size=7)
-
-    pbx = PW / 2 + 10; pbw = PW - M - pbx; pbh = 70
-    c.setFillColor(th["price_bg"]); c.rect(pbx, T(fy + pbh), pbw, pbh, fill=1, stroke=0)
+    # Bloc prix (Rectangle 40 / ZoneTexte 96)
+    px_, py_, pw_, ph_ = pbox(279.04, 608.5, 241.11, 71.18)
+    c.setFillColor(th["price_bg"]); c.rect(px_, py_, pw_, ph_, fill=1, stroke=0)
     price = d.get("price")
-    txt = ("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande"
-    draw_fit(c, txt, pbx + pbw / 2, T(fy + pbh) + pbh / 2 - 9, pbw - 24, F_BOLD, 26, th["price_fg"], align="c", min_size=14)
-    c.setFillColor(th["bar"]); c.rect(M, T(fy + pbh + 14), PW - 2 * M, 6, fill=1, stroke=0)
+    ptxt = ("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande"
+    draw_fit(c, ptxt, px_ + pw_ / 2, py_ + ph_ / 2 - pfont(28) * 0.34, pw_ - 20, F_BOLD, pfont(28),
+             th["price_fg"], align="c", min_size=14)
 
+    # Courtier : photo (Image 119) + bloc texte (ZoneTexte 46)
+    bphoto = broker.get("photo") or asset("broker", "portrait.png")
+    draw_image(c, bphoto, *pbox(43.03, 605.0, 59.31, 60.29))
+    btx = PX(106.85); btw = PSc(172.2)
+    draw_fit(c, broker.get("name", ""), btx, PY(620), btw, F_BOLD, pfont(15), INK, min_size=10)
+    yb = 634
+    for ln in [broker.get("title", ""), broker.get("subtitle", ""), broker.get("agency", "")]:
+        if ln:
+            draw_fit(c, ln, btx, PY(yb), btw, F_REG, pfont(9.5), INK2, min_size=7); yb += 11.5
+    if broker.get("phone"):
+        draw_fit(c, "T : %s" % broker["phone"], btx, PY(yb), btw, F_BOLD, pfont(9.5), INK, min_size=7)
+
+    # Barre rouge de pied (Connecteur 102) + mention de conformité centrée.
+    c.setFillColor(th["bar"]); c.rect(*pbox(33.75, 678, 486.41, 2.6), fill=1, stroke=0)
     _compliance_footer(c, d)
 
 
 # ───────────────────────────── Page 2 ─────────────────────────────
+ROOM_COLS = [0.46, 0.27, 0.27]  # largeurs relatives : Pièce / Étage / Dimension
+TBL_X, TBL_W = 20.07, 500.31    # Tableau 43 (coords PPTX)
+
+
+def _table_header(c, th, yp, hhp, cwp):
+    """En-tête du tableau (coords PPTX, top→bas) ; renvoie le yp sous l'en-tête."""
+    c.setFillColor(th["th_bg"]); c.rect(*pbox(TBL_X, yp, TBL_W, hhp), fill=1, stroke=0)
+    xs = TBL_X
+    for i, htxt in enumerate(["Pièce", "Étage", "Dimension"]):
+        x, y, w, h = pbox(xs, yp, cwp[i], hhp)
+        draw_fit(c, htxt, x + 10, y + h / 2 - pfont(11) * 0.34, w - 18, F_SB, pfont(11), th["th_fg"], min_size=8)
+        xs += cwp[i]
+    return yp + hhp
+
+
+def _table_rows(c, th, rows, yp, rhp, cwp, start_index=0):
+    """Rangées du tableau à partir de yp (PPTX) ; `start_index` préserve l'alternance des couleurs."""
+    for ri, room in enumerate(rows):
+        c.setFillColor(th["row_alt"] if (start_index + ri) % 2 else th["row"])
+        c.rect(*pbox(TBL_X, yp, TBL_W, rhp), fill=1, stroke=0)
+        xs = TBL_X
+        for i in range(3):
+            v = str(room[i]) if i < len(room) and room[i] is not None else ""
+            x, y, w, h = pbox(xs, yp, cwp[i], rhp)
+            draw_fit(c, v, x + 10, y + h / 2 - pfont(10) * 0.34, w - 18, F_REG, pfont(10), th["row_fg"], min_size=7.5)
+            xs += cwp[i]
+        yp += rhp
+    return yp
+
+
 def page2(c, d, th):
-    M = MO
+    """Page 2 (+ page(s) de suite si trop de pièces). Positions issues du gabarit PowerPoint.
+    Le nombre de pièces est dynamique : les rangées sont comprimées dans la zone fixe du tableau ;
+    si même comprimées elles ne tiennent pas, les pièces restantes + le pied passent en page 3."""
     rooms = d.get("rooms", [])
-    # Bannière (couleur du thème) — insérée dans la marge.
-    bh = 40
-    c.setFillColor(th["p2_banner_bg"]); c.rect(M, T(bh), PW - 2 * M, bh, fill=1, stroke=0)
-    draw_fit(c, d.get("headline", d.get("title", "")), M, T(27), PW - 2 * M, F_BOLD, 18, th["p2_title_fg"], min_size=12)
 
-    # Description (boîte selon le thème, hauteur bornée — le texte s'ajuste pour ne jamais déborder)
-    y = bh + 16
+    # Bandeau titre (Rectangle 20)
+    bx, by, bw, bhh = pbox(19.84, 20.82, 500.31, 24.72)
+    c.setFillColor(th["p2_banner_bg"]); c.rect(bx, by, bw, bhh, fill=1, stroke=0)
+    draw_fit(c, d.get("headline", d.get("title", "")), PX(32.67), by + bhh / 2 - pfont(16) * 0.34,
+             PSc(475), F_BOLD, pfont(16), th["p2_title_fg"], min_size=11)
+
+    # Description (Rectangle 64 ; texte cadré dans Rectangle 54)
     if d.get("description"):
-        box_w = PW - 2 * M; pad = 12
-        box_h = min(176, max(64, 28 + len(d["description"]) * 0.16))
-        c.setFillColor(th["desc_bg"]); c.rect(M, T(y) - box_h, box_w, box_h, fill=1, stroke=0)
-        para_fit(c, d["description"], M + pad, T(y) - pad, box_w - 2 * pad, box_h - 2 * pad,
-                 F_REG, 11, INK, leading_ratio=1.36, align=TA_JUSTIFY, min_size=8)
-        y += box_h + 16
+        c.setFillColor(th["desc_bg"]); c.rect(*pbox(19.84, 50.57, 500.31, 169.32), fill=1, stroke=0)
+        tx, ty, tw, thh = pbox(32.67, 51.06, 475.33, 168.84)
+        para_fit(c, d["description"], tx, ty + thh, tw, thh, F_REG, pfont(12), INK,
+                 leading_ratio=1.34, align=TA_JUSTIFY, min_size=8)
 
-    # 3 photos
-    ph = 120; gap = 10; iw = (PW - 2 * M - 2 * gap) / 3
-    for i in range(3):
-        p = (d.get("interior", []) + [None, None, None])[i]
-        draw_image(c, p, M + i * (iw + gap), T(y + ph), iw, ph, border=0.8)
-    y += ph + 16
+    # 3 photos (Groupe 15) — contour noir fin
+    photos = [(20.14, 161.0), (189.25, 160.7), (358.36, 162.1)]
+    interior = (d.get("interior", []) + [None, None, None])
+    for (px, pw), p in zip(photos, interior):
+        draw_image(c, p, *pbox(px, 228.58, pw, 131.9), border=0.8)
 
-    # Tableau des pièces — comprimé au besoin pour réserver un pied propre (héros + courtier + QR).
-    if rooms:
-        FOOT_H = 150  # zone réservée au pied (de bas en haut)
-        hh = 26
-        avail = T(y) - FOOT_H  # hauteur dispo (pt) entre le haut du tableau et la zone de pied
-        rh = max(16, min(24, (avail - hh) / len(rooms)))
-        cols = [0.46, 0.27, 0.27]; cw = [c0 * (PW - 2 * M) for c0 in cols]
-        c.setFillColor(th["th_bg"]); c.rect(M, T(y + hh), PW - 2 * M, hh, fill=1, stroke=0)
-        xs = M
-        for i, htxt in enumerate(["Pièce", "Étage", "Dimension"]):
-            draw_fit(c, htxt, xs + 10, T(y + hh) + hh / 2 - 4, cw[i] - 20, F_SB, 11, th["th_fg"], min_size=8); xs += cw[i]
-        yy = y + hh
-        for ri, room in enumerate(rooms):
-            c.setFillColor(th["row_alt"] if ri % 2 else th["row"])
-            c.rect(M, T(yy + rh), PW - 2 * M, rh, fill=1, stroke=0)
-            xs = M
-            for i in range(3):
-                v = str(room[i]) if i < len(room) and room[i] is not None else ""
-                draw_fit(c, v, xs + 10, T(yy + rh) + rh / 2 - 4, cw[i] - 20, F_REG, 10, th["row_fg"], min_size=7.5); xs += cw[i]
-            yy += rh
-
-    _page2_footer(c, d, th)
+    # Tableau des pièces (Tableau 43 : zone fixe 368.48→585) — rangées comprimées ; 3e page si trop.
+    cwp = [c0 * TBL_W for c0 in ROOM_COLS]
+    TBL_TOP, TBL_BOT, HHP, PAGE_BOT = 368.48, 585.0, 24.0, 700.0
+    if not rooms:
+        _page2_footer(c, d, th); return
+    n = len(rooms); avail = (TBL_BOT - TBL_TOP) - HHP
+    if n * 15 <= avail:                          # tient sur la page 2 (rangées comprimées au besoin)
+        rhp = min(26.0, avail / n)
+        yh = _table_header(c, th, TBL_TOP, HHP, cwp)
+        _table_rows(c, th, rooms, yh, rhp, cwp, 0)
+        _page2_footer(c, d, th); return
+    # Débordement : page 2 remplie sans pied ; suite + pied en page(s) suivante(s).
+    rhp = 24.0
+    yh = _table_header(c, th, TBL_TOP, HHP, cwp)
+    k = max(1, int((PAGE_BOT - yh) / rhp))
+    _table_rows(c, th, rooms[:k], yh, rhp, cwp, 0); idx = k
+    footer_drawn = False
+    while idx < n:
+        c.showPage(); yh = _table_header(c, th, 40.0, HHP, cwp)
+        if (n - idx) <= int((TBL_BOT - yh) / rhp):
+            _table_rows(c, th, rooms[idx:], yh, rhp, cwp, idx); idx = n
+            _page2_footer(c, d, th); footer_drawn = True
+        else:
+            k = max(1, int((PAGE_BOT - yh) / rhp))
+            _table_rows(c, th, rooms[idx:idx + k], yh, rhp, cwp, idx); idx += k
+    if not footer_drawn:
+        c.showPage(); _page2_footer(c, d, th)
 
 
 def _compliance_footer(c, d):
     """Mention centrée en pied (agence + courtier). LCI/OACIQ. Utilisée en page 1."""
     broker = d.get("broker", {})
     bits = [broker.get("name"), broker.get("agency"), broker.get("phone")]
-    draw_fit(c, "  ·  ".join([b for b in bits if b]), PW / 2, 16, PW - 80, F_REG, 7, INK2, align="c", min_size=5)
+    draw_fit(c, "  ·  ".join([b for b in bits if b]), PW / 2, 14, PW - 80, F_REG, 7, INK2, align="c", min_size=5)
 
 
 def _page2_footer(c, d, th):
-    """Pied de page 2 : héros de marque (gauche) + coordonnées du courtier (centre) + QR (droite).
-    Reproduit le bas de la brochure de référence ; satisfait aussi les mentions LCI/OACIQ
-    (nom + désignation du courtier, nom de l'agence)."""
-    M = MO
+    """Pied page 2/3 (positions PPTX) : héros (Image 61, gauche) + coordonnées (ZoneTexte 1)
+    + QR (Image 45, droite). Satisfait aussi les mentions LCI/OACIQ (courtier + agence)."""
     broker = d.get("broker", {})
     img = d.get("images", {}) or {}
 
-    # Héros de marque (image transparente, « SuperPierre ») en bas à gauche.
-    # Clé distincte de `images.hero` (la photo principale de la page 1).
-    # Héros : on rogne le vide transparent puis on recadre (cover-crop centré, sans distorsion)
-    # dans un cadre FIXE identique pour tous les modèles (unifamilial, luxe…) — ainsi le
-    # personnage occupe EXACTEMENT le même endroit et la même taille quel que soit le gabarit.
-    HERO_W, HERO_H = 196, 200
+    # Héros « SuperPierre » : ajusté par hauteur (aspect préservé), ancré au coin bas-gauche de
+    # la boîte PPTX — même hauteur et même position pour tous les modèles (unifamilial, luxe…).
     hero = img.get("brand_hero") or th.get("hero_default")
-    hero_right = M
+    hx, hy, hw, hh = pbox(19.84, 589.52, 192.82, 109.66)
     if hero and os.path.exists(hero) and Image is not None:
-        him = _cover(_trim_alpha(_load(hero, rgb=False)), HERO_W, HERO_H)
-        c.drawImage(ImageReader(him), M, 22, HERO_W, HERO_H, mask="auto")
-        hero_right = M + HERO_W
+        him = _trim_alpha(_load(hero, rgb=False))
+        dw = hh * (him.size[0] / him.size[1])
+        c.drawImage(ImageReader(him), hx, hy, dw, hh, mask="auto")
 
-    # QR code (droite) — encode l'URL de la fiche ou le site du courtier.
-    qr_url = d.get("listing_url") or broker.get("web") or broker.get("website")
-    if qr_url and not str(qr_url).startswith(("http://", "https://")):
-        qr_url = "https://" + str(qr_url)
-    qr_size = 76
-    qr_x = PW - M - qr_size
-    if qr_url:
-        draw_qr(c, qr_url, qr_x, 56, qr_size, dark=th.get("qr_color", RED))
-        ref = d.get("brochure_ref") or (("MLS %s" % d["mls"]) if d.get("mls") else "")
-        if ref:
-            draw_fit(c, ref, qr_x + qr_size / 2, 46, qr_size + 20, F_REG, 7, INK2, align="c", min_size=5)
-
-    # Bloc coordonnées du courtier (centre), entre le héros et le QR.
-    bx = max(hero_right + 10, M + 185)
-    bw = (qr_x - 16) - bx if qr_url else (PW - M) - bx
-    if bw < 120:
-        bw = (PW - M) - bx
-    y = 138  # ligne de base du nom (de bas en haut)
-    draw_fit(c, broker.get("name", ""), bx, y, bw, F_BOLD, 13, INK, min_size=10)
+    # Bloc coordonnées du courtier (ZoneTexte 1)
+    btx = PX(213.58); btw = PSc(226.18)
+    draw_fit(c, broker.get("name", ""), btx, PY(633), btw, F_BOLD, pfont(13), INK, min_size=9)
     title_line = " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s])
     if title_line:
-        draw_fit(c, title_line, bx, y - 16, bw, F_BOLD, 8.5, INK, min_size=6.5)
+        draw_fit(c, title_line, btx, PY(645), btw, F_BOLD, pfont(9), INK, min_size=6.5)
     agency = broker.get("agency", "")
     if broker.get("company"):
         agency = (agency + " | " + broker["company"]) if agency else broker["company"]
     if agency:
-        draw_fit(c, agency, bx, y - 28, bw, F_REG, 8.5, INK2, min_size=6.5)
+        draw_fit(c, agency, btx, PY(656), btw, F_REG, pfont(9), INK2, min_size=6.5)
     contact = []
     if broker.get("phone"):
         contact.append("T : %s" % broker["phone"])
     if broker.get("email"):
         contact.append("E : %s" % broker["email"])
     if contact:
-        draw_fit(c, "  |  ".join(contact), bx, y - 40, bw, F_REG, 8.5, INK2, min_size=6.5)
+        draw_fit(c, "  |  ".join(contact), btx, PY(667), btw, F_REG, pfont(9), INK2, min_size=6.5)
     web = broker.get("web") or broker.get("website")
     if web:
-        draw_fit(c, "W : %s" % web, bx, y - 52, bw, F_REG, 8.5, INK2, min_size=6.5)
+        draw_fit(c, "W : %s" % web, btx, PY(678), btw, F_REG, pfont(9), INK2, min_size=6.5)
+
+    # QR code (Image 45) — encode l'URL de la fiche / du site du courtier.
+    qr_url = d.get("listing_url") or broker.get("web") or broker.get("website")
+    if qr_url and not str(qr_url).startswith(("http://", "https://")):
+        qr_url = "https://" + str(qr_url)
+    if qr_url:
+        qx, qy, qw, qh = pbox(422.0, 604.83, 100.46, 100.46)
+        draw_qr(c, qr_url, qx, qy, qw, dark=th.get("qr_color", RED))
+        ref = d.get("brochure_ref") or (("MLS %s" % d["mls"]) if d.get("mls") else "")
+        if ref:
+            draw_fit(c, ref, qx + qw / 2, PY(712), qw + 24, F_REG, 7, INK2, align="c", min_size=5)
 
 
 def render(data, out):
