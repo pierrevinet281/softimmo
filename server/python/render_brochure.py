@@ -434,13 +434,16 @@ def _page2_footer(c, d, th):
 
     # Héros de marque (image transparente, « SuperPierre ») en bas à gauche.
     # Clé distincte de `images.hero` (la photo principale de la page 1).
+    # Héros : on rogne le vide transparent puis on recadre (cover-crop centré, sans distorsion)
+    # dans un cadre FIXE identique pour tous les modèles (unifamilial, luxe…) — ainsi le
+    # personnage occupe EXACTEMENT le même endroit et la même taille quel que soit le gabarit.
+    HERO_W, HERO_H = 196, 200
     hero = img.get("brand_hero") or th.get("hero_default")
     hero_right = M
     if hero and os.path.exists(hero) and Image is not None:
-        him = _load(hero, rgb=False)
-        hh2 = 188; hw2 = hh2 * (him.size[0] / him.size[1])
-        c.drawImage(ImageReader(him), M, 24, hw2, hh2, mask="auto")
-        hero_right = M + hw2
+        him = _cover(_trim_alpha(_load(hero, rgb=False)), HERO_W, HERO_H)
+        c.drawImage(ImageReader(him), M, 22, HERO_W, HERO_H, mask="auto")
+        hero_right = M + HERO_W
 
     # QR code (droite) — encode l'URL de la fiche ou le site du courtier.
     qr_url = d.get("listing_url") or broker.get("web") or broker.get("website")
