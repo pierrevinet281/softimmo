@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 14 sessions, tout sur `main`) :**
+**Où on en est (après 15 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,29 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 15 — render/ : auto-ajustement du texte, ZÉRO débordement (2026-06-26)
+
+- **Exigence utilisateur** : qualité graphiste/imprimeur, **aucun débordement de texte** (défaut
+  observé même dans le `rpa_mlt.pdf` de référence). Cibles exactes : `Brochure_..._George.pdf`
+  (unifamiliale, fait) et `rpa_mlt.pdf` (RPA, port à venir).
+- **Primitives anti-débordement** ajoutées à `render_brochure.py` : `fit_size`/`draw_fit`
+  (rétrécit la police puis tronque avec « … » en dernier recours pour une ligne) et `para_fit`
+  (réduit la police d'un paragraphe jusqu'à tenir dans une boîte w×h fixe). Appliquées **partout** :
+  titre, ville, sommaire, adresse, MLS, libellés/valeurs de la grille, bloc courtier, **prix**,
+  bannière p.2, **description** (boîte à hauteur bornée), en-têtes et cellules du **tableau des
+  pièces**, pied de conformité.
+- **Vérifié par test de stress** (titre/adresse/valeurs/description/noms de pièces démesurés) :
+  tout reste **dans les cadres** (rétréci ou tronqué proprement) ; cas George normal toujours fidèle.
+
+### Reste (render/ — prochaines étapes)
+- **Port du template RPA** (`rpa_mlt.pdf`) : adapter le script de réf. Tours Gouin `_build/brochure.py`
+  (6 pages) dans `server/python/`, en corrigeant les débordements d'origine, + sélateur de template.
+- Pagination du tableau des pièces si très nombreuses (débordement vertical de page).
+- Téléversement des **actifs réels** (logo, médaille, photos, carte, QR, photo courtier) ;
+  **jumeau PPTX éditable + aller-retour** (`docs/09`). Voir [[pdf-rendering-reportlab]].
 
 ---
 

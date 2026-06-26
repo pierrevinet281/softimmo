@@ -102,6 +102,58 @@ def para(c, text, x, y_top, w, font, size, color, leading=None, align=TA_LEFT):
     return h
 
 
+# ─────────── Auto-ajustement du texte (garantie ZÉRO débordement) ───────────
+def fit_size(c, text, max_w, font, size, min_size=6):
+    """Réduit la taille de police jusqu'à ce que `text` tienne dans max_w (une ligne)."""
+    s = size
+    while s > min_size and c.stringWidth(text, font, s) > max_w:
+        s -= 0.5
+    return s
+
+
+def _ellipsize(c, text, max_w, font, size):
+    """Tronque avec « … » si le texte dépasse encore à la taille minimale."""
+    if c.stringWidth(text, font, size) <= max_w:
+        return text
+    ell = "…"
+    while text and c.stringWidth(text + ell, font, size) > max_w:
+        text = text[:-1]
+    return (text + ell) if text else ell
+
+
+def draw_fit(c, text, x, y, max_w, font, size, color, align="l", min_size=6):
+    """Dessine une ligne qui NE déborde JAMAIS : on rétrécit puis, en dernier recours, on tronque."""
+    text = "" if text is None else str(text)
+    if not text:
+        return
+    s = fit_size(c, text, max_w, font, size, min_size)
+    if c.stringWidth(text, font, s) > max_w:
+        text = _ellipsize(c, text, max_w, font, s)
+    c.setFont(font, s); c.setFillColor(color)
+    if align == "c":
+        c.drawCentredString(x, y, text)
+    elif align == "r":
+        c.drawRightString(x, y, text)
+    else:
+        c.drawString(x, y, text)
+    return s
+
+
+def para_fit(c, text, x, y_top, w, h, font, size, color, leading_ratio=1.32, align=TA_LEFT, min_size=7):
+    """Paragraphe multi-lignes qui tient dans une boîte (w × h) : réduit la police jusqu'à
+    rentrer en hauteur. Renvoie la hauteur réellement occupée (≤ h)."""
+    s = size
+    while s >= min_size:
+        style = ParagraphStyle("s", fontName=font, fontSize=s, textColor=color,
+                               leading=s * leading_ratio, alignment=align)
+        p = Paragraph(text, style); _, ph = p.wrap(w, 100000)
+        if ph <= h or s <= min_size:
+            p.drawOn(c, x, y_top - ph)
+            return ph
+        s -= 0.5
+    return h
+
+
 # ───────────────────────────── Page 1 ─────────────────────────────
 def page1(c, d):
     M = 36
@@ -118,9 +170,10 @@ def page1(c, d):
         c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
         c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
     tx = M + 175
-    c.setFillColor(WHITE); c.setFont(F_BOLD, 24); c.drawString(tx, T(34), d.get("title", ""))
-    c.setFont(F_REG, 13); c.drawString(tx, T(54), d.get("city", ""))
-    c.setFont(F_REG, 13); c.drawString(tx, T(74), d.get("summary_line", ""))
+    title_w = PW - M - 96 - tx  # largeur dispo jusqu'à la médaille
+    draw_fit(c, d.get("title", ""), tx, T(34), title_w, F_BOLD, 24, WHITE, min_size=15)
+    draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, WHITE, min_size=9)
+    draw_fit(c, d.get("summary_line", ""), tx, T(74), title_w, F_REG, 13, WHITE, min_size=9)
 
     # Médaille « Propriété Sélectionnée »
     mx, my = PW - M - 44, T(48)
@@ -137,10 +190,9 @@ def page1(c, d):
 
     # Adresse + MLS + filet
     ay = iy_top + iw_h + 30
-    c.setFillColor(INK); c.setFont(F_BOLD, 16); c.drawString(M, T(ay), d.get("address", ""))
-    c.setFillColor(INK2); c.setFont(F_REG, 11)
+    draw_fit(c, d.get("address", ""), M, T(ay), PW - 2 * M, F_BOLD, 16, INK, min_size=11)
     if d.get("mls"):
-        c.drawString(M, T(ay + 18), "MLS : %s" % d["mls"])
+        draw_fit(c, "MLS : %s" % d["mls"], M, T(ay + 18), PW - 2 * M, F_REG, 11, INK2, min_size=8)
     c.setStrokeColor(LINE); c.setLineWidth(2.5); c.line(M, T(ay + 30), PW - M, T(ay + 30))
 
     # Grille de spécifications (2 colonnes de paires libellé/valeur)
@@ -154,12 +206,11 @@ def page1(c, d):
         if not pair:
             return
         label, value = pair[0], str(pair[1]) if pair[1] is not None else ""
+        ty = T(yt + rh) + rh / 2 - 4
         c.setFillColor(BLUE_LABEL); c.rect(x, T(yt + rh), lab_w - 4, rh, fill=1, stroke=0)
-        c.setFillColor(WHITE); c.setFont(F_REG, 10.5)
-        c.drawString(x + 10, T(yt + rh) + rh / 2 - 4, label)
+        draw_fit(c, label, x + 10, ty, lab_w - 24, F_REG, 10.5, WHITE, min_size=7.5)
         c.setFillColor(VAL); c.rect(x + lab_w, T(yt + rh), val_w, rh, fill=1, stroke=0)
-        c.setFillColor(INK); c.setFont(F_REG, 10.5)
-        c.drawString(x + lab_w + 10, T(yt + rh) + rh / 2 - 4, value)
+        draw_fit(c, value, x + lab_w + 10, ty, val_w - 20, F_REG, 10.5, INK, min_size=7.5)
 
     for i in range(rows):
         yt = gy + i * (rh + rgap)
@@ -171,21 +222,19 @@ def page1(c, d):
     # Pied : courtier (gauche) + bloc prix rouge (droite) + barre rouge
     fy = gy + rows * (rh + rgap) + 28
     draw_image(c, broker.get("photo"), M, T(fy + 70), 70, 70, radius=4)
-    bx = M + 84
-    c.setFillColor(INK); c.setFont(F_BOLD, 15); c.drawString(bx, T(fy + 14), broker.get("name", ""))
-    c.setFillColor(INK2); c.setFont(F_REG, 9)
+    bx = M + 84; bw = PW / 2 - 10 - bx  # largeur dispo avant le bloc prix
+    draw_fit(c, broker.get("name", ""), bx, T(fy + 14), bw, F_BOLD, 15, INK, min_size=10)
     for i, ln in enumerate([broker.get("title", ""), broker.get("subtitle", ""), broker.get("agency", "")]):
         if ln:
-            c.drawString(bx, T(fy + 28 + i * 12), ln)
+            draw_fit(c, ln, bx, T(fy + 28 + i * 12), bw, F_REG, 9, INK2, min_size=7)
     if broker.get("phone"):
-        c.setFillColor(INK); c.setFont(F_BOLD, 9); c.drawString(bx, T(fy + 66), "T : %s" % broker["phone"])
+        draw_fit(c, "T : %s" % broker["phone"], bx, T(fy + 66), bw, F_BOLD, 9, INK, min_size=7)
 
     pbx = PW / 2 + 10; pbw = PW - M - pbx; pbh = 70
     c.setFillColor(RED); c.rect(pbx, T(fy + pbh), pbw, pbh, fill=1, stroke=0)
     price = d.get("price")
     txt = ("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande"
-    c.setFillColor(WHITE); c.setFont(F_BOLD, 26)
-    c.drawCentredString(pbx + pbw / 2, T(fy + pbh) + pbh / 2 - 9, txt)
+    draw_fit(c, txt, pbx + pbw / 2, T(fy + pbh) + pbh / 2 - 9, pbw - 24, F_BOLD, 26, WHITE, align="c", min_size=14)
     c.setFillColor(RED); c.rect(M, T(fy + pbh + 14), PW - 2 * M, 6, fill=1, stroke=0)
 
     _compliance_footer(c, d)
@@ -198,17 +247,18 @@ def page2(c, d):
     # Bannière rouge
     bh = 40
     c.setFillColor(RED); c.rect(0, T(bh), PW, bh, fill=1, stroke=0)
-    c.setFillColor(WHITE); c.setFont(F_BOLD, 18)
-    c.drawString(M, T(27), d.get("headline", d.get("title", "")))
+    draw_fit(c, d.get("headline", d.get("title", "")), M, T(27), PW - 2 * M, F_BOLD, 18, WHITE, min_size=12)
 
-    # Description (boîte bleu clair)
+    # Description (boîte bleu clair, hauteur fixe — le texte s'ajuste pour ne jamais déborder)
     y = bh + 16
     if d.get("description"):
-        dh = para(c, d["description"], M + 12, T(y) - 12, PW - 2 * M - 24, F_REG, 11, INK, leading=15, align=TA_JUSTIFY)
-        c.setFillColor(HexColor("#E9EDF3"))
-        c.rect(M, T(y) - (dh + 24), PW - 2 * M, dh + 24, fill=1, stroke=0)
-        para(c, d["description"], M + 12, T(y) - 12, PW - 2 * M - 24, F_REG, 11, INK, leading=15, align=TA_JUSTIFY)
-        y += dh + 24 + 16
+        box_w = PW - 2 * M; pad = 12
+        # Hauteur de boîte proportionnelle à la longueur, bornée (jamais de débordement vertical).
+        box_h = min(176, max(64, 28 + len(d["description"]) * 0.16))
+        c.setFillColor(HexColor("#E9EDF3")); c.rect(M, T(y) - box_h, box_w, box_h, fill=1, stroke=0)
+        para_fit(c, d["description"], M + pad, T(y) - pad, box_w - 2 * pad, box_h - 2 * pad,
+                 F_REG, 11, INK, leading_ratio=1.36, align=TA_JUSTIFY, min_size=8)
+        y += box_h + 16
 
     # 3 photos
     ph = 120; gap = 10; iw = (PW - 2 * M - 2 * gap) / 3
@@ -222,18 +272,17 @@ def page2(c, d):
         hh = 26; rh = 24
         cols = [0.46, 0.27, 0.27]; cw = [c0 * (PW - 2 * M) for c0 in cols]
         c.setFillColor(BLUE); c.rect(M, T(y + hh), PW - 2 * M, hh, fill=1, stroke=0)
-        c.setFillColor(WHITE); c.setFont(F_SB, 11)
         xs = M
         for i, htxt in enumerate(["Pièce", "Étage", "Dimension"]):
-            c.drawString(xs + 10, T(y + hh) + hh / 2 - 4, htxt); xs += cw[i]
+            draw_fit(c, htxt, xs + 10, T(y + hh) + hh / 2 - 4, cw[i] - 20, F_SB, 11, WHITE, min_size=8); xs += cw[i]
         yy = y + hh
         for ri, room in enumerate(rooms):
             c.setFillColor(VAL if ri % 2 else HexColor("#EEF1F7"))
             c.rect(M, T(yy + rh), PW - 2 * M, rh, fill=1, stroke=0)
-            c.setFillColor(INK); c.setFont(F_REG, 10); xs = M
+            xs = M
             for i in range(3):
                 v = str(room[i]) if i < len(room) and room[i] is not None else ""
-                c.drawString(xs + 10, T(yy + rh) + rh / 2 - 4, v); xs += cw[i]
+                draw_fit(c, v, xs + 10, T(yy + rh) + rh / 2 - 4, cw[i] - 20, F_REG, 10, INK, min_size=7.5); xs += cw[i]
             yy += rh
 
     _compliance_footer(c, d)
@@ -242,9 +291,8 @@ def page2(c, d):
 def _compliance_footer(c, d):
     """Mentions obligatoires (agence + courtier). LCI/OACIQ."""
     broker = d.get("broker", {})
-    c.setFillColor(INK2); c.setFont(F_REG, 7)
     bits = [broker.get("name"), broker.get("agency"), broker.get("phone")]
-    c.drawCentredString(PW / 2, 16, "  ·  ".join([b for b in bits if b]))
+    draw_fit(c, "  ·  ".join([b for b in bits if b]), PW / 2, 16, PW - 80, F_REG, 7, INK2, align="c", min_size=5)
 
 
 def render(data, out):
