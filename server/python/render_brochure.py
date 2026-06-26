@@ -182,6 +182,9 @@ THEMES = {
         "rule": LINE, "price_bg": RED, "price_fg": WHITE, "bar": RED,
         "p2_banner_bg": RED, "p2_title_fg": WHITE, "desc_bg": HexColor("#E9EDF3"),
         "th_bg": BLUE, "th_fg": WHITE, "row_alt": VAL, "row": HexColor("#EEF1F7"), "row_fg": INK,
+        # Actifs : médaille « Propriété Sélectionnée » + héros illustratif (bas de page 2).
+        "medal_default": asset("unifamilial", "certificat.png"),
+        "hero_default": asset("unifamilial", "hero.png"),
     },
     "luxe": {
         "banner": "luxe", "banner_bg": LX_BLACK, "title_fg": LX_GOLD, "title_upper": True, "sub_fg": WHITE,
@@ -231,16 +234,21 @@ def page1(c, d, th):
             c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
             c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
         tx = M + 175
-        title_w = PW - M - 96 - tx  # largeur dispo jusqu'à la médaille
+        title_w = PW - M - 112 - tx  # largeur dispo jusqu'à la médaille
         draw_fit(c, title, tx, T(34), title_w, F_BOLD, 24, th["title_fg"], min_size=15)
         draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, th["sub_fg"], min_size=9)
         draw_fit(c, d.get("summary_line", ""), tx, T(74), title_w, F_REG, 13, th["sub_fg"], min_size=9)
-        # Médaille « Propriété Sélectionnée »
-        mx, my = PW - M - 44, T(48)
-        c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, my, 40, fill=1, stroke=0)
-        c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, my, 40, fill=0, stroke=1)
-        c.setFillColor(WHITE); c.setFont(F_SB, 7.5)
-        c.drawCentredString(mx, my + 3, "Propriété"); c.drawCentredString(mx, my - 7, "Sélectionnée")
+        # Médaille « Propriété Sélectionnée » (image si dispo, sinon dessin de repli).
+        medal = img.get("medal") or th.get("medal_default")
+        if medal and os.path.exists(medal):
+            ms = 104
+            c.drawImage(ImageReader(_load(medal, rgb=False)), PW - M - ms, T(bh) - 22, ms, ms, mask="auto")
+        else:
+            mx, my = PW - M - 44, T(48)
+            c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, my, 40, fill=1, stroke=0)
+            c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, my, 40, fill=0, stroke=1)
+            c.setFillColor(WHITE); c.setFont(F_SB, 7.5)
+            c.drawCentredString(mx, my + 3, "Propriété"); c.drawCentredString(mx, my - 7, "Sélectionnée")
 
     # Images : photo (gauche) + carte (droite)
     iy_top = bh + 14; iw_h = 200
