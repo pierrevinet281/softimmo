@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 19 sessions, tout sur `main`) :**
+**Où on en est (après 20 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,17 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 20 — Brochure unifamiliale : médaille + héros (2026-06-26)
+
+- Actifs copiés : `assets/unifamilial/certificat.png` (médaille « Propriété Sélectionnée »
+  or/bleu, RGBA) et `hero.png` (super-héros bleu, RGBA).
+- `render_brochure.py` : thème unifamilial `medal_default` + `hero_default`. **Bannière p.1** :
+  la médaille image remplace le badge dessiné (débordant sous la bannière, comme le modèle ;
+  repli dessiné conservé). **Page 2** : héros bleu en bas à gauche. Réserve de largeur du titre
+  ajustée. Rendu vérifié, fidèle au modèle George, sans débordement. Exemple régénéré.
 
 ---
 
