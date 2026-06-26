@@ -8,3 +8,4 @@ pdfplumber==0.11.4        # MIT — extraction positionnelle des PDF Matrix (ACM
 pypdf==5.1.0              # BSD — lecture PDF (repli / métadonnées)
 reportlab==4.2.5          # BSD — génération PDF qualité brochure (moteur render/, docs/09)
 Pillow                    # HPND — traitement d'images (installé via pdfplumber ; explicite ici)
+python-pptx==1.0.2        # MIT — lecture PPTX : extraction des positions des gabarits brochure (round-trip)
