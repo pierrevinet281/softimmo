@@ -147,6 +147,75 @@ export default function mountBusiness(parent = Router()) {
     res.status(201).json({ count: created.length, comparables: created });
   }));
 
+  // ── Module 4 : brochure PDF (moteur render/, ReportLab, déterministe) ──
+  const GENRE_LABEL = {
+    unifamilial: 'Maison à vendre', condo: 'Condo à vendre', plex: 'Plex à vendre',
+    multi: 'Multi-logements à vendre', commercial: 'Commercial à vendre',
+    industriel: 'Industriel à vendre', terrain: 'Terrain à vendre', rpa: 'RPA à vendre', autre: 'À vendre',
+  };
+  const fmtArea = (v) => (v != null && v !== '' ? `${Number(v).toLocaleString('fr-CA', { maximumFractionDigits: 2 })} pc` : '');
+
+  function buildBrochureData(bundle) {
+    const p = bundle.property;
+    const b = (bundle.buildings || [])[0] || {};
+    const units = bundle.units || [];
+    const beds = units.reduce((s, u) => s + (Number(u.bedrooms) || 0), 0) || null;
+    const baths = units.reduce((s, u) => s + (Number(u.bathrooms) || 0), 0) || null;
+    const tx = (bundle.transactions || []).find((t) => ['inscription', 'en_vigueur'].includes(t.status) && t.price);
+    const broker = Settings.get('broker_profile', null) || {
+      name: 'Pierre Vinet', title: 'Courtier Immobilier', subtitle: 'Résidentiel et Commercial',
+      agency: 'eXp Agence Immobilière', phone: '514.651.7437',
+    };
+    const cityProv = [p.city, p.province].filter(Boolean).join(' (') + (p.province ? ')' : '');
+    const summary = [beds ? `${beds} chambres` : null, baths ? `${baths} salles de bain` : null]
+      .filter(Boolean).join(' + ') + (b.livable_area ? ` (${Math.round(b.livable_area)} pi²)` : '');
+    return {
+      title: GENRE_LABEL[p.genre] || GENRE_LABEL.autre,
+      city: cityProv,
+      summary_line: summary,
+      address: [p.address, p.city, p.province, p.postal_code].filter(Boolean).join(', ').toUpperCase(),
+      mls: p.mls_number || '',
+      price: tx ? Number(tx.price) : null,
+      specs_left: [
+        ['Type de propriété', GENRE_LABEL[p.genre]?.replace(' à vendre', '') || p.genre],
+        ['Année de construction', b.year_built || ''],
+        ['Nombre de pièces', units.length || ''],
+        ['Nombre de chambres', beds || ''],
+        ['Nombre salles de bain', baths || ''],
+      ],
+      specs_right: [
+        ['Surface habitable', fmtArea(b.livable_area)],
+        ['Surface du terrain', fmtArea(b.land_area)],
+        ['Structure', b.structure || ''],
+        ['Revêtement', b.exterior_cladding || ''],
+        ['Zonage', p.zoning || ''],
+      ],
+      broker,
+      headline: p.name || (GENRE_LABEL[p.genre] || ''),
+      description: p.summary || '',
+      rooms: units.map((u) => [u.label || u.unit_type || '—', '', u.area ? `${u.area} pi²` : '']),
+    };
+  }
+
+  parent.get('/properties/:id/brochure.pdf', wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const pid = property.id;
+    const bundle = {
+      property,
+      buildings: Buildings.listBy('property_id', pid),
+      units: Units.listBy('property_id', pid),
+      transactions: Transactions.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
+    };
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `brochure-${pid}-${Date.now()}.pdf`);
+    await runWorker('render_brochure', { data: buildBrochureData(bundle), out }, { timeoutMs: 60000 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="brochure-${pid}.pdf"`);
+    res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
   // ── Stats APCIQ (ratios vente/inscrit & vente/éval) ──
   // Le PDF « STATS_MUNGENRE » couvre toutes les régions pour une période : il est conservé
   // et réutilisable pour plusieurs propriétés. Le courtier peut : utiliser le fichier en

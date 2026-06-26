@@ -6,3 +6,5 @@ dnspython==2.7.0          # ISC — MX / DNS lookups
 phonenumbers==8.13.52     # Apache-2.0 — phone parse / format / type
 pdfplumber==0.11.4        # MIT — extraction positionnelle des PDF Matrix (ACM, docs/12)
 pypdf==5.1.0              # BSD — lecture PDF (repli / métadonnées)
+reportlab==4.2.5          # BSD — génération PDF qualité brochure (moteur render/, docs/09)
+Pillow                    # HPND — traitement d'images (installé via pdfplumber ; explicite ici)
