@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 15 sessions, tout sur `main`) :**
+**Où on en est (après 16 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,29 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 16 — Brochure : modèle Luxe + sélecteur de modèle obligatoire (2026-06-26)
+
+- **Système de thèmes** dans `render_brochure.py` : `THEMES` (couleurs + variante de bannière) ;
+  `render()` choisit le thème via `data.template`. Même structure de mise en page → plusieurs
+  identités visuelles.
+- **Modèle « Maison de luxe »** (cible : `Brochure Luxury/brochure_luxury_modele.pdf`) : bannière
+  **noire**, titre **or majuscule**, **« COLLECTION DE LUXE »** (+ logo, pas de médaille) ;
+  libellés **or**, valeurs **crème** ; filet **or** ; bloc prix **noir** ; page 2 bannière **or**.
+  Rendu vérifié, fidèle au modèle, sans débordement (réutilise les primitives `fit`).
+- **Sélecteur de modèle OBLIGATOIRE** : bouton « Brochure PDF » → modale `BrochureChooser`
+  (Unifamiliale / Luxe / RPA-bientôt). Aucune brochure générée sans choix explicite — important car
+  le modèle Luxe affiche une marque de service **non encore souscrite**.
+- **Endpoint** `GET /properties/:id/brochure.pdf?template=` validé (`unifamilial`|`luxe` ; `rpa`
+  → « bientôt » ; inconnu → 400). i18n FR/EN. Vérifs : `vite build` OK ; HTTP testé (les deux
+  modèles → PDF ; rpa/inconnu → 400).
+
+### Reste (modèles de brochure)
+- **Port RPA** (`rpa_mlt.pdf`, 6 pages) depuis `_build/brochure.py` → nouveau thème/structure.
+- Modèles **Immeuble commercial** et **Entreprise** (copies fournies plus tard par l'utilisateur).
+- Téléversement des **actifs réels** (logos, photos, carte, QR, photo courtier) ; jumeau **PPTX**.
 
 ---
 

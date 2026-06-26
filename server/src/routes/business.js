@@ -197,9 +197,14 @@ export default function mountBusiness(parent = Router()) {
     };
   }
 
+  // Modèles de brochure disponibles (le courtier DOIT en choisir un — voir UI).
+  const BROCHURE_TEMPLATES = ['unifamilial', 'luxe'];
   parent.get('/properties/:id/brochure.pdf', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
+    const template = String(req.query.template || 'unifamilial');
+    if (template === 'rpa') throw badRequest('Le modèle « Résidence pour aînés » arrive bientôt.');
+    if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
     const pid = property.id;
     const bundle = {
       property,
@@ -210,7 +215,7 @@ export default function mountBusiness(parent = Router()) {
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pdf`);
-    await runWorker('render_brochure', { data: buildBrochureData(bundle), out }, { timeoutMs: 60000 });
+    await runWorker('render_brochure', { data: { ...buildBrochureData(bundle), template }, out }, { timeoutMs: 60000 });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="brochure-${pid}.pdf"`);
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
