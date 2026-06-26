@@ -229,6 +229,7 @@ function CharacterizationTab({ bundle, refetch }) {
       <Card style={{ marginBottom: 16 }}>
         <div className="kv">
           <div className="muted">{t('common.type')}</div><div>{p.genre}</div>
+          <div className="muted">{t('d.prop.client')}</div><div>{bundle.client ? `${bundle.client.full_name}${bundle.client.org_name ? ` (${bundle.client.org_name})` : ''}` : <span className="muted">—</span>}</div>
           <div className="muted">Adresse</div><div>{p.address || '—'}{p.city ? `, ${p.city}` : ''}</div>
           <div className="muted">{t('d.prop.zoning')}</div><div>{p.zoning || '—'}</div>
           <div className="muted">{t('d.prop.lot')}</div><div className="mono">{p.lot_number || '—'}</div>

@@ -18,16 +18,18 @@ export default function Properties() {
   const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', genre: 'unifamilial', city: '', address: '' });
+  const [form, setForm] = useState({ name: '', genre: 'unifamilial', city: '', address: '', client_id: '' });
 
   const { data, isLoading } = useQuery({
     queryKey: ['properties', q],
     queryFn: () => api.get(`/properties?q=${encodeURIComponent(q)}&sort=updated_at&dir=desc`),
   });
+  const { data: clientsData } = useQuery({ queryKey: ['clients', 'all'], queryFn: () => api.get('/clients?limit=500&sort=full_name&dir=asc') });
+  const clients = clientsData?.rows || [];
 
   const create = useMutation({
     mutationFn: (body) => api.post('/properties', body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['properties'] }); setOpen(false); setForm({ name: '', genre: 'unifamilial', city: '', address: '' }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['properties'] }); setOpen(false); setForm({ name: '', genre: 'unifamilial', city: '', address: '', client_id: '' }); },
   });
   const remove = useMutation({
     mutationFn: (id) => api.del(`/properties/${id}`),
@@ -101,6 +103,13 @@ export default function Properties() {
           </div>
           <FormField label="Adresse" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           <FormField label={t('common.city')} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+          <div className="field">
+            <label>{t('prop.client')}</label>
+            <Select value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
+              <option value="">{t('prop.clientNone')}</option>
+              {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}{c.org_name ? ` (${c.org_name})` : ''}</option>)}
+            </Select>
+          </div>
         </Modal>
       )}
     </div>

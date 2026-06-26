@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Properties from './pages/Properties.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
 import Evaluation from './pages/Evaluation.jsx';
+import ClientsPage from './pages/ClientsPage.jsx';
 import Placeholder from './pages/Placeholder.jsx';
 import Contacts from './pages/Contacts.jsx';
 import Companies from './pages/Companies.jsx';
@@ -121,7 +122,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/properties" element={<Properties />} />
           <Route path="/properties/:id" element={<PropertyDetail />} />
-          <Route path="/clients" element={<Placeholder titleKey="nav.clients" />} />
+          <Route path="/clients" element={<ClientsPage />} />
           <Route path="/evaluation" element={<Evaluation />} />
           <Route path="/assets-courtier" element={<Placeholder titleKey="nav.brokerAssets" />} />
           <Route path="/offres" element={<Placeholder titleKey="nav.offers" />} />
