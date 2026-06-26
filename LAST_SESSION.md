@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 18 sessions, tout sur `main`) :**
+**Où on en est (après 19 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,16 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 19 — Brochure : portrait du courtier (page 1) (2026-06-26)
+
+- Portraits du courtier copiés dans l'app : `server/python/assets/broker/portrait.png` (fond
+  blanc, ~carré) et `portrait_nobg.png` (transparent).
+- `render_brochure.py` : le bloc courtier de la page 1 utilise désormais le portrait par défaut
+  embarqué (`asset('broker','portrait.png')`) si `broker.photo` non fourni — recadré carré, coins
+  arrondis. S'applique aux deux modèles. Exemples régénérés dans `exemples-brochures/`.
 
 ---
 
