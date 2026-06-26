@@ -3,11 +3,15 @@ import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Building2, Sparkles, ShieldCheck, ListChecks,
   Upload, Store, Activity as ActivityIcon, Settings as SettingsIcon, Moon, Sun, Zap,
+  Home, FileBarChart, Megaphone, FileText, LifeBuoy, Contact,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from './api/client.js';
+import { useI18n } from './i18n/index.jsx';
 
 import Dashboard from './pages/Dashboard.jsx';
+import Properties from './pages/Properties.jsx';
+import Placeholder from './pages/Placeholder.jsx';
 import Contacts from './pages/Contacts.jsx';
 import Companies from './pages/Companies.jsx';
 import Generate from './pages/Generate.jsx';
@@ -18,26 +22,39 @@ import Marketplace from './pages/Marketplace.jsx';
 import ActivityPage from './pages/ActivityPage.jsx';
 import Settings from './pages/Settings.jsx';
 
+// Navigation grouped by Softimmo module. `key` shows a live count from /stats.
 const NAV = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-  { section: 'Leads' },
-  { to: '/contacts', label: 'Contact Leads', icon: Users, key: 'contacts' },
-  { to: '/companies', label: 'Company Leads', icon: Building2, key: 'companies' },
-  { to: '/lists', label: 'Leads Lists', icon: ListChecks },
-  { section: 'Engine' },
-  { to: '/generate', label: 'Generate', icon: Sparkles },
-  { to: '/verify', label: 'Verify', icon: ShieldCheck },
-  { to: '/import', label: 'Import / Export', icon: Upload },
-  { section: 'Platform' },
-  { to: '/marketplace', label: 'Marketplace', icon: Store },
-  { to: '/activity', label: 'Activity', icon: ActivityIcon },
-  { to: '/settings', label: 'Settings', icon: SettingsIcon },
+  { to: '/', labelKey: 'nav.overview', icon: LayoutDashboard, end: true },
+  { sectionKey: 'sec.mandates' },
+  { to: '/properties', labelKey: 'nav.properties', icon: Building2 },
+  { to: '/clients', labelKey: 'nav.clients', icon: Home },
+  { sectionKey: 'sec.analysis' },
+  { to: '/evaluation', labelKey: 'nav.evaluation', icon: FileBarChart },
+  { sectionKey: 'sec.promo' },
+  { to: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
+  { to: '/offres', labelKey: 'nav.offers', icon: FileText },
+  { to: '/trousse', labelKey: 'nav.toolkit', icon: LifeBuoy },
+  { sectionKey: 'sec.crm' },
+  { to: '/contacts', labelKey: 'nav.contacts', icon: Users, key: 'contacts' },
+  { to: '/companies', labelKey: 'nav.companies', icon: Contact, key: 'companies' },
+  { to: '/lists', labelKey: 'nav.lists', icon: ListChecks },
+  { to: '/generate', labelKey: 'nav.generate', icon: Sparkles },
+  { to: '/verify', labelKey: 'nav.verify', icon: ShieldCheck },
+  { to: '/import', labelKey: 'nav.io', icon: Upload },
+  { sectionKey: 'sec.platform' },
+  { to: '/marketplace', labelKey: 'nav.marketplace', icon: Store },
+  { to: '/activity', labelKey: 'nav.activity', icon: ActivityIcon },
+  { to: '/settings', labelKey: 'nav.settings', icon: SettingsIcon },
 ];
 
-const TITLES = {
-  '/': 'Overview', '/contacts': 'Contact Leads', '/companies': 'Company Leads',
-  '/lists': 'Leads Lists', '/generate': 'Generate Leads', '/verify': 'Verify', '/import': 'Import / Export',
-  '/marketplace': 'Marketplace', '/activity': 'Activity', '/settings': 'Settings',
+// path -> label key, for the topbar title.
+const TITLE_KEY = {
+  '/': 'nav.overview', '/properties': 'nav.properties', '/clients': 'nav.clients',
+  '/evaluation': 'nav.evaluation', '/marketing': 'nav.marketing', '/offres': 'nav.offers',
+  '/trousse': 'nav.toolkit', '/contacts': 'nav.contacts', '/companies': 'nav.companies',
+  '/lists': 'nav.lists', '/generate': 'nav.generate', '/verify': 'nav.verify',
+  '/import': 'nav.io', '/marketplace': 'nav.marketplace', '/activity': 'nav.activity',
+  '/settings': 'nav.settings',
 };
 
 function useTheme() {
@@ -51,12 +68,12 @@ function useTheme() {
 
 export default function App() {
   const [theme, toggleTheme] = useTheme();
+  const { t, lang, setLang } = useI18n();
   const location = useLocation();
   const { data: stats } = useQuery({ queryKey: ['stats'], queryFn: () => api.get('/stats'), refetchInterval: 8000 });
   const counts = { contacts: stats?.contacts, companies: stats?.companies };
 
-  const title = TITLES[location.pathname]
-    || (location.pathname.startsWith('/contacts') ? 'Contact Leads' : location.pathname.startsWith('/companies') ? 'Company Leads' : 'Softimmo');
+  const title = t(TITLE_KEY[location.pathname] || 'app.tagline');
 
   return (
     <div className="app-shell">
@@ -67,13 +84,13 @@ export default function App() {
         </div>
         <nav className="sidebar-nav">
           {NAV.map((item, i) => (
-            item.section
-              ? <div className="nav-section" key={`s${i}`}>{item.section}</div>
+            item.sectionKey
+              ? <div className="nav-section" key={`s${i}`}>{t(item.sectionKey)}</div>
               : (
                 <NavLink key={item.to} to={item.to} end={item.end}
                   className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                   <item.icon size={18} />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                   {item.key && counts[item.key] != null && <span className="count">{counts[item.key]}</span>}
                 </NavLink>
               )
@@ -86,15 +103,24 @@ export default function App() {
           <h1>{title}</h1>
           <div className="spacer" />
           {stats?.activeJobs > 0 && (
-            <span className="badge badge-accent"><span className="spinner" /> {stats.activeJobs} job{stats.activeJobs > 1 ? 's' : ''} running</span>
+            <span className="badge badge-accent"><span className="spinner" /> {stats.activeJobs} job{stats.activeJobs > 1 ? 's' : ''}</span>
           )}
-          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle theme">
+          <button className="btn btn-ghost btn-sm" onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')} title="FR / EN">
+            {lang === 'fr' ? 'EN' : 'FR'}
+          </button>
+          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={t('theme.toggle')}>
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
         </header>
 
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/properties" element={<Properties />} />
+          <Route path="/clients" element={<Placeholder titleKey="nav.clients" />} />
+          <Route path="/evaluation" element={<Placeholder titleKey="nav.evaluation" />} />
+          <Route path="/marketing" element={<Placeholder titleKey="nav.marketing" />} />
+          <Route path="/offres" element={<Placeholder titleKey="nav.offers" />} />
+          <Route path="/trousse" element={<Placeholder titleKey="nav.toolkit" />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/companies" element={<Companies />} />
           <Route path="/lists" element={<Lists />} />

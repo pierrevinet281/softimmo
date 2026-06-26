@@ -5,6 +5,38 @@
 
 ---
 
+## Session 2 — Pipeline marketing (spec) + Phase 1 Fondations (2026-06-25)
+
+### Réalisé
+- **Spécification marketing** (exigence utilisateur) : `docs/09-marketing-pipeline.md`
+  (PDF + PPTX éditable jumeau, aller-retour `ingest_pptx.py`), principe « IA pour bâtir,
+  pas pour exécuter » ajouté à `CLAUDE.md` §3. Réf. : pipeline Tours Gouin `_build/`
+  (ReportLab + python-pptx). Sauvegardé en mémoire.
+- **Phase 1 — Fondations Softimmo** :
+  - **Schéma DB métier** (`server/src/db/schema.sql`) : `clients`, `properties`,
+    `buildings`, `units`, `expenses`, `transactions`, `comparables`, `reports`,
+    `documents` (idempotent, appliqué au boot).
+  - **Fabrique de repository** `repositories/_factory.js` + 9 repos métier + barrel.
+  - **Fabrique de routes CRUD** `routes/_crud.js` + `routes/business.js` (toutes les
+    entités) + endpoint agrégé `GET /properties/:id/bundle` (Module 1). Montées dans
+    `routes/index.js`. **Testées** (création/bundle/filtre/cascade OK).
+  - **i18n FR/EN** `web/src/i18n/index.jsx` (contexte + `useI18n` + dict, défaut FR) +
+    **bascule de langue** dans la topbar.
+  - **Navigation par module** (App.jsx : Mandats, Analyse/Évaluation, Mise en marché,
+    CRM, Plateforme) + **page Propriétés fonctionnelle** (liste/création/suppression) +
+    **pages placeholder** (Clients, Évaluation, Marketing, Offres, Trousse).
+  - Vérifié : Vite compile tous les nouveaux modules (200) ; backend testé ; boot OK.
+
+### Décisions (session 2)
+- DRY assumé via **fabriques** (repo + route) pour les 9 entités métier — cohérent avec
+  le style du socle, extensible.
+- Schémas zod **permissifs** (passthrough) pour l'instant ; durcissement (enums/types)
+  plus tard sans casser les entrées.
+- Page Propriétés livrée minimale fonctionnelle ; le détail multi-bâtiments / rent roll /
+  rentabilité = Phase 2 (Module 1).
+
+---
+
 ## Session 1 — Framework & socle (2026-06-25)
 
 ### Objectif
@@ -45,6 +77,13 @@ socle d'enrichissement).
   settings, IA, workers) sert tous les modules ; l'enrichissement devient le Module 6.
 - **Renommage du slug `leadgen`** fait **progressivement** (DB path/UA/packages déjà
   faits ; env var, schéma interne → Phase 8) pour éviter une migration risquée d'un coup.
+- **Module 4 (marketing) — exigence ajoutée par l'utilisateur** : sortie **PDF + PPTX
+  éditable (jumeau fidèle)** avec bouton **« Mise à jour »** aller-retour (PPTX modifié →
+  script Python → met à jour PDF + données). **Déterministe, sans IA au runtime** (l'IA
+  sert à bâtir, pas à exécuter) ; wizards, formulaires, upload d'images. Pipeline de
+  référence (lecture seule) : Tours Gouin `…\Publicités\_build\` (ReportLab + python-pptx).
+  Conception consignée dans `docs/09-marketing-pipeline.md`. Principe global ajouté à
+  `CLAUDE.md` §3.
 
 ### Statut de démarrage — VALIDÉ ✔ (bout-en-bout)
 - `npm install` OK (exit 0).
@@ -61,19 +100,22 @@ socle d'enrichissement).
 
 ---
 
-## Prochaines tâches (Session 2)
-1. **Finaliser/confirmer le démarrage** du socle sous Softimmo (install, venv, seed, dev,
-   UI light/dark). Corriger tout problème.
-2. **Phase 1 — Fondations Softimmo** (`docs/04-action-plan.md`) :
-   - Schéma DB : tables `properties`, `buildings`, `units`, `expenses`, `comparables`,
-     `reports`, `transactions`, `documents`, `clients` + liaisons (migration idempotente).
-   - Repositories + routes CRUD (zod, provenance, activité).
-   - Shell de navigation Softimmo par module + i18n FR/EN (catalogues + bascule).
-   - Base du moteur `render/` (HTML→PDF) avec en-têtes/pieds de conformité.
-3. Si temps : amorcer **Module 1 (Analyse de propriété)** — formulaire de caractérisation.
+## Prochaines tâches (Session 3) — Phase 2 : Module 1 (Analyse de propriété)
+1. **Détail de propriété** (page `/properties/:id`) consommant `/properties/:id/bundle` :
+   onglets Caractérisation (multi-bâtiments), Rent roll (unités), Dépenses, Rapports,
+   Transactions, Comparables.
+2. **Formulaires** d'édition par bâtiment / unité / dépense (CRUD déjà dispo côté API).
+3. **Tableau de rentabilité** (calcul côté serveur, déterministe, sans IA) : revenus
+   bruts → effectifs → RNE ; **MRB, MRN, TGA/cap rate, $/porte** ; contrôle de cohérence
+   (alerte ratio dépenses < 30 %). Voir `docs/03-feature-catalog.md` §1 et `docs/08`.
+4. **Détection d'anomalies** de superficie ; import assisté (extract + mapping).
+5. Base du moteur **`render/`** (HTML→PDF) avec en-têtes/pieds de conformité (mentions,
+   avertissement « opinion ≠ évaluation ») — partagé avec Modules 2-5.
+6. i18n : compléter les catalogues au fil des nouvelles pages.
 
 ## Tâches reportées
-- Câblage i18n complet (amorcé en Phase 1).
+- Moteur `render/` (déplacé en Phase 2, partagé).
+- Durcissement des schémas zod (enums/types) des entités métier.
 - Renommage final du slug `leadgen` (Phase 8).
 
 ## Rappels

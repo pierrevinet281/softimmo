@@ -8,6 +8,7 @@ import lists from './lists.js';
 import marketplace from './marketplace.js';
 import settings from './settings.js';
 import io from './io.js';
+import mountBusiness from './business.js';
 
 export default function mountRoutes() {
   const r = Router();
@@ -20,5 +21,7 @@ export default function mountRoutes() {
   r.use('/providers', marketplace);
   r.use('/settings', settings);
   r.use('/', io);              // /import /export
+  r.use('/', mountBusiness()); // Softimmo: /properties /buildings /units /expenses
+                               // /transactions /comparables /reports /documents /clients
   return r;
 }

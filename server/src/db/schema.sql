@@ -237,3 +237,208 @@ CREATE TABLE IF NOT EXISTS activity (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity(created_at DESC);
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  SOFTIMMO — entités métier immobilières (Modules 1-5)
+--  tenant_id nullable partout (mono-utilisateur aujourd'hui, multi-tenant plus tard).
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- ───────────────────────── Clients (vendeurs / acheteurs) ─────────────────────────
+CREATE TABLE IF NOT EXISTS clients (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  kind          TEXT NOT NULL DEFAULT 'seller',  -- seller|buyer|both
+  full_name     TEXT NOT NULL,
+  org_name      TEXT,                  -- personne morale, le cas échéant
+  email         TEXT,
+  phone         TEXT,
+  contact_id    TEXT REFERENCES contacts(id) ON DELETE SET NULL,  -- lien vers le CRM (Module 6)
+  -- Loi 25 (consentement)
+  consent_given INTEGER DEFAULT 0,     -- 0/1
+  consent_at    TEXT,
+  consent_scope TEXT,                  -- finalités consenties
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_clients_kind ON clients(kind);
+CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(full_name);
+
+-- ───────────────────────── Propriétés (sujet d'un mandat) ─────────────────────────
+CREATE TABLE IF NOT EXISTS properties (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  client_id     TEXT REFERENCES clients(id) ON DELETE SET NULL,  -- vendeur / mandant
+  name          TEXT,
+  genre         TEXT NOT NULL DEFAULT 'unifamilial', -- unifamilial|condo|plex|multi|commercial|industriel|terrain|rpa|autre
+  address       TEXT,
+  city          TEXT,
+  region        TEXT,
+  province      TEXT DEFAULT 'QC',     -- province/État
+  postal_code   TEXT,
+  country       TEXT DEFAULT 'Canada',
+  zoning        TEXT,
+  num_buildings INTEGER DEFAULT 1,
+  lot_number    TEXT,                  -- numéro de lot / cadastre
+  area_unit     TEXT DEFAULT 'pi2',    -- pi2|m2 (unité d'affichage des superficies)
+  mls_number    TEXT,                  -- numéro Centris/MLS si applicable
+  status        TEXT NOT NULL DEFAULT 'prospect', -- prospect|actif|inscrit|vendu|expire|archive
+  summary       TEXT,
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_properties_client ON properties(client_id);
+CREATE INDEX IF NOT EXISTS idx_properties_genre  ON properties(genre);
+CREATE INDEX IF NOT EXISTS idx_properties_status ON properties(status);
+
+-- ───────────────────────── Bâtiments ─────────────────────────
+CREATE TABLE IF NOT EXISTS buildings (
+  id               TEXT PRIMARY KEY,
+  tenant_id        TEXT,
+  property_id      TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  label            TEXT,               -- ex. "Bâtiment A"
+  building_type    TEXT,               -- ex. "Triplex", "Entrepôt"
+  land_area        REAL,               -- superficie du terrain
+  building_area    REAL,               -- superficie du bâtiment (empreinte)
+  livable_area     REAL,               -- superficie habitable/occupable
+  floors_basement  INTEGER,            -- étages sous-sol
+  floors_above     INTEGER,            -- étages hors-sol
+  floors_total     INTEGER,            -- total
+  year_built       INTEGER,
+  structure        TEXT,
+  foundation       TEXT,
+  exterior_cladding TEXT,              -- revêtement extérieur
+  fenestration     TEXT,               -- type de fenestration
+  roofing          TEXT,               -- type de toiture
+  flooring         TEXT,               -- type de planchers
+  notes            TEXT,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_buildings_property ON buildings(property_id);
+
+-- ───────────────────────── Unités / logements (rent roll) ─────────────────────────
+CREATE TABLE IF NOT EXISTS units (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  building_id   TEXT REFERENCES buildings(id) ON DELETE SET NULL,
+  label         TEXT,                  -- numéro/identifiant d'unité
+  unit_type     TEXT,                  -- ex. "4½", "Local commercial"
+  area          REAL,
+  bedrooms      REAL,
+  bathrooms     REAL,
+  rent_monthly  REAL,                  -- loyer mensuel
+  lease_type    TEXT,                  -- brut|net|TMI (commercial)
+  lease_end     TEXT,                  -- échéance du bail
+  is_vacant     INTEGER DEFAULT 0,     -- 0/1
+  occupant      TEXT,
+  other_income  REAL,                  -- stationnement, buanderie, rangement…
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_units_property ON units(property_id);
+
+-- ───────────────────────── Dépenses ─────────────────────────
+CREATE TABLE IF NOT EXISTS expenses (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  category      TEXT NOT NULL,         -- taxes_municipales|taxes_scolaires|assurances|energie|entretien|gestion|deneigement|conciergerie|reserve|autre
+  label         TEXT,
+  amount        REAL,                  -- montant
+  period        TEXT DEFAULT 'annuel', -- annuel|mensuel
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_expenses_property ON expenses(property_id);
+
+-- ───────────────────────── Transactions / historique ─────────────────────────
+CREATE TABLE IF NOT EXISTS transactions (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  date          TEXT,
+  status        TEXT,                  -- en_vigueur|vendue|expiree|inscription|retiree
+  price         REAL,
+  party_seller  TEXT,
+  party_buyer   TEXT,
+  source        TEXT,                  -- Centris|Registre foncier|JLR|autre
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_transactions_property ON transactions(property_id);
+
+-- ───────────────────────── Comparables (ACM) ─────────────────────────
+-- seller_redacted : caviardage des données identifiant le vendeur avant partage client
+-- (exigence OACIQ ; voir docs/06-conformite-legale.md).
+CREATE TABLE IF NOT EXISTS comparables (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT,
+  property_id     TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,  -- propriété sujet
+  address         TEXT,
+  city            TEXT,
+  kind            TEXT DEFAULT 'sold',   -- sold|active|expired
+  date            TEXT,
+  price           REAL,
+  area            REAL,
+  price_per_area  REAL,
+  bedrooms        REAL,
+  bathrooms       REAL,
+  year_built      INTEGER,
+  rating          TEXT,                  -- worse|equal|better (vs sujet)
+  weight          REAL,                  -- pondération dans l'ACM
+  adjustments     TEXT,                  -- JSON: [{label, amount}]
+  seller_redacted INTEGER DEFAULT 1,     -- 1 = masquer les infos vendeur à l'export client
+  source          TEXT,
+  notes           TEXT,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_comparables_property ON comparables(property_id);
+
+-- ───────────────────────── Rapports d'expertise ─────────────────────────
+CREATE TABLE IF NOT EXISTS reports (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  report_type   TEXT,                  -- inspection|sol|environnemental|arpentage|autre
+  title         TEXT,
+  date          TEXT,
+  url           TEXT,                  -- lien externe
+  file_path     TEXT,                  -- fichier téléversé
+  results       TEXT,                  -- JSON: [{label, value}] (tableau des résultats)
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reports_property ON reports(property_id);
+
+-- ───────────────────────── Documents générés ─────────────────────────
+-- Toute sortie produite (analyse, évaluation, offre, marketing, guide). `data` est
+-- l'instantané JSON ayant servi au rendu — base de l'aller-retour PPTX (docs/09).
+CREATE TABLE IF NOT EXISTS documents (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT REFERENCES properties(id) ON DELETE SET NULL,
+  client_id     TEXT REFERENCES clients(id) ON DELETE SET NULL,
+  doc_type      TEXT NOT NULL,         -- analyse|evaluation|offre|brochure|pub_moyenne|fb_feed|fb_marketplace|instagram|x|linkedin|carrousel|guide
+  title         TEXT,
+  template      TEXT,                  -- gabarit utilisé (ex. rpa, unifamiliale)
+  lang          TEXT DEFAULT 'fr',     -- fr|en (sortie ; FR prééminent — Loi 96)
+  format        TEXT,                  -- pdf|pptx|md|html
+  status        TEXT NOT NULL DEFAULT 'draft', -- draft|final
+  version       INTEGER DEFAULT 1,
+  data          TEXT,                  -- JSON: instantané des données de rendu
+  pdf_path      TEXT,
+  pptx_path     TEXT,
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_documents_property ON documents(property_id);
+CREATE INDEX IF NOT EXISTS idx_documents_type     ON documents(doc_type);
