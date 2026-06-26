@@ -419,7 +419,9 @@ export default function Evaluation() {
     });
   }
 
-  const boolIncl = useMemo(() => new Set(params?.boolean_inclusions || []), [params]);
+  // Inclusions oui/non (case à cocher, pas de quantité). Repli local au cas où les paramètres
+  // du serveur ne contiennent pas encore `boolean_inclusions` (seed mis en cache au démarrage).
+  const boolIncl = useMemo(() => new Set([...(params?.boolean_inclusions || []), 'sous_sol_fini', 'climatisation', 'thermopompe']), [params]);
   const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).map((k) => ({ value: k, label: prettyIncl(k), boolean: boolIncl.has(k) })), [params, boolIncl]);
   const featureFields = useMemo(() => buildFeatureFields(params), [params]);
 
