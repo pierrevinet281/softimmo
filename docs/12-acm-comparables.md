@@ -55,6 +55,44 @@ Pour chaque comparable vendu, on ajuste son prix vendu pour le rendre comparable
 - **Prix de vente attendu** = moyenne **pondérée** des prix ajustés (pondération par
   similarité ; curation possible : réordonner/noter/pondérer, style RPR — `docs/10`).
 
+### 2.1 Ventilation explicable (pour le courtier ET le client) — EXIGENCE
+
+Le logiciel ne fait pas que calculer : il **produit une grille d'ajustements ventilée,
+expliquée et chiffrée**, lisible par le courtier et présentable au client. Chaque ligne
+d'ajustement enregistre et affiche :
+
+| Champ | Exemple |
+|---|---|
+| Caractéristique | « Superficie habitable » |
+| Valeur du **sujet** | 2 400 pi² |
+| Valeur du **comparable** | 2 640 pi² |
+| **Écart** | −240 pi² |
+| **Paramètre/taux** appliqué (éditable) | 180 $/pi² (coût de construction moyen) |
+| **Montant** de l'ajustement | **−43 200 $** |
+| Sens | appliqué au comparable (le comp. est plus grand → on le baisse) |
+| **Explication** (texte clair) | « Le comparable est 240 pi² plus grand ; à 180 $/pi², on retranche 43 200 $ pour le ramener au sujet. » |
+
+- **Calcul montré** : chaque montant affiche sa formule (`écart × taux`), jamais une boîte
+  noire.
+- **Total par comparable** : `prix vendu → ± ajustements → prix ajusté`, avec sous-total et
+  somme des ajustements (et % du prix).
+- **Grille de marché** (style ACM classique) : tableau **comparables en colonnes**,
+  caractéristiques en lignes, avec la ligne « prix vendu », chaque ajustement, et le
+  « prix ajusté » en bas — la vue standard attendue par les courtiers.
+- **Deux niveaux de présentation** :
+  - **Courtier** : grille complète + paramètres + pondérations + notes de justification.
+  - **Client** : version simplifiée, texte clair, sans jargon, montants arrondis, axée
+    « pourquoi ce prix » (conforme au devoir d'information de la LCI).
+- **Texte généré par gabarits** (déterministe, sans IA) ; l'IA peut, en option, polir la
+  formulation narrative — jamais requise.
+- Stocké dans `comparables.adjustments` (JSON) — **forme** :
+  `[{ "key":"living_area", "label":"Superficie habitable", "subject":2400, "comp":2640,
+  "delta":-240, "unit":"pi2", "rate":180, "amount":-43200, "explanation":"…" }, …]`
+  plus un récapitulatif `{ sold_price, adjustments_total, adjusted_price, weight }`.
+- La même logique de ventilation s'applique aux **autres données de soutien** (éval.
+  foncière, plafond expirés, concurrence, ajustements Evalo) : chaque chiffre du rapport
+  est **traçable et expliqué**.
+
 ## 3. Statistiques de marché (APCIQ — téléversement)
 
 Fichier exemple : `Statistiques/pdf_fr_statistics_STATS_MUNGENRE_202605O.pdf` (rapport
@@ -126,7 +164,8 @@ au courtier d'investiguer**. Jamais utilisée pour fixer le prix d'inscription/v
 3. **Téléverser/saisir** les stats de marché (ratios).
 4. **Résultats** : prix de vente attendu (fourchette) + prix d'inscription proposé +
    panneau de corroboration (éval. foncière, plafond expirés, concurrence en vigueur) +
-   détail des ajustements par comparable.
+   **grille d'ajustements ventilée et expliquée** (§2.1 : vue courtier complète + vue
+   client simplifiée, chaque montant avec sa formule et son explication).
 5. **Rapport** via `render/` (`docs/10`) avec mentions/caviardage.
 
 ## Dépendances Python à ajouter (Phase 3)

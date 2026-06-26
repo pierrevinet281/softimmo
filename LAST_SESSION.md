@@ -5,6 +5,19 @@
 
 ---
 
+## Session 5 — ACM : grille d'ajustements explicable (2026-06-25)
+
+- `docs/12` §2.1 ajoutée : **exigence de ventilation explicable** des ajustements pour le
+  **courtier ET le client**. Chaque ligne = caractéristique, valeur sujet vs comparable,
+  écart, taux/paramètre, **montant avec formule (`écart × taux`)**, sens, **explication en
+  texte clair** ; total par comparable (vendu → ajusté) ; **grille de marché** (comparables
+  en colonnes) ; **2 vues** (courtier complète / client simplifiée). Texte par gabarits
+  (déterministe, IA optionnelle pour le style). Forme JSON de `comparables.adjustments`
+  précisée. UI (§8) mise à jour. S'applique aussi aux autres données de soutien (chaque
+  chiffre traçable et expliqué).
+
+---
+
 ## Session 4 — Spec ACM (comparables, ajustements, prix) (2026-06-25)
 
 ### Réalisé
