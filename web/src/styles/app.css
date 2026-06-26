@@ -199,3 +199,14 @@ table.table { width: 100%; border-collapse: collapse; }
 .kpi .label { color: var(--color-text-tertiary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
 .kpi .value { font-family: var(--font-display); font-size: 24px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .kpi .sub { color: var(--color-text-secondary); font-size: 12px; margin-top: 2px; }
+
+/* ── Tableau à édition en ligne ── */
+.table td.cell { padding: 4px 6px; }
+.cell-input { width: 100%; min-width: 70px; border: 1px solid transparent; background: transparent; border-radius: var(--radius-sm); padding: 6px 8px; font: inherit; color: var(--color-text-primary); }
+.cell-input:hover { border-color: var(--color-border-subtle); }
+.cell-input:focus { outline: none; border-color: var(--color-accent); background: var(--color-bg-card); box-shadow: 0 0 0 2px var(--color-accent-subtle); }
+.cell-input.num { text-align: right; font-family: var(--font-mono); }
+.inline-newrow td { background: var(--color-bg-secondary); }
+.paste-preview { max-height: 280px; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.paste-preview table { font-size: 12px; }
+.paste-preview th, .paste-preview td { padding: 6px 8px; white-space: nowrap; }
