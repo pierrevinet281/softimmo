@@ -42,6 +42,10 @@ web, à la manière de la démarche analytique de référence.
 
 ## Module 2 — Évaluation (opinion de valeur marchande)
 
+> Spec enrichie (inspirée d'Evalo.ca & concurrents) : `docs/10-evaluation-module.md` —
+> AVM marchande + locative, indice de confiance, enjeux environnementaux, intelligence de
+> marché/démo, approche revenus, **carte 3D dynamique** (Google Aerial View, quotas gratuits).
+
 **Méthodes (P1)**
 - **Comparaison** : import/saisie de 3-5 comparables ; ajustements par comparable
   (superficie, chambres/sdb, garage, piscine, état, année, finition) ; moyenne pondérée.

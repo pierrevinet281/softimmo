@@ -5,6 +5,33 @@
 
 ---
 
+## Session 3 — Menu « Mise en marché » + specs Évaluation/Local Logic (2026-06-25)
+
+### Réalisé
+- **Réorg. du menu « Mise en marché »** (ordre chronologique d'usage) + renommages, dans
+  `App.jsx` + i18n FR/EN : **Assets courtier** (nouveau, `/assets-courtier`), **Offre de
+  services** (`/offres`), **Trousse démarrage** (`/trousse-demarrage`, ex-« Trousse client »),
+  **Trousse marketing** (`/trousse-marketing`, ex-« Matériel marketing »). Taxonomie notée
+  dans `docs/01`. Vérifié : Vite compile.
+- **Spec module Évaluation** `docs/10-evaluation-module.md` (inspirée d'**Evalo.ca** +
+  concurrents) : AVM marchande/locative (statistique, sans IA), indice de confiance,
+  comparables, **enjeux environnementaux**, intelligence marché/démo, fourchette qualité,
+  approche revenus, et **carte 3D dynamique Google Aerial View** (5000/mois gratuits ;
+  `GOOGLE_MAPS_API_KEY` ajoutée à `.env.example`, 3D optionnelle + repli statique).
+- **Analyse Local Logic** `docs/11-local-logic-analysis.md` : reproductible gratuitement
+  ~70 % (StatCan/OSM/Données Québec/Montréal) ; verrous payants = prix de vente (MLS non
+  ouvert), scoring propriétaire, score de bruit, couverture hors-Montréal. Prix LL non public
+  (devis annuel ; ~100-250 $US/mois rapportés). **Reco : ne pas en dépendre ; connecteur
+  Marketplace optionnel.** Tableau comparatif complet dans la doc.
+
+### Décisions (session 3)
+- Module Évaluation = **données gratuites d'abord** (StatCan/OSM/Données Québec) ; Local Logic
+  et données de prix payantes = **optionnelles** (Marketplace, clé utilisateur).
+- Carte 3D = **Google Aerial View** dans les quotas gratuits, optionnelle (principe coût min.).
+- AVM = **modèle statistique déterministe** (pas d'IA par rapport).
+
+---
+
 ## Session 2 — Pipeline marketing (spec) + Phase 1 Fondations (2026-06-25)
 
 ### Réalisé

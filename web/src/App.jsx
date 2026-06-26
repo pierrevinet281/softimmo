@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Building2, Sparkles, ShieldCheck, ListChecks,
   Upload, Store, Activity as ActivityIcon, Settings as SettingsIcon, Moon, Sun, Zap,
-  Home, FileBarChart, Megaphone, FileText, LifeBuoy, Contact,
+  Home, FileBarChart, Megaphone, FileText, LifeBuoy, Contact, Briefcase,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from './api/client.js';
@@ -31,9 +31,10 @@ const NAV = [
   { sectionKey: 'sec.analysis' },
   { to: '/evaluation', labelKey: 'nav.evaluation', icon: FileBarChart },
   { sectionKey: 'sec.promo' },
-  { to: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
+  { to: '/assets-courtier', labelKey: 'nav.brokerAssets', icon: Briefcase },
   { to: '/offres', labelKey: 'nav.offers', icon: FileText },
-  { to: '/trousse', labelKey: 'nav.toolkit', icon: LifeBuoy },
+  { to: '/trousse-demarrage', labelKey: 'nav.startKit', icon: LifeBuoy },
+  { to: '/trousse-marketing', labelKey: 'nav.marketingKit', icon: Megaphone },
   { sectionKey: 'sec.crm' },
   { to: '/contacts', labelKey: 'nav.contacts', icon: Users, key: 'contacts' },
   { to: '/companies', labelKey: 'nav.companies', icon: Contact, key: 'companies' },
@@ -50,8 +51,9 @@ const NAV = [
 // path -> label key, for the topbar title.
 const TITLE_KEY = {
   '/': 'nav.overview', '/properties': 'nav.properties', '/clients': 'nav.clients',
-  '/evaluation': 'nav.evaluation', '/marketing': 'nav.marketing', '/offres': 'nav.offers',
-  '/trousse': 'nav.toolkit', '/contacts': 'nav.contacts', '/companies': 'nav.companies',
+  '/evaluation': 'nav.evaluation', '/assets-courtier': 'nav.brokerAssets', '/offres': 'nav.offers',
+  '/trousse-demarrage': 'nav.startKit', '/trousse-marketing': 'nav.marketingKit',
+  '/contacts': 'nav.contacts', '/companies': 'nav.companies',
   '/lists': 'nav.lists', '/generate': 'nav.generate', '/verify': 'nav.verify',
   '/import': 'nav.io', '/marketplace': 'nav.marketplace', '/activity': 'nav.activity',
   '/settings': 'nav.settings',
@@ -118,9 +120,10 @@ export default function App() {
           <Route path="/properties" element={<Properties />} />
           <Route path="/clients" element={<Placeholder titleKey="nav.clients" />} />
           <Route path="/evaluation" element={<Placeholder titleKey="nav.evaluation" />} />
-          <Route path="/marketing" element={<Placeholder titleKey="nav.marketing" />} />
+          <Route path="/assets-courtier" element={<Placeholder titleKey="nav.brokerAssets" />} />
           <Route path="/offres" element={<Placeholder titleKey="nav.offers" />} />
-          <Route path="/trousse" element={<Placeholder titleKey="nav.toolkit" />} />
+          <Route path="/trousse-demarrage" element={<Placeholder titleKey="nav.startKit" />} />
+          <Route path="/trousse-marketing" element={<Placeholder titleKey="nav.marketingKit" />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/companies" element={<Companies />} />
           <Route path="/lists" element={<Lists />} />
