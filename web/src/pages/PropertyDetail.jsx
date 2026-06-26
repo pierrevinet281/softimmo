@@ -6,7 +6,7 @@ import {
   History, Scale, FileText, AlertTriangle, Info, Plus, Upload,
 } from 'lucide-react';
 import api from '../api/client.js';
-import { Card, Button, Badge, EmptyState } from '../components/ui.jsx';
+import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
 import { EntityTable, EntityForm, InlineTable, PasteImportModal } from '../components/EntityTable.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { money, num, pct, mult } from '../lib/format.js';
@@ -280,6 +280,42 @@ function UnitsTab({ p, items, buildings, refetch }) {
   );
 }
 
+// ─────────────────────────── Sélecteur de modèle de brochure ───────────────────────────
+// Le courtier DOIT choisir un modèle (notamment car le modèle Luxe affiche un logo de service
+// non encore souscrit). Aucun modèle n'est généré sans choix explicite.
+const BROCHURE_TEMPLATES = [
+  { id: 'unifamilial', labelKey: 'd.bro.unifamilial', descKey: 'd.bro.unifamilial.d' },
+  { id: 'luxe', labelKey: 'd.bro.luxe', descKey: 'd.bro.luxe.d' },
+  { id: 'rpa', labelKey: 'd.bro.rpa', descKey: 'd.bro.rpa.d', soon: true },
+];
+
+function BrochureChooser({ propertyId, onClose }) {
+  const { t } = useI18n();
+  return (
+    <Modal title={t('d.bro.title')} onClose={onClose} size="lg">
+      <div className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t('d.bro.hint')}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {BROCHURE_TEMPLATES.map((tpl) => (
+          <button
+            key={tpl.id}
+            className="card"
+            disabled={tpl.soon}
+            style={{ textAlign: 'left', cursor: tpl.soon ? 'not-allowed' : 'pointer', opacity: tpl.soon ? 0.55 : 1, padding: 16, border: '1px solid var(--color-border)' }}
+            onClick={() => { if (!tpl.soon) { window.open(api.url(`/properties/${propertyId}/brochure.pdf?template=${tpl.id}`), '_blank'); onClose(); } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FileText size={18} />
+              <strong>{t(tpl.labelKey)}</strong>
+              {tpl.soon && <Badge tone="neutral">{t('common.soon')}</Badge>}
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t(tpl.descKey)}</div>
+          </button>
+        ))}
+      </div>
+    </Modal>
+  );
+}
+
 // ─────────────────────────── Page ───────────────────────────
 const TABS = [
   { id: 'charact', labelKey: 'd.tab.charact', icon: Building },
@@ -297,6 +333,7 @@ export default function PropertyDetail() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [tab, setTab] = useState('charact');
+  const [brochureOpen, setBrochureOpen] = useState(false);
 
   const { data: bundle, isLoading, isError } = useQuery({
     queryKey: ['bundle', id],
@@ -321,8 +358,9 @@ export default function PropertyDetail() {
           </div>
         </div>
         <div className="spacer" style={{ flex: 1 }} />
-        <Button variant="outline" icon={FileText} onClick={() => window.open(api.url(`/properties/${p.id}/brochure.pdf`), '_blank')}>{t('d.brochure')}</Button>
+        <Button variant="outline" icon={FileText} onClick={() => setBrochureOpen(true)}>{t('d.brochure')}</Button>
       </div>
+      {brochureOpen && <BrochureChooser propertyId={p.id} onClose={() => setBrochureOpen(false)} />}
 
       <div className="tab-row">
         <div className="tabs">

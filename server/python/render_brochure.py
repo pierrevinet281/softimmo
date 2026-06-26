@@ -42,6 +42,12 @@ WHITE = HexColor("#FFFFFF")
 LINE = HexColor("#1C4E8F")
 PH_BG = HexColor("#E9EDF3")    # placeholder image
 
+# Palette luxe (noir + or + crème)
+LX_BLACK = HexColor("#221F1C")
+LX_GOLD = HexColor("#B79A5B")
+LX_GOLD_D = HexColor("#9C8246")
+LX_CREAM = HexColor("#F2EDE2")
+
 WF = "C:/Windows/Fonts"
 
 
@@ -154,33 +160,71 @@ def para_fit(c, text, x, y_top, w, h, font, size, color, leading_ratio=1.32, ali
     return h
 
 
+# ───────────────────────────── Thèmes (par modèle de brochure) ─────────────────────────────
+THEMES = {
+    "unifamilial": {
+        "banner": "medal", "banner_bg": BLUE, "title_fg": WHITE, "title_upper": False, "sub_fg": WHITE,
+        "label_bg": BLUE_LABEL, "label_fg": WHITE, "value_bg": VAL, "value_fg": INK,
+        "rule": LINE, "price_bg": RED, "price_fg": WHITE, "bar": RED,
+        "p2_banner_bg": RED, "p2_title_fg": WHITE, "desc_bg": HexColor("#E9EDF3"),
+        "th_bg": BLUE, "th_fg": WHITE, "row_alt": VAL, "row": HexColor("#EEF1F7"), "row_fg": INK,
+    },
+    "luxe": {
+        "banner": "luxe", "banner_bg": LX_BLACK, "title_fg": LX_GOLD, "title_upper": True, "sub_fg": WHITE,
+        "label_bg": LX_GOLD, "label_fg": WHITE, "value_bg": LX_CREAM, "value_fg": INK,
+        "rule": LX_GOLD, "price_bg": LX_BLACK, "price_fg": WHITE, "bar": LX_GOLD,
+        "p2_banner_bg": LX_GOLD_D, "p2_title_fg": WHITE, "desc_bg": LX_CREAM,
+        "th_bg": LX_GOLD_D, "th_fg": WHITE, "row_alt": LX_CREAM, "row": HexColor("#F7F3EA"), "row_fg": INK,
+    },
+}
+
+
 # ───────────────────────────── Page 1 ─────────────────────────────
-def page1(c, d):
+def page1(c, d, th):
     M = 36
     img = d.get("images", {})
     broker = d.get("broker", {})
 
-    # Bannière
+    # Bannière (variante selon le thème)
     bh = 96
-    c.setFillColor(BLUE); c.rect(0, T(bh), PW, bh, fill=1, stroke=0)
-    logo = img.get("logo")
-    if logo and os.path.exists(logo):
-        draw_image(c, logo, M, T(bh) + 18, 150, 60)
-    else:
-        c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
-        c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
-    tx = M + 175
-    title_w = PW - M - 96 - tx  # largeur dispo jusqu'à la médaille
-    draw_fit(c, d.get("title", ""), tx, T(34), title_w, F_BOLD, 24, WHITE, min_size=15)
-    draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, WHITE, min_size=9)
-    draw_fit(c, d.get("summary_line", ""), tx, T(74), title_w, F_REG, 13, WHITE, min_size=9)
+    c.setFillColor(th["banner_bg"]); c.rect(0, T(bh), PW, bh, fill=1, stroke=0)
+    title = d.get("title", "")
+    if th["title_upper"]:
+        title = title.upper()
 
-    # Médaille « Propriété Sélectionnée »
-    mx, my = PW - M - 44, T(48)
-    c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, my, 40, fill=1, stroke=0)
-    c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, my, 40, fill=0, stroke=1)
-    c.setFillColor(WHITE); c.setFont(F_SB, 7.5)
-    c.drawCentredString(mx, my + 3, "Propriété"); c.drawCentredString(mx, my - 7, "Sélectionnée")
+    if th["banner"] == "luxe":
+        # Titre or à gauche ; logo + « COLLECTION DE LUXE » à droite (pas de médaille).
+        tx = M
+        title_w = PW / 2 + 30 - tx
+        draw_fit(c, title, tx, T(40), title_w, F_BOLD, 24, th["title_fg"], min_size=14)
+        draw_fit(c, d.get("city", ""), tx, T(60), title_w, F_REG, 12, th["sub_fg"], min_size=9)
+        draw_fit(c, d.get("summary_line", ""), tx, T(78), title_w, F_REG, 12, th["sub_fg"], min_size=9)
+        logo = img.get("logo")
+        if logo and os.path.exists(logo):
+            draw_image(c, logo, PW - M - 250, T(bh) + 24, 110, 48)
+        else:
+            c.setFillColor(WHITE); c.setFont(F_BOLD, 26); c.drawRightString(PW - M - 150, T(54), "eXp")
+        c.setStrokeColor(LX_GOLD); c.setLineWidth(1); c.line(PW - M - 132, T(34), PW - M - 132, T(66))
+        c.setFillColor(LX_GOLD); c.setFont(F_REG, 17)
+        c.drawString(PW - M - 120, T(46), "COLLECTION"); c.drawString(PW - M - 120, T(66), "DE LUXE")
+    else:
+        logo = img.get("logo")
+        if logo and os.path.exists(logo):
+            draw_image(c, logo, M, T(bh) + 18, 150, 60)
+        else:
+            c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
+            c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
+        tx = M + 175
+        title_w = PW - M - 96 - tx  # largeur dispo jusqu'à la médaille
+        draw_fit(c, title, tx, T(34), title_w, F_BOLD, 24, th["title_fg"], min_size=15)
+        draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, th["sub_fg"], min_size=9)
+        draw_fit(c, d.get("summary_line", ""), tx, T(74), title_w, F_REG, 13, th["sub_fg"], min_size=9)
+        # Médaille « Propriété Sélectionnée »
+        mx, my = PW - M - 44, T(48)
+        c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, my, 40, fill=1, stroke=0)
+        c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, my, 40, fill=0, stroke=1)
+        c.setFillColor(WHITE); c.setFont(F_SB, 7.5)
+        c.drawCentredString(mx, my + 3, "Propriété"); c.drawCentredString(mx, my - 7, "Sélectionnée")
 
     # Images : photo (gauche) + carte (droite)
     iy_top = bh + 14; iw_h = 200
@@ -193,7 +237,7 @@ def page1(c, d):
     draw_fit(c, d.get("address", ""), M, T(ay), PW - 2 * M, F_BOLD, 16, INK, min_size=11)
     if d.get("mls"):
         draw_fit(c, "MLS : %s" % d["mls"], M, T(ay + 18), PW - 2 * M, F_REG, 11, INK2, min_size=8)
-    c.setStrokeColor(LINE); c.setLineWidth(2.5); c.line(M, T(ay + 30), PW - M, T(ay + 30))
+    c.setStrokeColor(th["rule"]); c.setLineWidth(2.5); c.line(M, T(ay + 30), PW - M, T(ay + 30))
 
     # Grille de spécifications (2 colonnes de paires libellé/valeur)
     gy = ay + 48
@@ -207,10 +251,10 @@ def page1(c, d):
             return
         label, value = pair[0], str(pair[1]) if pair[1] is not None else ""
         ty = T(yt + rh) + rh / 2 - 4
-        c.setFillColor(BLUE_LABEL); c.rect(x, T(yt + rh), lab_w - 4, rh, fill=1, stroke=0)
-        draw_fit(c, label, x + 10, ty, lab_w - 24, F_REG, 10.5, WHITE, min_size=7.5)
-        c.setFillColor(VAL); c.rect(x + lab_w, T(yt + rh), val_w, rh, fill=1, stroke=0)
-        draw_fit(c, value, x + lab_w + 10, ty, val_w - 20, F_REG, 10.5, INK, min_size=7.5)
+        c.setFillColor(th["label_bg"]); c.rect(x, T(yt + rh), lab_w - 4, rh, fill=1, stroke=0)
+        draw_fit(c, label, x + 10, ty, lab_w - 24, F_REG, 10.5, th["label_fg"], min_size=7.5)
+        c.setFillColor(th["value_bg"]); c.rect(x + lab_w, T(yt + rh), val_w, rh, fill=1, stroke=0)
+        draw_fit(c, value, x + lab_w + 10, ty, val_w - 20, F_REG, 10.5, th["value_fg"], min_size=7.5)
 
     for i in range(rows):
         yt = gy + i * (rh + rgap)
@@ -231,31 +275,30 @@ def page1(c, d):
         draw_fit(c, "T : %s" % broker["phone"], bx, T(fy + 66), bw, F_BOLD, 9, INK, min_size=7)
 
     pbx = PW / 2 + 10; pbw = PW - M - pbx; pbh = 70
-    c.setFillColor(RED); c.rect(pbx, T(fy + pbh), pbw, pbh, fill=1, stroke=0)
+    c.setFillColor(th["price_bg"]); c.rect(pbx, T(fy + pbh), pbw, pbh, fill=1, stroke=0)
     price = d.get("price")
     txt = ("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande"
-    draw_fit(c, txt, pbx + pbw / 2, T(fy + pbh) + pbh / 2 - 9, pbw - 24, F_BOLD, 26, WHITE, align="c", min_size=14)
-    c.setFillColor(RED); c.rect(M, T(fy + pbh + 14), PW - 2 * M, 6, fill=1, stroke=0)
+    draw_fit(c, txt, pbx + pbw / 2, T(fy + pbh) + pbh / 2 - 9, pbw - 24, F_BOLD, 26, th["price_fg"], align="c", min_size=14)
+    c.setFillColor(th["bar"]); c.rect(M, T(fy + pbh + 14), PW - 2 * M, 6, fill=1, stroke=0)
 
     _compliance_footer(c, d)
 
 
 # ───────────────────────────── Page 2 ─────────────────────────────
-def page2(c, d):
+def page2(c, d, th):
     M = 36
     rooms = d.get("rooms", [])
-    # Bannière rouge
+    # Bannière (couleur du thème)
     bh = 40
-    c.setFillColor(RED); c.rect(0, T(bh), PW, bh, fill=1, stroke=0)
-    draw_fit(c, d.get("headline", d.get("title", "")), M, T(27), PW - 2 * M, F_BOLD, 18, WHITE, min_size=12)
+    c.setFillColor(th["p2_banner_bg"]); c.rect(0, T(bh), PW, bh, fill=1, stroke=0)
+    draw_fit(c, d.get("headline", d.get("title", "")), M, T(27), PW - 2 * M, F_BOLD, 18, th["p2_title_fg"], min_size=12)
 
-    # Description (boîte bleu clair, hauteur fixe — le texte s'ajuste pour ne jamais déborder)
+    # Description (boîte selon le thème, hauteur bornée — le texte s'ajuste pour ne jamais déborder)
     y = bh + 16
     if d.get("description"):
         box_w = PW - 2 * M; pad = 12
-        # Hauteur de boîte proportionnelle à la longueur, bornée (jamais de débordement vertical).
         box_h = min(176, max(64, 28 + len(d["description"]) * 0.16))
-        c.setFillColor(HexColor("#E9EDF3")); c.rect(M, T(y) - box_h, box_w, box_h, fill=1, stroke=0)
+        c.setFillColor(th["desc_bg"]); c.rect(M, T(y) - box_h, box_w, box_h, fill=1, stroke=0)
         para_fit(c, d["description"], M + pad, T(y) - pad, box_w - 2 * pad, box_h - 2 * pad,
                  F_REG, 11, INK, leading_ratio=1.36, align=TA_JUSTIFY, min_size=8)
         y += box_h + 16
@@ -271,18 +314,18 @@ def page2(c, d):
     if rooms:
         hh = 26; rh = 24
         cols = [0.46, 0.27, 0.27]; cw = [c0 * (PW - 2 * M) for c0 in cols]
-        c.setFillColor(BLUE); c.rect(M, T(y + hh), PW - 2 * M, hh, fill=1, stroke=0)
+        c.setFillColor(th["th_bg"]); c.rect(M, T(y + hh), PW - 2 * M, hh, fill=1, stroke=0)
         xs = M
         for i, htxt in enumerate(["Pièce", "Étage", "Dimension"]):
-            draw_fit(c, htxt, xs + 10, T(y + hh) + hh / 2 - 4, cw[i] - 20, F_SB, 11, WHITE, min_size=8); xs += cw[i]
+            draw_fit(c, htxt, xs + 10, T(y + hh) + hh / 2 - 4, cw[i] - 20, F_SB, 11, th["th_fg"], min_size=8); xs += cw[i]
         yy = y + hh
         for ri, room in enumerate(rooms):
-            c.setFillColor(VAL if ri % 2 else HexColor("#EEF1F7"))
+            c.setFillColor(th["row_alt"] if ri % 2 else th["row"])
             c.rect(M, T(yy + rh), PW - 2 * M, rh, fill=1, stroke=0)
             xs = M
             for i in range(3):
                 v = str(room[i]) if i < len(room) and room[i] is not None else ""
-                draw_fit(c, v, xs + 10, T(yy + rh) + rh / 2 - 4, cw[i] - 20, F_REG, 10, INK, min_size=7.5); xs += cw[i]
+                draw_fit(c, v, xs + 10, T(yy + rh) + rh / 2 - 4, cw[i] - 20, F_REG, 10, th["row_fg"], min_size=7.5); xs += cw[i]
             yy += rh
 
     _compliance_footer(c, d)
@@ -296,9 +339,10 @@ def _compliance_footer(c, d):
 
 
 def render(data, out):
+    th = THEMES.get(data.get("template") or "unifamilial", THEMES["unifamilial"])
     c = canvas.Canvas(out, pagesize=letter)
-    page1(c, data); c.showPage()
-    page2(c, data); c.showPage()
+    page1(c, data, th); c.showPage()
+    page2(c, data, th); c.showPage()
     c.save()
     return out
 
