@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 6 sessions, tout sur `main`) :**
+**Où on en est (après 7 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -25,15 +25,73 @@
   (`engine/finance.js` : GPI→EGI→RNE, MRB, MRN, TGA, $/porte, ratio dépenses + alertes) et
   **détection d'anomalies de superficie**, exposés par `GET /properties/:id/analysis`.
   Testé bout-en-bout (calculs exacts) ; build web OK.
-- **Specs prêtes pour la construction** : Évaluation (`10`+`11`+`12`, dont ACM détaillée),
-  Marketing (`09`). Restent en placeholders côté UI.
+- **Phase 3 — Module 2 (Évaluation / ACM) CONSTRUIT** (session 7) : **moteur ACM déterministe**
+  (`engine/acm.js`) — ajustements explicables (superficie × coût, inclusions, âge, date de
+  vente), prix de vente attendu pondéré, prix d'inscription (ratio APCIQ), corroboration éval.
+  foncière, plafond expirés, concurrence en vigueur, garde-fous APCIQ (exclusion 50-150 %,
+  prudence < n transactions). **Page `/evaluation`** : sélection propriété → sujet →
+  comparables (CRUD, sold/active/expired) → paramètres éditables → résultats + **grille
+  d'ajustements ventilée (vues courtier/client)** + ventilation expliquée + avertissement
+  « opinion ≠ évaluation ». Schéma comparables/properties étendu, paramètres en seed +
+  override settings. Testé bout-en-bout ; build web OK.
+- **Specs prêtes pour la construction** : Évaluation avancée (`10` Evalo/AVM/carte 3D, `11`
+  Local Logic), Marketing (`09`). Restent en placeholders côté UI.
 
-**Prochaine session = Phase 3 : Module 2 (Évaluation)** — spec complète (`10`/`11`/`12`,
-ACM). Voir *Prochaines tâches* en bas. (Restes Module 1 = import assisté + moteur `render/`.)
+**Prochaine session = suite Module 2** (extraction PDF Matrix + stats APCIQ, AVM, carte 3D,
+revenus) **ou Module 3 (Offre de services)**. Voir *Prochaines tâches*. (Restes Module 1 =
+import assisté + moteur `render/` partagé.)
 
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 7 — BUILD Phase 3 : Module 2 (Évaluation / ACM) (2026-06-26)
+
+### Réalisé
+- **Moteur ACM déterministe** `server/src/engine/acm.js` (PUR, sans IA) : `adjustComparable()`
+  produit la **ventilation explicable** d'un comparable vendu (chaque ligne : caractéristique,
+  valeur sujet/comp, écart, taux, **montant = écart × taux**, sens, **explication en clair**) ;
+  `computeAcm()` → **prix de vente attendu** (moyenne pondérée des prix ajustés), **prix
+  d'inscription** (÷ ratio APCIQ vente/inscrit), **corroboration** par éval. foncière (alerte
+  d'écart), **plafond** (expirés), **concurrence** (en vigueur), **garde-fous APCIQ** (exclusion
+  hors 50-150 % du prix inscrit, prudence si < min_transactions). Conforme à `docs/12`.
+- **Schéma étendu** (idempotent — `COLUMN_ADDITIONS`) : `comparables` (centris_no, sale_date,
+  list_price, sold_price, livable_area, municipal_assessment, days_on_market, inclusions JSON) ;
+  `properties` (municipal_assessment, assessment_year). Repos + `schema.sql` à jour.
+- **Paramètres d'ajustement éditables** : seed `seeds/acm-params.seed.json` (coût constr. $/pi²,
+  ajustement d'âge, % appréciation, ratios APCIQ, prix d'inclusions, seuils) + override dans
+  `settings` via `lib/acmParams.js`. Endpoints `GET/PUT /acm/params`.
+- **Endpoint** `POST /properties/:id/acm` : sujet dérivé de la propriété + bâtiments (ou fourni),
+  comparables enregistrés, params (seed + override + override d'appel). Déterministe.
+- **Page `/evaluation`** `web/src/pages/Evaluation.jsx` : sélection de propriété → **Sujet**
+  (sup., année, inclusions, éval. foncière) → **Comparables** (CRUD via `EntityTable`, genres
+  vendu/en vigueur/expiré, champ inclusions à cases) → **Paramètres** (panneau éditable,
+  enregistrable) → **Calcul** → **Résultats** : KPI (prix attendu/fourchette, inscription,
+  plafond, concurrence), corroboration éval. foncière, avertissements APCIQ, **grille
+  d'ajustements ventilée** (comparables en colonnes, **bascule vue courtier / client**),
+  **ventilation expliquée** par comparable, **avertissement légal « opinion ≠ évaluation »**.
+- **Refactor DRY** : `EntityForm`/`EntityTable` extraits dans `web/src/components/EntityTable.jsx`
+  (réutilisés par PropertyDetail et Evaluation) + champ **inclusions** (cases→tableau).
+  `api.put` ajouté. **i18n FR/EN** complété (préfixe `ev.*`).
+- **Vérifs** : `vite build` OK (1654 modules) ; moteur testé (ex. sujet 2400 vs comp 2640 à
+  180 $/pi² = −43 200 $, exclusion outlier, pondération, corroboration, garde-fous) ; endpoints
+  HTTP testés (prix attendu 484 307 $, inscription 496 725 $) ; PUT/GET params (override→reset).
+
+### Décisions (session 7)
+- **ACM = saisie manuelle des comparables d'abord** ; l'extraction PDF Matrix (`pdfplumber`) et
+  les stats APCIQ sont la couche suivante — la saisie/édition manuelle est le **repli documenté**
+  (`docs/12`) et reste nécessaire (validation humaine). Reporté pour livrer un cœur fonctionnel.
+- **Sujet non persisté** sur la propriété pour l'ACM (dérivé/saisi à l'usage) ; **paramètres**
+  persistés comme **défauts éditables** (settings), surchargeables par appel.
+- **Vue client** = montants arrondis (1 000 $), sans pondérations ni comparables exclus, texte
+  clair (devoir d'information LCI) ; **vue courtier** = grille complète.
+
+### Reste / à vérifier (session 7)
+- **Vérification visuelle navigateur** de `/evaluation` **non faite** : le preview s'enracine
+  dans le répertoire parent `Softimmo` (hors périmètre modifiable). Build + endpoints validés ;
+  à confirmer visuellement via `npm run dev` (web `:5180`).
 
 ---
 
@@ -233,24 +291,22 @@ socle d'enrichissement).
 
 ---
 
-## Prochaines tâches — BUILD Phase 3 : Module 2 (Évaluation)
-> Spec complète : `docs/10` (Evalo, AVM, carte 3D), `docs/11` (Local Logic), `docs/12`
-> (ACM Matrix, ajustements, grille explicable courtier+client). **Construire**, pas spécifier.
-1. **Page Évaluation** (`/evaluation`) reliée à une propriété : choix du sujet + points de vue
-   vendeur/acheteur. Structure à onglets (méthodes + réconciliation + sortie).
-2. **ACM (méthode principale, déterministe)** : saisie/curation des comparables (réordonner,
-   noter pire/égal/meilleur, pondérer), **grille d'ajustements explicable** (chaque ligne =
-   écart × taux, montant, explication ; total vendu→ajusté ; 2 vues courtier/client) selon
-   `docs/12` §2.1. Prix de vente attendu + prix d'inscription (ratio APCIQ). Paramètres =
-   défauts éditables.
-3. **Méthodes coût et revenu** (selon type) + **réconciliation** pondérée justifiée. Réutiliser
-   `engine/finance.js` (RNE÷TGA pour la capitalisation directe).
-4. **Garde-fous conformité** : sortie = **« opinion de valeur marchande »** (jamais
-   « évaluation ») + avertissement légal auto ; **caviardage vendeur** sur exports client ;
-   ne pas divulguer prix de comparables avant publication au Registre foncier.
-5. Base du moteur **`render/`** (HTML→PDF) avec en-têtes/pieds de conformité (mentions,
-   avertissement « opinion ≠ évaluation ») — **partagé Modules 2-5** ; première sortie =
-   opinion de valeur + annexe sources + sommaire exécutif.
+## Prochaines tâches — suite Module 2 (Évaluation) puis Module 3
+> Le **cœur ACM est livré** (session 7). Étapes suivantes (déterministe d'abord) :
+1. **Vérif visuelle `/evaluation`** (rapide) : `npm run dev`, créer une propriété + 3-4
+   comparables vendus, lancer le calcul, contrôler la grille (vues courtier/client) et les
+   avertissements. Corriger au besoin.
+2. **Extraction PDF Matrix « 4 par page courtier »** (`docs/12` §1) : worker Python
+   `pdfplumber`/`pypdf` → table de comparables **éditable** avant calcul ; provenance
+   « importé Matrix PDF ». Repli regex/IA optionnel. Dépendances à ajouter à `requirements`.
+3. **Stats APCIQ** (`docs/12` §3) : téléversement/saisie des ratios (vente/inscrit,
+   vente/éval.) + JSM + prix moyen/médian ; table `market_stats` pour traçabilité.
+4. **Méthodes coût & revenu + réconciliation** pondérée justifiée (réutiliser
+   `engine/finance.js` : RNE ÷ TGA pour la capitalisation directe). Profils par type.
+5. **Moteur `render/`** (HTML→PDF) avec en-têtes/pieds de conformité (mentions, avertissement
+   « opinion ≠ évaluation », **caviardage vendeur** des comparables) — **partagé Modules 2-5** ;
+   première sortie = opinion de valeur + annexe sources + sommaire exécutif.
+6. Puis **Module 3 (Offre de services)** : générateur vendeur/acheteur (`docs/03` §3).
 
 ## Restes Module 1 (à reprendre quand utile)
 - **Import assisté** depuis fiches Centris / extraits / rôle (workers extract + mapping).

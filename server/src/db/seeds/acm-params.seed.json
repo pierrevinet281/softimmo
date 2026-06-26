@@ -1,0 +1,24 @@
+{
+  "_comment": "Paramètres d'ajustement ACM — DÉFAUTS ÉDITABLES, jamais des vérités (CLAUDE.md, docs/12 §6). Le courtier les ajuste par mandat via /acm/params (stockés dans settings). Montants en $ CA, superficies en pi².",
+  "construction_cost_per_sqft": 180,
+  "land_cost_per_sqft": 0,
+  "age_adjustment_per_year": 1000,
+  "monthly_appreciation_pct": 0.004,
+  "sale_to_list_ratio": 0.975,
+  "sale_to_assessment_ratio": null,
+  "assessment_gap_threshold": 0.15,
+  "min_transactions": 3,
+  "outlier_low": 0.5,
+  "outlier_high": 1.5,
+  "inclusions": {
+    "piscine_creusee": 25000,
+    "piscine_hors_terre": 8000,
+    "spa": 6000,
+    "foyer": 5000,
+    "garage": 20000,
+    "abri_auto": 8000,
+    "sous_sol_fini": 15000,
+    "climatisation": 4000,
+    "thermopompe": 4000
+  }
+}
