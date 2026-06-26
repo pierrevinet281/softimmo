@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 9 sessions, tout sur `main`) :**
+**Où on en est (après 10 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,35 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 10 — Évaluation : ratios depuis stats APCIQ (PDF) + âge en % (2026-06-26)
+
+### Réalisé (retours utilisateur)
+- **Extraction des ratios APCIQ depuis le PDF de stats** (`Statistiques/…STATS_MUNGENRE…pdf`) :
+  worker `server/python/acm_stats.py` (déterministe) — localise la municipalité via les
+  **signets PDF** (pypdf), lit la page (pdfplumber), parse la ligne du genre par **regroupement
+  des mots en colonnes selon leur position x** (gère les espaces de milliers ambigus) et renvoie
+  **vs prix inscrit** et **vs évaluation**. Préfère l'agrégat municipal (avant quartiers / « Total
+  pour … »), repli année précédente si aucune vente. Mapping genre → libellés Centris.
+- **Fichier de stats réutilisable** : endpoints `POST /acm/stats/upload` (conservé dans
+  `data/uploads`, réf. en `settings`), `GET /acm/stats/file`, `POST /acm/stats/lookup`
+  ({municipality, genre}). UI dans le panneau Paramètres : **utiliser le fichier en mémoire,
+  en téléverser un nouveau, ou saisir manuellement** ; bouton « Extraire pour <ville> » remplit
+  les deux ratios (toujours éditables).
+- **Ajustement d'âge en %** (et non $) : `age_adjustment_pct_per_year` (% du prix vendu par an
+  d'écart) dans le moteur, le seed et l'UI (libellé « %/an »).
+- **i18n FR/EN** (`ev.stats.*`, `ev.p.age`). **Vérifs** : `vite build` OK ; worker stats testé
+  sur plusieurs municipalités/genres (Amos 0,97/1,29 ; Blainville 0,99/1,19 ; Laval, Gatineau…) ;
+  upload+lookup HTTP OK ; âge % testé (10 ans × 0,5 % × 500 000 = 25 000 $).
+
+### Décisions (session 10)
+- **Parsing par position x** des mots (et non par fusion des milliers, ambiguë) : colonnes du
+  tableau APCIQ à x fixes, seuil de regroupement 8 px (intra-nombre ≈0-5 px, inter-colonne ≥17 px).
+- **Navigation par signets** (pypdf) pour atteindre la municipalité sans scanner 1704 pages.
+- **Note** : j'avais tué le port 8787 entre des tests → « Failed to fetch » côté UI ; corrigé,
+  je ne tue plus ce port pendant la session (seulement au closeout). **Relancer `npm run dev`.**
 
 ---
 

@@ -2,7 +2,7 @@
   "_comment": "Paramètres d'ajustement ACM — DÉFAUTS ÉDITABLES, jamais des vérités (CLAUDE.md, docs/12 §6). Le courtier les ajuste par mandat via /acm/params (stockés dans settings). Montants en $ CA, superficies en pi².",
   "construction_cost_per_sqft": 180,
   "land_cost_per_sqft": 0,
-  "age_adjustment_per_year": 1000,
+  "age_adjustment_pct_per_year": 0.005,
   "monthly_appreciation_pct": 0.004,
   "sale_to_list_ratio": 0.975,
   "sale_to_assessment_ratio": null,
