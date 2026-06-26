@@ -182,9 +182,10 @@ THEMES = {
         "rule": LINE, "price_bg": RED, "price_fg": WHITE, "bar": RED,
         "p2_banner_bg": RED, "p2_title_fg": WHITE, "desc_bg": HexColor("#E9EDF3"),
         "th_bg": BLUE, "th_fg": WHITE, "row_alt": VAL, "row": HexColor("#EEF1F7"), "row_fg": INK,
-        # Actifs : médaille « Propriété Sélectionnée » + héros illustratif (bas de page 2).
+        # Actifs : logo eXp (bannière), médaille « Propriété Sélectionnée », héros « SuperPierre » (bas p.2).
+        "logo_default": asset("unifamilial", "exp_logo_white.png"),
         "medal_default": asset("unifamilial", "certificat.png"),
-        "hero_default": asset("unifamilial", "hero.png"),
+        "hero_default": asset("unifamilial", "superpierre.png"),
     },
     "luxe": {
         "banner": "luxe", "banner_bg": LX_BLACK, "title_fg": LX_GOLD, "title_upper": True, "sub_fg": WHITE,
@@ -227,9 +228,11 @@ def page1(c, d, th):
             c.setFillColor(LX_GOLD); c.setFont(F_REG, 17)
             c.drawRightString(PW - M, T(46), "COLLECTION"); c.drawRightString(PW - M, T(66), "DE LUXE")
     else:
-        logo = img.get("logo")
+        logo = img.get("logo") or th.get("logo_default")
         if logo and os.path.exists(logo):
-            draw_image(c, logo, M, T(bh) + 18, 150, 60)
+            lim = _load(logo, rgb=False)
+            lw = 140; lh = lw / (lim.size[0] / lim.size[1])  # aspect préservé (pas de recadrage)
+            c.drawImage(ImageReader(lim), M, T(bh) + (bh - lh) / 2, lw, lh, mask="auto")
         else:
             c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
             c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
