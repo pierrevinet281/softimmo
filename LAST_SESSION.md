@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 17 sessions, tout sur `main`) :**
+**Où on en est (après 18 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,20 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 18 — Brochure : recadrage parfait des photos fournies (2026-06-26)
+
+- Exigence : les photos fournies en mise en marché peuvent être de proportions différentes des
+  emplacements ; il faut les **recadrer** pour un rendu parfait.
+- `render_brochure.py` : le recadrage **« cover » centré** (`_cover`) remplissait déjà chaque cadre
+  sans déformation ; ajout de `_load()` qui **redresse l'orientation EXIF** (photos de téléphone)
+  avant recadrage, utilisé pour les photos, le logo et le héros.
+- **Correctif** : séparation des clés `images.hero` (photo principale, page 1) et
+  `images.brand_hero` / `hero_default` (héros de marque, bas de page 2) — évitait une image parasite.
+- Vérifié avec photos de proportions extrêmes (2400×600, 600×2000, 1000×1000) : cadres **remplis**,
+  cercle-test resté **circulaire** (aucune déformation), **aucune bande blanche**, sur les 5 emplacements.
 
 ---
 
