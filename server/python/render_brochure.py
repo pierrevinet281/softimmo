@@ -256,9 +256,11 @@ def page1(c, d, th):
         band_center = PH - bh / 2.0
         medal = img.get("medal") or th.get("medal_default")
         if medal and os.path.exists(medal):
-            ms = 140
-            # Le centre du cercle du badge est ~40 % depuis le haut du PNG carré (→ 0,60·ms du bas).
-            medal_y = band_center - 0.60 * ms
+            ms = 150
+            # Centre du cercle du badge mesuré à ~0,31 depuis le haut du PNG → 0,69 depuis le bas.
+            # On l'aligne sur le centre vertical de la bande ; les rubans (bas) débordent ensuite
+            # par-dessus la carte (la médaille est dessinée APRÈS l'image).
+            medal_y = band_center - 0.69 * ms
             c.drawImage(ImageReader(_load(medal, rgb=False)), PW - M - ms, medal_y, ms, ms, mask="auto")
         else:
             mx = PW - M - 50
@@ -370,7 +372,7 @@ def page2(c, d, th):
     hero = (d.get("images", {}) or {}).get("brand_hero") or th.get("hero_default")
     if hero and os.path.exists(hero) and Image is not None:
         him = _load(hero, rgb=False)
-        hh2 = 104; hw2 = hh2 * (him.size[0] / him.size[1])
+        hh2 = 208; hw2 = hh2 * (him.size[0] / him.size[1])  # héros agrandi (×2)
         c.drawImage(ImageReader(him), M, 26, hw2, hh2, mask="auto")
 
     _compliance_footer(c, d)
