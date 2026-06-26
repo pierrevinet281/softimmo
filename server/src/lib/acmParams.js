@@ -19,11 +19,22 @@ function defaults() {
   return raw;
 }
 
-// Fusion peu profonde + fusion dédiée de la table `inclusions`.
+// Fusion peu profonde + fusion en profondeur des tables imbriquées (inclusions, features,
+// age_features) pour permettre des overrides partiels (un seul taux d'option, p. ex.).
 function merge(base, over) {
   if (!over || typeof over !== 'object') return { ...base };
   const out = { ...base, ...over };
   if (over.inclusions || base.inclusions) out.inclusions = { ...(base.inclusions || {}), ...(over.inclusions || {}) };
+  for (const grp of ['features', 'age_features']) {
+    if (!over[grp] && !base[grp]) continue;
+    const merged = { ...(base[grp] || {}) };
+    for (const [key, cfg] of Object.entries(over[grp] || {})) {
+      const b = merged[key] || {};
+      merged[key] = { ...b, ...cfg };
+      if (cfg.options || b.options) merged[key].options = { ...(b.options || {}), ...(cfg.options || {}) };
+    }
+    out[grp] = merged;
+  }
   return out;
 }
 

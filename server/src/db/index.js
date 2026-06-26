@@ -57,6 +57,8 @@ const COLUMN_ADDITIONS = {
     ['centris_no', 'TEXT'], ['sale_date', 'TEXT'], ['list_price', 'REAL'], ['sold_price', 'REAL'],
     ['livable_area', 'REAL'], ['municipal_assessment', 'REAL'], ['days_on_market', 'INTEGER'],
     ['inclusions', 'TEXT'],
+    ['foundation', 'TEXT'], ['cladding', 'TEXT'], ['windows_type', 'TEXT'], ['flooring', 'TEXT'],
+    ['windows_age', 'INTEGER'], ['roof_age', 'INTEGER'],
   ],
 };
 

@@ -399,7 +399,13 @@ CREATE TABLE IF NOT EXISTS comparables (
   year_built      INTEGER,
   municipal_assessment REAL,             -- évaluation foncière du comparable
   days_on_market  INTEGER,               -- JSM (jours sur le marché)
-  inclusions      TEXT,                  -- JSON: ["piscine_creusee","foyer",...] ou {clé:1}
+  foundation      TEXT,                  -- fondation (beton|blocs|pieux|pierre)
+  cladding        TEXT,                  -- revêtement extérieur (brique|pierre|aluminium|…)
+  windows_type    TEXT,                  -- type de fenêtres (pvc|hybride|aluminium|bois)
+  flooring        TEXT,                  -- type de planchers (bois_franc|ceramique|…)
+  windows_age     INTEGER,               -- âge des fenêtres (ans)
+  roof_age        INTEGER,               -- âge de la toiture (ans)
+  inclusions      TEXT,                  -- JSON: {clé:qté} (ex. {"foyer":2}) ; booléens en 0/1
   rating          TEXT,                  -- worse|equal|better (vs sujet)
   weight          REAL,                  -- pondération dans l'ACM
   adjustments     TEXT,                  -- JSON: [{key,label,subject,comp,delta,unit,rate,amount,explanation}]
