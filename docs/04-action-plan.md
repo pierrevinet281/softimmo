@@ -29,6 +29,7 @@
 - [ ] Sortie « Rapport d'analyse » (PDF + numérique).
 
 ## Phase 3 — Module 2 : Évaluation
+> Spec détaillée : `docs/10-evaluation-module.md` (Evalo & similaires, carte 3D, AVM stat.).
 - [ ] Moteurs comparaison / coût / revenu + réconciliation ; ratios & vérifications.
 - [ ] Profils par type (unifamilial → RPA) ; points de vue vendeur/acheteur.
 - [ ] Branchement données secteur (StatCan, SCHL, MTQ, Données Québec) + Local Logic opt.

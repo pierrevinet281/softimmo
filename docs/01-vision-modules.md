@@ -60,7 +60,21 @@ Générateur d'offres aux **vendeurs** et **acheteurs**, inspiré et amélioré 
 marché, plan marketing, honoraires/commission, échéancier, valeur ajoutée. Sortie
 brandée, bilingue, avec mentions obligatoires.
 
-## Module 4 — Matériel marketing
+## Bloc « Mise en marché » — ordre chronologique d'usage
+
+Le menu de gauche présente la mise en marché dans l'ordre où le courtier s'en sert :
+1. **Assets courtier** — matériel marketing du *courtier lui-même* (carte, bio, signature,
+   gabarits personnels). *À produire plus tard.*
+2. **Offre de services** — présentée au client (acheteur/vendeur) avant le mandat (Module 3).
+3. **Trousse démarrage** — utilisée **au moment de l'inscription** pour préparer/guider le
+   client (anciennement « Trousse de soutien client » — Module 5).
+4. **Trousse marketing** — utilisée **après l'inscription**, pour la mise en marché des
+   propriétés (anciennement « Matériel marketing » — Module 4 ; pipeline `docs/09`).
+
+> Les numéros de module historiques (4 = marketing, 5 = soutien) restent valides dans les
+> docs ; seuls les **libellés UI** et l'**ordre** changent comme ci-dessus.
+
+## Module 4 — Trousse marketing (matériel de mise en marché des propriétés)
 
 À partir des données de la propriété, génère :
 - **Brochure** (pub longue) — gabarits unifamiliale et RPA.
@@ -71,7 +85,7 @@ brandée, bilingue, avec mentions obligatoires.
 Chaque sortie respecte les **specs de format** (`docs/07-marketing-specs.md`) et la
 **Loi 96** (FR prééminent). Voir aussi les mentions obligatoires OACIQ.
 
-## Module 5 — Trousse de soutien client
+## Module 5 — Trousse démarrage (soutien et préparation du client à l'inscription)
 
 Guides et checklists pour préparer/guider les clients (vendeur, acheteur, copropriété,
 plex, commercial, entreprise), dérivés des `Documents de présentation`. Personnalisés au
