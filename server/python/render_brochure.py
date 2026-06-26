@@ -39,6 +39,18 @@ def _load(path, rgb=True):
         pass
     return im.convert("RGB") if rgb else im
 
+
+def _trim_alpha(im):
+    """Rogne la marge transparente (bbox du canal alpha) — pour un placement précis des logos."""
+    try:
+        if im.mode in ("RGBA", "LA"):
+            bb = im.getchannel("A").getbbox()
+            if bb:
+                return im.crop(bb)
+    except Exception:  # noqa: BLE001
+        pass
+    return im
+
 PW, PH = letter  # 612 x 792 pt
 
 # ── Palette (approx. de la brochure de référence ; éditable) ──
@@ -234,10 +246,10 @@ def page1(c, d, th):
         logo = img.get("logo") or th.get("logo_default")
         tx = M + 175
         if logo and os.path.exists(logo):
-            lim = _load(logo, rgb=False)
+            lim = _trim_alpha(_load(logo, rgb=False))  # rogne la marge → largeur réelle exacte
             lh = 66; lw = lh * (lim.size[0] / lim.size[1])  # taille par hauteur, aspect préservé
             c.drawImage(ImageReader(lim), M, T(bh) + (bh - lh) / 2, lw, lh, mask="auto")
-            tx = M + lw + 22  # titre juste après le logo
+            tx = M + lw + 14  # titre juste après le logo
         else:
             c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
             c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
