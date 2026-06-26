@@ -320,6 +320,8 @@ export default function PropertyDetail() {
             {p.address ? `${p.address}${p.city ? `, ${p.city}` : ''}` : (p.city || '')}
           </div>
         </div>
+        <div className="spacer" style={{ flex: 1 }} />
+        <Button variant="outline" icon={FileText} onClick={() => window.open(api.url(`/properties/${p.id}/brochure.pdf`), '_blank')}>{t('d.brochure')}</Button>
       </div>
 
       <div className="tab-row">

@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 13 sessions, tout sur `main`) :**
+**Où on en est (après 14 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,35 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 14 — Moteur render/ : brochure PDF (ReportLab) (2026-06-26)
+
+- **Décision (utilisateur)** : pas de HTML imprimé — **vrai PDF qualité brochure, parfait au
+  millimètre**, calqué sur `Brochure unifamiliales/Brochure_Inscription_102-8225_George.pdf`.
+  Approche **ReportLab** (positionnement au point), comme le pipeline de réf. Tours Gouin `_build`.
+- **Worker `server/python/render_brochure.py`** (déterministe, sans IA) : brochure **2 pages** —
+  p.1 bannière (logo eXp + titre + médaille « Propriété Sélectionnée »), photo + carte, adresse +
+  MLS + filet, **grille de specs 2 colonnes** (libellés bleus / valeurs claires), bloc **prix
+  rouge** + coordonnées courtier + barre rouge ; p.2 bannière rouge, **description**, 3 photos,
+  **tableau des pièces**, pied de **conformité** (agence + courtier). Images manquantes →
+  placeholders neutres. Repli de polices (Segoe UI → Helvetica). Lecture stdin forcée UTF-8.
+- **Endpoint** `GET /properties/:id/brochure.pdf` : assemble les données depuis le bundle
+  (genre→titre, ch/sdb/superficie, adresse, MLS, prix de la transaction active, specs bâtiment,
+  pièces=unités) + profil courtier (`settings.broker_profile`, défaut Pierre Vinet/eXp) → rend le
+  PDF et le **diffuse** (application/pdf). Bouton **« Brochure PDF »** dans l'en-tête du détail.
+- `reportlab`/`Pillow` ajoutés à `requirements.txt` (installés). **Vérifs** : `vite build` OK ;
+  rendu vérifié visuellement (mise en page fidèle, accents OK) ; génération HTTP testée sur données
+  réelles (Maison à vendre, Laval, 749 000 $) → PDF 2 pages correct.
+
+### Décisions / reste (session 14 — Module 4 à compléter)
+- **Foundation livrée**, à compléter pour la perfection : **actifs réels** (logo eXp, médaille,
+  photos propriété, carte statique, QR, photo courtier) via **téléversement d'images** ; calage
+  fin des couleurs/espacements au modèle ; **jumeau PPTX éditable** + **aller-retour** (`docs/09`,
+  python-pptx) ; wizard de saisie brochure ; autres formats marketing (Kijiji, FB, IG, X, carrousel).
+- Données manquantes pour une brochure complète (dims pièce-par-pièce, garages/rangement,
+  services) → à terme un **formulaire brochure** dédié (le bundle ne les couvre pas tous).
 
 ---
 
