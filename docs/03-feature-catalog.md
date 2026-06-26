@@ -96,7 +96,13 @@ Un **moteur de gabarits, plusieurs sorties** depuis les mêmes données proprié
 - **Fil Facebook** (P1), **Facebook Marketplace** (P1), **Instagram** (post + carrousel)
   (P1), **X** (280, fil) (P1), **LinkedIn** (P1).
 - **Diapos de carrousel vidéo** (P2) : séquence d'images 1:1 / 4:5 / 9:16.
-- Génération de **copy assistée IA** (P2) : hook, corps, CTA, hashtags ; ton adaptable.
+- **Brochure en double sortie PDF + PPTX éditable (jumeau fidèle)** + bouton **« Mise à
+  jour »** aller-retour (PPTX modifié → script Python → met à jour PDF + données)
+  (P1). **Déterministe, sans IA au runtime.** Conception : `docs/09-marketing-pipeline.md`.
+- **Wizards + formulaires + téléversement d'images** (P1) ; réutilise les données de la
+  propriété (Module 1), aucune ressaisie ; capture les liens de répertoires/actifs.
+- Génération de **copy** (P2) : d'abord par **gabarits déterministes** ; assistance IA
+  **optionnelle** seulement (hook, corps, CTA, hashtags). Pas d'appel IA systématique.
 - Respect strict des **specs de format** (`docs/07-marketing-specs.md`) et **Loi 96**
   (FR prééminent) + mentions OACIQ (P1). Désactivation/limitation d'emojis configurable.
 

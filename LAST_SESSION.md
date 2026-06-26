@@ -45,6 +45,13 @@ socle d'enrichissement).
   settings, IA, workers) sert tous les modules ; l'enrichissement devient le Module 6.
 - **Renommage du slug `leadgen`** fait **progressivement** (DB path/UA/packages déjà
   faits ; env var, schéma interne → Phase 8) pour éviter une migration risquée d'un coup.
+- **Module 4 (marketing) — exigence ajoutée par l'utilisateur** : sortie **PDF + PPTX
+  éditable (jumeau fidèle)** avec bouton **« Mise à jour »** aller-retour (PPTX modifié →
+  script Python → met à jour PDF + données). **Déterministe, sans IA au runtime** (l'IA
+  sert à bâtir, pas à exécuter) ; wizards, formulaires, upload d'images. Pipeline de
+  référence (lecture seule) : Tours Gouin `…\Publicités\_build\` (ReportLab + python-pptx).
+  Conception consignée dans `docs/09-marketing-pipeline.md`. Principe global ajouté à
+  `CLAUDE.md` §3.
 
 ### Statut de démarrage — VALIDÉ ✔ (bout-en-bout)
 - `npm install` OK (exit 0).

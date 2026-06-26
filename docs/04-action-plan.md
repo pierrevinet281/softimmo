@@ -36,10 +36,18 @@
 - [ ] Sorties : opinion de valeur + pro forma investisseur + annexe sources + sommaire.
 
 ## Phase 4 — Module 4 : Matériel marketing
-- [ ] Moteur de gabarits multi-sorties + presets de formats (`docs/07`).
-- [ ] Brochure (unifamiliale, RPA) ; pub moyenne ; FB feed/Marketplace ; IG ;
-      X ; LinkedIn ; diapos carrousel.
-- [ ] Copy IA (hook/corps/CTA/hashtags) ; conformité Loi 96 + mentions OACIQ.
+> Conception détaillée : `docs/09-marketing-pipeline.md`. **Déterministe, sans IA au runtime.**
+- [ ] Couche de mise en page **data-driven** partagée (gabarits + blocs).
+- [ ] `render_pdf.py` (ReportLab) + `render_pptx.py`/`pptx_helpers.py` (python-pptx) —
+      **mêmes coordonnées + données** → PDF et **PPTX jumeau éditable**.
+- [ ] **Ancrage par identifiant de champ** sur objets PPTX + `ingest_pptx.py` (aller-retour
+      PPTX modifié → DB + régénération PDF) + rapport de mise à jour.
+- [ ] Wizard + formulaires + **upload d'images**, via file de jobs ; boutons Générer /
+      Mise à jour.
+- [ ] Gabarits (RPA, unifamiliale, plex, commercial, terrain) + presets autres formats
+      (FB feed/Marketplace, IG, X, LinkedIn, Kijiji, carrousel) sur le même moteur.
+- [ ] Conformité Loi 96 (FR prééminent) + mentions OACIQ + caviardage injectés au rendu.
+- [ ] Copy par gabarits ; assistance IA **optionnelle** seulement.
 
 ## Phase 5 — Module 3 : Offre de services
 - [ ] Générateur vendeur/acheteur (inspiré offre Ubee) ; gabarits brandés ; PDF.

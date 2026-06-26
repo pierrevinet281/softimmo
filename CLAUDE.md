@@ -121,6 +121,12 @@ npm run build && npm start  # build web puis sert API+UI sur :8787
 - **i18n** : UI **bilingue FR/EN** avec bascule (défaut FR). Strings via catalogue,
   pas de texte codé en dur dans les composants quand c'est évitable.
 - **ESM JavaScript** partout côté Node/React. Python pour les workers d'I/O réseau.
+- **Minimiser l'IA au runtime** : l'IA (jetons Claude) sert à *bâtir* le logiciel ; le
+  produit livré doit fonctionner **de façon autonome sans appels IA**, sauf si absolument
+  essentiel (et alors optionnel, avec repli déterministe). Pour chaque fonctionnalité,
+  concevoir d'abord la voie **déterministe** (Python/JS, gabarits, données saisies,
+  wizards, parsing). S'applique en particulier au **Module 4 (marketing)**. Documenter et
+  justifier tout usage IA au runtime.
 - **Provenance** : toute donnée enrichie/recherchée enregistre sa source, sa méthode et
   sa confiance (`field_provenance`). Traçabilité = exigence légale et produit.
 - **Pas de données codées en dur** : références, catalogues et démos vivent dans des
