@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 16 sessions, tout sur `main`) :**
+**Où on en est (après 17 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,17 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 17 — Brochure Luxe : actifs de marque réels (2026-06-26)
+
+- Actifs eXp Luxury copiés dans l'app (`server/python/assets/luxe/`) : verrou logo blanc
+  (`exp_luxury_white.png`), version couleur, et héros doré `superpierre_luxury.png` (RGBA).
+- `render_brochure.py` : chemin d'actifs embarqués (`ASSETS`/`asset()`) ; thème luxe pointe
+  `logo_default` + `hero_default`. **Bannière luxe** : le verrou logo (eXp + « COLLECTION DE
+  LUXE ») remplace le texte dessiné. **Page 2** : héros transparent en bas à gauche (fidèle au
+  modèle). Rendu vérifié (logo net sur bannière noire, héros détouré, sans débordement).
 
 ---
 
