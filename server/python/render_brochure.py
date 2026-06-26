@@ -49,6 +49,10 @@ LX_GOLD_D = HexColor("#9C8246")
 LX_CREAM = HexColor("#F2EDE2")
 
 WF = "C:/Windows/Fonts"
+# Actifs embarqués (logos, héros) livrés avec l'app.
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+def asset(*p):
+    return os.path.join(ASSETS, *p)
 
 
 def _reg(name, *candidates):
@@ -175,6 +179,9 @@ THEMES = {
         "rule": LX_GOLD, "price_bg": LX_BLACK, "price_fg": WHITE, "bar": LX_GOLD,
         "p2_banner_bg": LX_GOLD_D, "p2_title_fg": WHITE, "desc_bg": LX_CREAM,
         "th_bg": LX_GOLD_D, "th_fg": WHITE, "row_alt": LX_CREAM, "row": HexColor("#F7F3EA"), "row_fg": INK,
+        # Actifs de marque eXp Luxury (verrou « eXp · COLLECTION DE LUXE » + héros courtier).
+        "logo_default": asset("luxe", "exp_luxury_white.png"),
+        "hero_default": asset("luxe", "superpierre_luxury.png"),
     },
 }
 
@@ -193,20 +200,19 @@ def page1(c, d, th):
         title = title.upper()
 
     if th["banner"] == "luxe":
-        # Titre or à gauche ; logo + « COLLECTION DE LUXE » à droite (pas de médaille).
+        # Titre or à gauche ; verrou logo « eXp · COLLECTION DE LUXE » à droite (pas de médaille).
         tx = M
-        title_w = PW / 2 + 30 - tx
+        title_w = PW / 2 + 10 - tx
         draw_fit(c, title, tx, T(40), title_w, F_BOLD, 24, th["title_fg"], min_size=14)
         draw_fit(c, d.get("city", ""), tx, T(60), title_w, F_REG, 12, th["sub_fg"], min_size=9)
         draw_fit(c, d.get("summary_line", ""), tx, T(78), title_w, F_REG, 12, th["sub_fg"], min_size=9)
-        logo = img.get("logo")
+        logo = img.get("logo") or th.get("logo_default")
         if logo and os.path.exists(logo):
-            draw_image(c, logo, PW - M - 250, T(bh) + 24, 110, 48)
+            lw = 250; lh = lw / 3.69  # ratio du verrou (≈3.69)
+            c.drawImage(ImageReader(Image.open(logo)), PW - M - lw, T(bh / 2 + lh / 2), lw, lh, mask="auto")
         else:
-            c.setFillColor(WHITE); c.setFont(F_BOLD, 26); c.drawRightString(PW - M - 150, T(54), "eXp")
-        c.setStrokeColor(LX_GOLD); c.setLineWidth(1); c.line(PW - M - 132, T(34), PW - M - 132, T(66))
-        c.setFillColor(LX_GOLD); c.setFont(F_REG, 17)
-        c.drawString(PW - M - 120, T(46), "COLLECTION"); c.drawString(PW - M - 120, T(66), "DE LUXE")
+            c.setFillColor(LX_GOLD); c.setFont(F_REG, 17)
+            c.drawRightString(PW - M, T(46), "COLLECTION"); c.drawRightString(PW - M, T(66), "DE LUXE")
     else:
         logo = img.get("logo")
         if logo and os.path.exists(logo):
@@ -327,6 +333,13 @@ def page2(c, d, th):
                 v = str(room[i]) if i < len(room) and room[i] is not None else ""
                 draw_fit(c, v, xs + 10, T(yy + rh) + rh / 2 - 4, cw[i] - 20, F_REG, 10, th["row_fg"], min_size=7.5); xs += cw[i]
             yy += rh
+
+    # Héros de marque (image transparente, ex. « SuperPierre » luxe) en bas à gauche.
+    hero = (d.get("images", {}) or {}).get("hero") or th.get("hero_default")
+    if hero and os.path.exists(hero) and Image is not None:
+        him = Image.open(hero)
+        hh2 = 104; hw2 = hh2 * (him.size[0] / him.size[1])
+        c.drawImage(ImageReader(him), M, 26, hw2, hh2, mask="auto")
 
     _compliance_footer(c, d)
 
