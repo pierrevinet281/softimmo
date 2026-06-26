@@ -70,19 +70,29 @@ export function EntityForm({ cfg, propertyId, row, onClose, onSaved }) {
   );
 }
 
-// Champ d'inclusions : cases à cocher → tableau de clés (stocké en JSON côté DB).
+// Convertit une valeur d'inclusions (tableau de clés OU objet {clé:qté}) en map {clé:qté}.
+export function inclusionsToMap(value) {
+  if (!value) return {};
+  if (Array.isArray(value)) return Object.fromEntries(value.map((k) => [k, 1]));
+  const out = {};
+  for (const [k, v] of Object.entries(value)) { const q = v === true ? 1 : Number(v) || 0; if (q) out[k] = q; }
+  return out;
+}
+
+// Champ d'inclusions avec QUANTITÉ par élément (ex. 4 foyers, 2 piscines). Stocké {clé:qté}.
 export function InclusionsField({ value, options, onChange }) {
-  const arr = Array.isArray(value) ? value : (value && typeof value === 'object' ? Object.keys(value).filter((k) => value[k]) : []);
-  const toggle = (key) => {
-    const set = new Set(arr);
-    if (set.has(key)) set.delete(key); else set.add(key);
-    onChange([...set]);
+  const map = inclusionsToMap(value);
+  const setQty = (key, q) => {
+    const next = { ...map };
+    if (q > 0) next[key] = q; else delete next[key];
+    onChange(next);
   };
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
       {options.map((o) => (
         <label key={o.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-          <input type="checkbox" className="checkbox" checked={arr.includes(o.value)} onChange={() => toggle(o.value)} />
+          <input type="number" min={0} className="input" style={{ width: 56, padding: '4px 6px' }}
+            value={map[o.value] ?? 0} onChange={(e) => setQty(o.value, Math.max(0, parseInt(e.target.value, 10) || 0))} />
           {o.label}
         </label>
       ))}
