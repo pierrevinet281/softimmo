@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 12 sessions, tout sur `main`) :**
+**Où on en est (après 13 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,25 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 13 — Module Clients (mandants) + Loi 25 (2026-06-26)
+
+- **Page Clients** `/clients` (ex-placeholder) `web/src/pages/ClientsPage.jsx` : liste filtrable
+  (type vendeur/acheteur/les deux, recherche), CRUD via modale (nom, type, personne morale,
+  courriel, téléphone, notes).
+- **Conformité Loi 25** : capture de **consentement explicite + horodaté** (case + finalités ;
+  `consent_at` daté automatiquement à l'octroi, effacé au retrait) ; badge « Consenti / Non
+  consenti » dans la liste ; note d'information dans la modale.
+- **Lien propriété ↔ client (mandat)** : sélecteur de client (vendeur) dans la modale Nouvelle
+  propriété (`Properties.jsx`) ; **mandant** affiché dans l'onglet Caractérisation du détail.
+- i18n FR/EN (`cli.*`, `prop.client`, `d.prop.client`). Vérifs : `vite build` OK ; CRUD client +
+  consentement + lien propriété testés HTTP (bundle.client résolu).
+
+> **Restent en placeholder (prochaines fonctions du plan initial)** : Module 3 **Offre de
+> services**, Module 4 **Marketing** (PDF+PPTX, `docs/09`), Module 5 **Trousse de soutien**,
+> Assets courtier, et le moteur **`render/`** (HTML→PDF, partagé) — voir *Prochaines tâches*.
 
 ---
 
