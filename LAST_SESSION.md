@@ -5,6 +5,31 @@
 
 ---
 
+## ▶ REPRISE RAPIDE (à lire en premier)
+
+**Pour reprendre, il suffit d'un prompt du genre :**
+> « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
+> enchaîne sur les *Prochaines tâches*. Mode continu. »
+
+**Où on en est (après 5 sessions, tout sur `main`) :**
+- **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
+  dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
+- **Phase 1 livrée et fonctionnelle** : socle d'enrichissement re-brandé Softimmo + modèle
+  de données métier (9 tables + repos + routes CRUD + `/properties/:id/bundle`), i18n FR/EN
+  + bascule, navigation par module, page **Propriétés** fonctionnelle. **L'app démarre**
+  (`npm run dev` → web `:5180`, API `:8787`).
+- **Specs prêtes pour la construction** des modules : Évaluation (`10`+`11`+`12`, dont ACM
+  détaillée), Marketing (`09`). Restent en placeholders côté UI.
+
+**Prochaine session = CONSTRUCTION (pas de la spec) :** voir *Prochaines tâches* en bas →
+**Phase 2 : Module 1 (Analyse de propriété)**, puis Phase 3 (Évaluation, spec déjà complète).
+
+**Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
+d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
+backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
 ## Session 5 — ACM : grille d'ajustements explicable (2026-06-25)
 
 - `docs/12` §2.1 ajoutée : **exigence de ventilation explicable** des ajustements pour le
@@ -165,7 +190,10 @@ socle d'enrichissement).
 
 ---
 
-## Prochaines tâches (Session 3) — Phase 2 : Module 1 (Analyse de propriété)
+## Prochaines tâches — BUILD Phase 2 : Module 1 (Analyse de propriété)
+> Les specs des modules sont prêtes (`docs/09`-`12`). Il s'agit maintenant de **construire**.
+> Après le Module 1, enchaîner sur le **Module 2 (Évaluation)** : spec complète dans
+> `docs/10` (Evalo, carte 3D), `docs/11` (Local Logic) et `docs/12` (ACM, grille explicable).
 1. **Détail de propriété** (page `/properties/:id`) consommant `/properties/:id/bundle` :
    onglets Caractérisation (multi-bâtiments), Rent roll (unités), Dépenses, Rapports,
    Transactions, Comparables.
