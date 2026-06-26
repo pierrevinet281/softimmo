@@ -49,6 +49,15 @@ const COLUMN_ADDITIONS = {
     ['youtube', 'TEXT'], ['twitter', 'TEXT'], ['tiktok', 'TEXT'], ['whatsapp', 'TEXT'],
     ['reddit', 'TEXT'], ['wechat', 'TEXT'], ['telegram', 'TEXT'], ['threads', 'TEXT'],
   ],
+  // Softimmo Module 2 (Évaluation / ACM) — Phase 3
+  properties: [
+    ['municipal_assessment', 'REAL'], ['assessment_year', 'INTEGER'],
+  ],
+  comparables: [
+    ['centris_no', 'TEXT'], ['sale_date', 'TEXT'], ['list_price', 'REAL'], ['sold_price', 'REAL'],
+    ['livable_area', 'REAL'], ['municipal_assessment', 'REAL'], ['days_on_market', 'INTEGER'],
+    ['inclusions', 'TEXT'],
+  ],
 };
 
 function ensureColumns(db) {

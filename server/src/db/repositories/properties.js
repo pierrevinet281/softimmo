@@ -6,7 +6,7 @@ export const Properties = makeRepo({
   writable: [
     'tenant_id', 'client_id', 'name', 'genre', 'address', 'city', 'region', 'province',
     'postal_code', 'country', 'zoning', 'num_buildings', 'lot_number', 'area_unit',
-    'mls_number', 'status', 'summary', 'notes',
+    'mls_number', 'municipal_assessment', 'assessment_year', 'status', 'summary', 'notes',
   ],
   searchCols: ['name', 'address', 'city', 'mls_number', 'lot_number'],
   sortCols: ['name', 'city', 'genre', 'status', 'created_at', 'updated_at'],

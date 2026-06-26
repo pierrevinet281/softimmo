@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ChevronLeft, Plus, Pencil, Trash2, Building, DoorOpen, Receipt, Calculator,
+  ChevronLeft, Building, DoorOpen, Receipt, Calculator,
   History, Scale, FileText, AlertTriangle, Info,
 } from 'lucide-react';
 import api from '../api/client.js';
-import { Card, Button, Modal, Select, Textarea, Badge, EmptyState } from '../components/ui.jsx';
+import { Card, Button, Badge, EmptyState } from '../components/ui.jsx';
+import { EntityTable } from '../components/EntityTable.jsx';
 import { useI18n } from '../i18n/index.jsx';
-import { money, num, num1, pct, mult } from '../lib/format.js';
+import { money, num, pct, mult } from '../lib/format.js';
 
 // ─────────────────────────── Field / column specs per entity ───────────────────────────
 // Forms and tables are config-driven (DRY, mirrors the server-side repo/route factories).
@@ -118,130 +119,6 @@ function transactionsConfig(t) {
     ],
     defaults: { status: 'inscription' },
   };
-}
-
-// ─────────────────────────── Generic add/edit modal ───────────────────────────
-function EntityForm({ cfg, propertyId, row, onClose, onSaved }) {
-  const { t } = useI18n();
-  const isEdit = !!row;
-  const [form, setForm] = useState(() => {
-    const init = { ...(cfg.defaults || {}), ...(row || {}) };
-    return init;
-  });
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const save = useMutation({
-    mutationFn: (body) => (isEdit ? api.patch(`/${cfg.path}/${row.id}`, body) : api.post(`/${cfg.path}`, body)),
-    onSuccess: () => { onSaved(); onClose(); },
-  });
-
-  const submit = () => {
-    const body = { ...form, property_id: propertyId };
-    // Normalise les nombres et la case à cocher.
-    for (const fld of cfg.fields) {
-      if (fld.type === 'number' && body[fld.key] != null && body[fld.key] !== '') body[fld.key] = Number(body[fld.key]);
-      if (fld.type === 'checkbox') body[fld.key] = body[fld.key] ? 1 : 0;
-    }
-    save.mutate(body);
-  };
-
-  return (
-    <Modal
-      title={isEdit ? t('common.edit') : t('common.new')}
-      onClose={onClose}
-      size="lg"
-      footer={(
-        <>
-          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button variant="primary" disabled={save.isPending} onClick={submit}>{isEdit ? t('common.save') : t('common.create')}</Button>
-        </>
-      )}
-    >
-      {save.isError && <div className="notice notice-warn"><AlertTriangle size={16} />{String(save.error?.message || 'Erreur')}</div>}
-      <div className="field-row">
-        {cfg.fields.map((fld) => {
-          const full = !fld.half;
-          const el = fld.type === 'select' ? (
-            <Select value={form[fld.key] ?? ''} onChange={(e) => set(fld.key, e.target.value)}>
-              {fld.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </Select>
-          ) : fld.type === 'textarea' ? (
-            <Textarea rows={2} value={form[fld.key] ?? ''} onChange={(e) => set(fld.key, e.target.value)} />
-          ) : fld.type === 'checkbox' ? (
-            <input type="checkbox" className="checkbox" checked={!!Number(form[fld.key])} onChange={(e) => set(fld.key, e.target.checked ? 1 : 0)} />
-          ) : (
-            <input className="input" type={fld.type === 'number' ? 'number' : 'text'} value={form[fld.key] ?? ''} placeholder={fld.placeholder} onChange={(e) => set(fld.key, e.target.value)} />
-          );
-          return (
-            <div className="field" key={fld.key} style={full ? { gridColumn: '1 / -1' } : undefined}>
-              <label>{fld.label}{fld.required ? ' *' : ''}</label>
-              {el}
-            </div>
-          );
-        })}
-      </div>
-    </Modal>
-  );
-}
-
-// ─────────────────────────── Generic entity table (per tab) ───────────────────────────
-function EntityTable({ cfg, propertyId, items, onChanged }) {
-  const { t } = useI18n();
-  const qc = useQueryClient();
-  const [editing, setEditing] = useState(null); // row | 'new' | null
-
-  const remove = useMutation({
-    mutationFn: (id) => api.del(`/${cfg.path}/${id}`),
-    onSuccess: () => onChanged(),
-  });
-  const Icon = cfg.icon;
-
-  return (
-    <>
-      <div className="toolbar" style={{ marginBottom: 12 }}>
-        <div className="spacer" />
-        <Button variant="primary" size="sm" icon={Plus} onClick={() => setEditing('new')}>{t('common.add')}</Button>
-      </div>
-      {items.length === 0 ? (
-        <EmptyState icon={Icon} title={t('d.empty')} />
-      ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                {cfg.columns.map((c) => <th key={c.key} className={c.align === 'num' ? 'num' : undefined}>{c.label}</th>)}
-                <th style={{ width: 76 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((r) => (
-                <tr key={r.id} onClick={() => setEditing(r)}>
-                  {cfg.columns.map((c) => (
-                    <td key={c.key} className={c.align === 'num' ? 'num' : undefined}>
-                      {c.render ? c.render(r) : (r[c.key] ?? <span className="muted">—</span>)}
-                    </td>
-                  ))}
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditing(r)} title={t('common.edit')} />
-                    <Button variant="ghost" size="sm" icon={Trash2} onClick={() => { if (confirm(t('common.confirmDelete'))) remove.mutate(r.id); }} title={t('common.delete')} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {editing && (
-        <EntityForm
-          cfg={cfg}
-          propertyId={propertyId}
-          row={editing === 'new' ? null : editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => { onChanged(); qc.invalidateQueries({ queryKey: ['analysis', propertyId] }); }}
-        />
-      )}
-    </>
-  );
 }
 
 // ─────────────────────────── Profitability (Rentabilité) tab ───────────────────────────
@@ -359,7 +236,7 @@ function CharacterizationTab({ bundle, refetch }) {
           <div className="muted">{t('common.status')}</div><div><Badge tone="neutral">{p.status}</Badge></div>
         </div>
       </Card>
-      <EntityTable cfg={buildingsConfig(t)} propertyId={p.id} items={bundle.buildings} onChanged={refetch} />
+      <EntityTable cfg={buildingsConfig(t)} propertyId={p.id} items={bundle.buildings} onChanged={refetch} extraInvalidate={[['analysis', p.id]]} />
     </div>
   );
 }
@@ -415,10 +292,10 @@ export default function PropertyDetail() {
       </div>
 
       {tab === 'charact' && <CharacterizationTab bundle={bundle} refetch={refetch} />}
-      {tab === 'units' && <EntityTable cfg={unitsConfig(t, bundle.buildings)} propertyId={p.id} items={bundle.units} onChanged={refetch} />}
-      {tab === 'expenses' && <EntityTable cfg={expensesConfig(t)} propertyId={p.id} items={bundle.expenses} onChanged={refetch} />}
+      {tab === 'units' && <EntityTable cfg={unitsConfig(t, bundle.buildings)} propertyId={p.id} items={bundle.units} onChanged={refetch} extraInvalidate={[['analysis', p.id]]} />}
+      {tab === 'expenses' && <EntityTable cfg={expensesConfig(t)} propertyId={p.id} items={bundle.expenses} onChanged={refetch} extraInvalidate={[['analysis', p.id]]} />}
       {tab === 'profit' && <ProfitabilityTab propertyId={p.id} />}
-      {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={p.id} items={bundle.transactions} onChanged={refetch} />}
+      {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={p.id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', p.id]]} />}
       {tab === 'comparables' && (
         <ReadOnlyList
           icon={Scale}

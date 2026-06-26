@@ -282,6 +282,8 @@ CREATE TABLE IF NOT EXISTS properties (
   lot_number    TEXT,                  -- numéro de lot / cadastre
   area_unit     TEXT DEFAULT 'pi2',    -- pi2|m2 (unité d'affichage des superficies)
   mls_number    TEXT,                  -- numéro Centris/MLS si applicable
+  municipal_assessment REAL,           -- évaluation foncière municipale (corroboration ACM)
+  assessment_year INTEGER,             -- année du rôle d'évaluation
   status        TEXT NOT NULL DEFAULT 'prospect', -- prospect|actif|inscrit|vendu|expire|archive
   summary       TEXT,
   notes         TEXT,
@@ -383,16 +385,24 @@ CREATE TABLE IF NOT EXISTS comparables (
   address         TEXT,
   city            TEXT,
   kind            TEXT DEFAULT 'sold',   -- sold|active|expired
+  centris_no      TEXT,                  -- No Centris (extrait Matrix)
   date            TEXT,
-  price           REAL,
+  sale_date       TEXT,                  -- date de vente (VE) — distincte de `date` (inscription)
+  price           REAL,                  -- prix générique (rétrocompat ; voir list_price/sold_price)
+  list_price      REAL,                  -- dernier prix inscrit
+  sold_price      REAL,                  -- prix vendu (VE)
   area            REAL,
+  livable_area    REAL,                  -- superficie habitable (pc)
   price_per_area  REAL,
   bedrooms        REAL,
   bathrooms       REAL,
   year_built      INTEGER,
+  municipal_assessment REAL,             -- évaluation foncière du comparable
+  days_on_market  INTEGER,               -- JSM (jours sur le marché)
+  inclusions      TEXT,                  -- JSON: ["piscine_creusee","foyer",...] ou {clé:1}
   rating          TEXT,                  -- worse|equal|better (vs sujet)
   weight          REAL,                  -- pondération dans l'ACM
-  adjustments     TEXT,                  -- JSON: [{label, amount}]
+  adjustments     TEXT,                  -- JSON: [{key,label,subject,comp,delta,unit,rate,amount,explanation}]
   seller_redacted INTEGER DEFAULT 1,     -- 1 = masquer les infos vendeur à l'export client
   source          TEXT,
   notes           TEXT,
