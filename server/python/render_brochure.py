@@ -42,14 +42,14 @@ def _load(path, rgb=True):
 PW, PH = letter  # 612 x 792 pt
 
 # ── Palette (approx. de la brochure de référence ; éditable) ──
-BLUE = HexColor("#1C4E8F")     # bannière
-BLUE_LABEL = HexColor("#3360A6")  # cellules-libellés de la grille
+BLUE = HexColor("#314897")     # bannière + boîtes (libellés, en-tête de tableau)
+BLUE_LABEL = HexColor("#314897")  # cellules-libellés de la grille
 VAL = HexColor("#D7DEEE")      # cellules-valeurs (gris-bleu clair)
 RED = HexColor("#E2231A")      # bloc prix / barres
 INK = HexColor("#1A1A1A")
 INK2 = HexColor("#5A5A5A")
 WHITE = HexColor("#FFFFFF")
-LINE = HexColor("#1C4E8F")
+LINE = HexColor("#314897")
 PH_BG = HexColor("#E9EDF3")    # placeholder image
 
 # Palette luxe (noir + or + crème)
@@ -231,33 +231,41 @@ def page1(c, d, th):
         logo = img.get("logo") or th.get("logo_default")
         if logo and os.path.exists(logo):
             lim = _load(logo, rgb=False)
-            lw = 140; lh = lw / (lim.size[0] / lim.size[1])  # aspect préservé (pas de recadrage)
+            lh = 56; lw = lh * (lim.size[0] / lim.size[1])  # taille par hauteur, aspect préservé
             c.drawImage(ImageReader(lim), M, T(bh) + (bh - lh) / 2, lw, lh, mask="auto")
         else:
             c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
             c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
         tx = M + 175
-        title_w = PW - M - 112 - tx  # largeur dispo jusqu'à la médaille
+        title_w = PW - M - 150 - tx  # largeur dispo jusqu'à la médaille
         draw_fit(c, title, tx, T(34), title_w, F_BOLD, 24, th["title_fg"], min_size=15)
         draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, th["sub_fg"], min_size=9)
         draw_fit(c, d.get("summary_line", ""), tx, T(74), title_w, F_REG, 13, th["sub_fg"], min_size=9)
-        # Médaille « Propriété Sélectionnée » (image si dispo, sinon dessin de repli).
-        medal = img.get("medal") or th.get("medal_default")
-        if medal and os.path.exists(medal):
-            ms = 104
-            c.drawImage(ImageReader(_load(medal, rgb=False)), PW - M - ms, T(bh) - 22, ms, ms, mask="auto")
-        else:
-            mx, my = PW - M - 44, T(48)
-            c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, my, 40, fill=1, stroke=0)
-            c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, my, 40, fill=0, stroke=1)
-            c.setFillColor(WHITE); c.setFont(F_SB, 7.5)
-            c.drawCentredString(mx, my + 3, "Propriété"); c.drawCentredString(mx, my - 7, "Sélectionnée")
+        # La médaille est dessinée APRÈS les images (plus bas) pour que ses rubans débordent
+        # par-dessus la photo/carte (cf. brochure de référence).
 
     # Images : photo (gauche) + carte (droite)
     iy_top = bh + 14; iw_h = 200
     gap = 12; lw = (PW - 2 * M - gap) * 0.56; rw = (PW - 2 * M - gap) - lw
     draw_image(c, img.get("hero"), M, T(iy_top + iw_h), lw, iw_h, radius=4)
     draw_image(c, img.get("map"), M + lw + gap, T(iy_top + iw_h), rw, iw_h, radius=4)
+
+    # Médaille « Propriété Sélectionnée » (modèle unifamilial) : centre du badge aligné sur le
+    # centre vertical de la bande ; rubans débordant sous la bande, par-dessus l'image.
+    if th["banner"] == "medal":
+        band_center = PH - bh / 2.0
+        medal = img.get("medal") or th.get("medal_default")
+        if medal and os.path.exists(medal):
+            ms = 140
+            # Le centre du cercle du badge est ~40 % depuis le haut du PNG carré (→ 0,60·ms du bas).
+            medal_y = band_center - 0.60 * ms
+            c.drawImage(ImageReader(_load(medal, rgb=False)), PW - M - ms, medal_y, ms, ms, mask="auto")
+        else:
+            mx = PW - M - 50
+            c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, band_center, 46, fill=1, stroke=0)
+            c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, band_center, 46, fill=0, stroke=1)
+            c.setFillColor(WHITE); c.setFont(F_SB, 8)
+            c.drawCentredString(mx, band_center + 3, "Propriété"); c.drawCentredString(mx, band_center - 9, "Sélectionnée")
 
     # Adresse + MLS + filet
     ay = iy_top + iw_h + 30

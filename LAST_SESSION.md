@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 21 sessions, tout sur `main`) :**
+**Où on en est (après 22 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,17 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 22 — Brochure unifamiliale : couleur + bannière (ajustements) (2026-06-26)
+
+- **Bleu = `#314897`** (bande + boîtes libellés + en-tête de tableau + filet) au lieu de
+  `#1C4E8F`/`#3360A6`.
+- **Bannière** : logo eXp **réduit** (hauteur 56, aspect préservé) ; **médaille agrandie** (140 px)
+  dessinée **après** les images pour que ses **rubans débordent par-dessus la carte** ; **cercle du
+  badge centré verticalement** sur le centre de la bande (`band_center − 0,60·ms`). Réserve de
+  largeur du titre ajustée. Rendu vérifié (carte de test) : centrage et débordement conformes.
 
 ---
 
