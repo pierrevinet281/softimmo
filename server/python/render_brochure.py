@@ -23,6 +23,9 @@ from reportlab.platypus import Paragraph
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
 from reportlab.lib.utils import ImageReader
+from reportlab.graphics.barcode import qr
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics import renderPDF
 
 try:
     from PIL import Image, ImageDraw, ImageOps
@@ -112,12 +115,23 @@ def _cover(img, tw, th):
     return img.crop(box).resize((tw, th), Image.LANCZOS)
 
 
-def draw_image(c, path, x, y, w, h, radius=0, dpi=200):
-    """Dessine une image (cover-crop, coins arrondis optionnels). Placeholder si absente."""
+def draw_image(c, path, x, y, w, h, radius=0, dpi=200, border=0, border_color=None):
+    """Dessine une image (cover-crop, coins arrondis optionnels) + contour optionnel.
+    Placeholder si absente. `border` = épaisseur du contour (pt), `border_color` sa couleur."""
+    def _stroke():
+        if border:
+            c.setStrokeColor(border_color or HexColor("#000000")); c.setLineWidth(border)
+            if radius > 0:
+                c.roundRect(x, y, w, h, radius, fill=0, stroke=1)
+            else:
+                c.rect(x, y, w, h, fill=0, stroke=1)
+
     if not path or not os.path.exists(path) or Image is None:
-        c.setFillColor(PH_BG); c.roundRect(x, y, w, h, radius or 1, fill=1, stroke=0)
+        c.setFillColor(PH_BG)
+        (c.roundRect(x, y, w, h, radius, fill=1, stroke=0) if radius > 0 else c.rect(x, y, w, h, fill=1, stroke=0))
         c.setFillColor(INK2); c.setFont(F_REG, 8)
         c.drawCentredString(x + w / 2, y + h / 2, "image")
+        _stroke()
         return
     tw, th = max(2, int(w / 72 * dpi)), max(2, int(h / 72 * dpi))
     im = _cover(_load(path), tw, th)
@@ -128,6 +142,21 @@ def draw_image(c, path, x, y, w, h, radius=0, dpi=200):
         out = Image.new("RGB", (tw, th), (255, 255, 255)); out.paste(im, (0, 0), mask); im = out
     buf = io.BytesIO(); im.save(buf, "JPEG", quality=88); buf.seek(0)
     c.drawImage(ImageReader(buf), x, y, w, h, mask="auto")
+    _stroke()
+
+
+def draw_qr(c, data_str, x, y, size, dark=INK):
+    """Dessine un QR code (déterministe, via le widget intégré ReportLab — aucune dépendance).
+    `data_str` = URL encodée ; `size` = côté en pt ; `dark` = couleur des modules."""
+    if not data_str:
+        return
+    w = qr.QrCodeWidget(str(data_str))
+    w.barFillColor = dark
+    b = w.getBounds()
+    bw, bh = (b[2] - b[0]) or 1, (b[3] - b[1]) or 1
+    dr = Drawing(size, size, transform=[size / bw, 0, 0, size / bh, -b[0] * size / bw, -b[1] * size / bh])
+    dr.add(w)
+    renderPDF.draw(dr, c, x, y)
 
 
 def para(c, text, x, y_top, w, font, size, color, leading=None, align=TA_LEFT):
@@ -194,8 +223,8 @@ THEMES = {
     "unifamilial": {
         "banner": "medal", "banner_bg": BLUE, "title_fg": WHITE, "title_upper": False, "sub_fg": WHITE,
         "label_bg": BLUE_LABEL, "label_fg": WHITE, "value_bg": VAL, "value_fg": INK,
-        "rule": LINE, "price_bg": RED, "price_fg": WHITE, "bar": RED,
-        "p2_banner_bg": RED, "p2_title_fg": WHITE, "desc_bg": HexColor("#E9EDF3"),
+        "rule": LINE, "price_bg": RED, "price_fg": WHITE, "bar": RED, "qr_color": RED,
+        "p2_banner_bg": RED, "p2_title_fg": WHITE, "desc_bg": HexColor("#D5DEEF"),
         "th_bg": BLUE, "th_fg": WHITE, "row_alt": VAL, "row": HexColor("#EEF1F7"), "row_fg": INK,
         # Actifs : logo eXp (bannière), médaille « Propriété Sélectionnée », héros « SuperPierre » (bas p.2).
         "logo_default": asset("unifamilial", "exp_logo_white.png"),
@@ -205,7 +234,7 @@ THEMES = {
     "luxe": {
         "banner": "luxe", "banner_bg": LX_BLACK, "title_fg": LX_GOLD, "title_upper": True, "sub_fg": WHITE,
         "label_bg": LX_GOLD, "label_fg": WHITE, "value_bg": LX_CREAM, "value_fg": INK,
-        "rule": LX_GOLD, "price_bg": LX_BLACK, "price_fg": WHITE, "bar": LX_GOLD,
+        "rule": LX_GOLD, "price_bg": LX_BLACK, "price_fg": WHITE, "bar": LX_GOLD, "qr_color": LX_GOLD_D,
         "p2_banner_bg": LX_GOLD_D, "p2_title_fg": WHITE, "desc_bg": LX_CREAM,
         "th_bg": LX_GOLD_D, "th_fg": WHITE, "row_alt": LX_CREAM, "row": HexColor("#F7F3EA"), "row_fg": INK,
         # Actifs de marque eXp Luxury (verrou « eXp · COLLECTION DE LUXE » + héros courtier).
@@ -263,8 +292,8 @@ def page1(c, d, th):
     # Images : photo (gauche) + carte (droite) — hautes pour remplir la page (8,5×11).
     iy_top = bh + 14; iw_h = 250
     gap = 12; lw = (PW - 2 * M - gap) * 0.56; rw = (PW - 2 * M - gap) - lw
-    draw_image(c, img.get("hero"), M, T(iy_top + iw_h), lw, iw_h, radius=4)
-    draw_image(c, img.get("map"), M + lw + gap, T(iy_top + iw_h), rw, iw_h, radius=4)
+    draw_image(c, img.get("hero"), M, T(iy_top + iw_h), lw, iw_h, border=0.8)
+    draw_image(c, img.get("map"), M + lw + gap, T(iy_top + iw_h), rw, iw_h, border=0.8)
 
     # Médaille « Propriété Sélectionnée » (modèle unifamilial) : centre du badge aligné sur le
     # centre vertical de la bande ; rubans débordant sous la bande, par-dessus l'image.
@@ -361,12 +390,15 @@ def page2(c, d, th):
     ph = 120; gap = 10; iw = (PW - 2 * M - 2 * gap) / 3
     for i in range(3):
         p = (d.get("interior", []) + [None, None, None])[i]
-        draw_image(c, p, M + i * (iw + gap), T(y + ph), iw, ph, radius=4)
+        draw_image(c, p, M + i * (iw + gap), T(y + ph), iw, ph, border=0.8)
     y += ph + 16
 
-    # Tableau des pièces
+    # Tableau des pièces — comprimé au besoin pour réserver un pied propre (héros + courtier + QR).
     if rooms:
-        hh = 26; rh = 24
+        FOOT_H = 150  # zone réservée au pied (de bas en haut)
+        hh = 26
+        avail = T(y) - FOOT_H  # hauteur dispo (pt) entre le haut du tableau et la zone de pied
+        rh = max(16, min(24, (avail - hh) / len(rooms)))
         cols = [0.46, 0.27, 0.27]; cw = [c0 * (PW - 2 * M) for c0 in cols]
         c.setFillColor(th["th_bg"]); c.rect(M, T(y + hh), PW - 2 * M, hh, fill=1, stroke=0)
         xs = M
@@ -382,22 +414,71 @@ def page2(c, d, th):
                 draw_fit(c, v, xs + 10, T(yy + rh) + rh / 2 - 4, cw[i] - 20, F_REG, 10, th["row_fg"], min_size=7.5); xs += cw[i]
             yy += rh
 
-    # Héros de marque (image transparente, ex. « SuperPierre » luxe) en bas à gauche.
-    # Clé distincte de `images.hero` (qui est la photo principale de la page 1).
-    hero = (d.get("images", {}) or {}).get("brand_hero") or th.get("hero_default")
-    if hero and os.path.exists(hero) and Image is not None:
-        him = _load(hero, rgb=False)
-        hh2 = 208; hw2 = hh2 * (him.size[0] / him.size[1])  # héros agrandi (×2)
-        c.drawImage(ImageReader(him), M, 26, hw2, hh2, mask="auto")
-
-    _compliance_footer(c, d)
+    _page2_footer(c, d, th)
 
 
 def _compliance_footer(c, d):
-    """Mentions obligatoires (agence + courtier). LCI/OACIQ."""
+    """Mention centrée en pied (agence + courtier). LCI/OACIQ. Utilisée en page 1."""
     broker = d.get("broker", {})
     bits = [broker.get("name"), broker.get("agency"), broker.get("phone")]
     draw_fit(c, "  ·  ".join([b for b in bits if b]), PW / 2, 16, PW - 80, F_REG, 7, INK2, align="c", min_size=5)
+
+
+def _page2_footer(c, d, th):
+    """Pied de page 2 : héros de marque (gauche) + coordonnées du courtier (centre) + QR (droite).
+    Reproduit le bas de la brochure de référence ; satisfait aussi les mentions LCI/OACIQ
+    (nom + désignation du courtier, nom de l'agence)."""
+    M = MO
+    broker = d.get("broker", {})
+    img = d.get("images", {}) or {}
+
+    # Héros de marque (image transparente, « SuperPierre ») en bas à gauche.
+    # Clé distincte de `images.hero` (la photo principale de la page 1).
+    hero = img.get("brand_hero") or th.get("hero_default")
+    hero_right = M
+    if hero and os.path.exists(hero) and Image is not None:
+        him = _load(hero, rgb=False)
+        hh2 = 188; hw2 = hh2 * (him.size[0] / him.size[1])
+        c.drawImage(ImageReader(him), M, 24, hw2, hh2, mask="auto")
+        hero_right = M + hw2
+
+    # QR code (droite) — encode l'URL de la fiche ou le site du courtier.
+    qr_url = d.get("listing_url") or broker.get("web") or broker.get("website")
+    if qr_url and not str(qr_url).startswith(("http://", "https://")):
+        qr_url = "https://" + str(qr_url)
+    qr_size = 76
+    qr_x = PW - M - qr_size
+    if qr_url:
+        draw_qr(c, qr_url, qr_x, 56, qr_size, dark=th.get("qr_color", RED))
+        ref = d.get("brochure_ref") or (("MLS %s" % d["mls"]) if d.get("mls") else "")
+        if ref:
+            draw_fit(c, ref, qr_x + qr_size / 2, 46, qr_size + 20, F_REG, 7, INK2, align="c", min_size=5)
+
+    # Bloc coordonnées du courtier (centre), entre le héros et le QR.
+    bx = max(hero_right + 10, M + 185)
+    bw = (qr_x - 16) - bx if qr_url else (PW - M) - bx
+    if bw < 120:
+        bw = (PW - M) - bx
+    y = 138  # ligne de base du nom (de bas en haut)
+    draw_fit(c, broker.get("name", ""), bx, y, bw, F_BOLD, 13, INK, min_size=10)
+    title_line = " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s])
+    if title_line:
+        draw_fit(c, title_line, bx, y - 16, bw, F_BOLD, 8.5, INK, min_size=6.5)
+    agency = broker.get("agency", "")
+    if broker.get("company"):
+        agency = (agency + " | " + broker["company"]) if agency else broker["company"]
+    if agency:
+        draw_fit(c, agency, bx, y - 28, bw, F_REG, 8.5, INK2, min_size=6.5)
+    contact = []
+    if broker.get("phone"):
+        contact.append("T : %s" % broker["phone"])
+    if broker.get("email"):
+        contact.append("E : %s" % broker["email"])
+    if contact:
+        draw_fit(c, "  |  ".join(contact), bx, y - 40, bw, F_REG, 8.5, INK2, min_size=6.5)
+    web = broker.get("web") or broker.get("website")
+    if web:
+        draw_fit(c, "W : %s" % web, bx, y - 52, bw, F_REG, 8.5, INK2, min_size=6.5)
 
 
 def render(data, out):

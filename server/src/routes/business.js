@@ -164,7 +164,8 @@ export default function mountBusiness(parent = Router()) {
     const tx = (bundle.transactions || []).find((t) => ['inscription', 'en_vigueur'].includes(t.status) && t.price);
     const broker = Settings.get('broker_profile', null) || {
       name: 'Pierre Vinet', title: 'Courtier Immobilier', subtitle: 'Résidentiel et Commercial',
-      agency: 'eXp Agence Immobilière', phone: '514.651.7437',
+      agency: 'eXp Agence Immobilière', company: 'Immobilier Pierre Vinet Inc.', phone: '514.651.7437',
+      email: 'pierre.vinet@exprealty.com', web: 'www.pierrevinet.com',
     };
     const cityProv = [p.city, p.province].filter(Boolean).join(' (') + (p.province ? ')' : '');
     const summary = [beds ? `${beds} chambres` : null, baths ? `${baths} salles de bain` : null]
