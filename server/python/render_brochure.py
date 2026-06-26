@@ -25,9 +25,19 @@ from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
 from reportlab.lib.utils import ImageReader
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageOps
 except Exception:  # noqa: BLE001
     Image = None
+
+
+def _load(path, rgb=True):
+    """Ouvre une image en corrigeant l'orientation EXIF (photos de téléphone)."""
+    im = Image.open(path)
+    try:
+        im = ImageOps.exif_transpose(im)  # redresse selon l'orientation EXIF
+    except Exception:  # noqa: BLE001
+        pass
+    return im.convert("RGB") if rgb else im
 
 PW, PH = letter  # 612 x 792 pt
 
@@ -95,7 +105,7 @@ def draw_image(c, path, x, y, w, h, radius=0, dpi=200):
         c.drawCentredString(x + w / 2, y + h / 2, "image")
         return
     tw, th = max(2, int(w / 72 * dpi)), max(2, int(h / 72 * dpi))
-    im = _cover(Image.open(path).convert("RGB"), tw, th)
+    im = _cover(_load(path), tw, th)
     if radius > 0:
         r = int(radius / 72 * dpi)
         mask = Image.new("L", (tw, th), 0)
@@ -209,7 +219,7 @@ def page1(c, d, th):
         logo = img.get("logo") or th.get("logo_default")
         if logo and os.path.exists(logo):
             lw = 250; lh = lw / 3.69  # ratio du verrou (≈3.69)
-            c.drawImage(ImageReader(Image.open(logo)), PW - M - lw, T(bh / 2 + lh / 2), lw, lh, mask="auto")
+            c.drawImage(ImageReader(_load(logo, rgb=False)), PW - M - lw, T(bh / 2 + lh / 2), lw, lh, mask="auto")
         else:
             c.setFillColor(LX_GOLD); c.setFont(F_REG, 17)
             c.drawRightString(PW - M, T(46), "COLLECTION"); c.drawRightString(PW - M, T(66), "DE LUXE")
@@ -335,9 +345,10 @@ def page2(c, d, th):
             yy += rh
 
     # Héros de marque (image transparente, ex. « SuperPierre » luxe) en bas à gauche.
-    hero = (d.get("images", {}) or {}).get("hero") or th.get("hero_default")
+    # Clé distincte de `images.hero` (qui est la photo principale de la page 1).
+    hero = (d.get("images", {}) or {}).get("brand_hero") or th.get("hero_default")
     if hero and os.path.exists(hero) and Image is not None:
-        him = Image.open(hero)
+        him = _load(hero, rgb=False)
         hh2 = 104; hw2 = hh2 * (him.size[0] / him.size[1])
         c.drawImage(ImageReader(him), M, 26, hw2, hh2, mask="auto")
 
