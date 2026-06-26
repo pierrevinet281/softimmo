@@ -503,6 +503,7 @@ export default function Evaluation() {
             propertyId={propertyId}
             items={bundle?.comparables || []}
             onChanged={refetchComps}
+            selectable
             headerActions={<MatrixImport propertyId={propertyId} onDone={refetchComps} />}
           />
 

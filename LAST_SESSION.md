@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 11 sessions, tout sur `main`) :**
+**Où on en est (après 12 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,18 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 12 — Comparables : multi-sélection + suppression en lot (2026-06-26)
+
+- **`EntityTable` : prop `selectable`** → colonne de cases à cocher, « tout sélectionner »,
+  ligne surlignée (`.row-selected`), bouton **« Supprimer (N) »** dans la barre d'outils.
+  Activée sur le tableau des comparables (page Évaluation).
+- **Endpoint `POST /:entity/bulk-delete`** (fabrique `_crud.js`) : `{ids:[…]}` → supprime en
+  lot, journalise, renvoie `{count}`. Générique (toutes entités).
+- i18n FR/EN (`common.deleteN`, `common.confirmDeleteN`). Vérifs : `vite build` OK ;
+  bulk-delete testé (3 → 1). Correctif inclus : sous-sol fini en case à cocher (repli UI).
 
 ---
 

@@ -48,6 +48,16 @@ export function makeCrudRouter({ repo, entityType, schema, requiredOnCreate = []
     res.status(201).json({ created, errors, count: created.length });
   }));
 
+  // Suppression en lot (multi-sélection). Body : { ids: [...] } ou un tableau d'ids.
+  r.post('/bulk-delete', wrap(async (req, res) => {
+    const ids = Array.isArray(req.body) ? req.body : (req.body?.ids || []);
+    if (!Array.isArray(ids) || ids.length === 0) throw badRequest('ids (tableau non vide) est requis');
+    let count = 0;
+    for (const id of ids) { if (repo.delete(id)) count += 1; }
+    if (count) Activity.log({ kind: 'delete', entity_type: entityType, summary: `Suppression ${count} ${entityType}(s)` });
+    res.json({ count });
+  }));
+
   r.get('/:id', wrap(async (req, res) => {
     const row = repo.get(req.params.id);
     if (!row) throw notFound(`${entityType} introuvable`);
