@@ -1,0 +1,450 @@
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  ChevronLeft, Plus, Pencil, Trash2, Building, DoorOpen, Receipt, Calculator,
+  History, Scale, FileText, AlertTriangle, Info,
+} from 'lucide-react';
+import api from '../api/client.js';
+import { Card, Button, Modal, Select, Textarea, Badge, EmptyState } from '../components/ui.jsx';
+import { useI18n } from '../i18n/index.jsx';
+import { money, num, num1, pct, mult } from '../lib/format.js';
+
+// ─────────────────────────── Field / column specs per entity ───────────────────────────
+// Forms and tables are config-driven (DRY, mirrors the server-side repo/route factories).
+const EXPENSE_CATS = ['taxes_municipales', 'taxes_scolaires', 'assurances', 'energie', 'entretien', 'gestion', 'deneigement', 'conciergerie', 'reserve', 'autre'];
+const TX_STATUS = ['inscription', 'en_vigueur', 'vendue', 'expiree', 'retiree'];
+const LEASE_TYPES = ['', 'brut', 'net', 'TMI'];
+
+function buildingsConfig(t) {
+  return {
+    path: 'buildings', titleKey: 'd.tab.buildings', icon: Building,
+    columns: [
+      { key: 'label', label: t('common.name'), render: (r) => r.label || r.building_type || '—' },
+      { key: 'building_type', label: t('d.bld.type') },
+      { key: 'year_built', label: t('d.bld.year'), align: 'num' },
+      { key: 'land_area', label: t('d.bld.land'), align: 'num', render: (r) => num(r.land_area) },
+      { key: 'building_area', label: t('d.bld.footprint'), align: 'num', render: (r) => num(r.building_area) },
+      { key: 'livable_area', label: t('d.bld.livable'), align: 'num', render: (r) => num(r.livable_area) },
+    ],
+    fields: [
+      { key: 'label', label: t('common.name'), half: true },
+      { key: 'building_type', label: t('d.bld.type'), half: true },
+      { key: 'year_built', label: t('d.bld.year'), type: 'number', half: true },
+      { key: 'floors_above', label: t('d.bld.floorsAbove'), type: 'number', half: true },
+      { key: 'floors_basement', label: t('d.bld.floorsBasement'), type: 'number', half: true },
+      { key: 'land_area', label: t('d.bld.land'), type: 'number', half: true },
+      { key: 'building_area', label: t('d.bld.footprint'), type: 'number', half: true },
+      { key: 'livable_area', label: t('d.bld.livable'), type: 'number', half: true },
+      { key: 'structure', label: t('d.bld.structure'), half: true },
+      { key: 'foundation', label: t('d.bld.foundation'), half: true },
+      { key: 'exterior_cladding', label: t('d.bld.cladding'), half: true },
+      { key: 'roofing', label: t('d.bld.roofing'), half: true },
+      { key: 'fenestration', label: t('d.bld.fenestration'), half: true },
+      { key: 'flooring', label: t('d.bld.flooring'), half: true },
+      { key: 'notes', label: t('common.notes'), type: 'textarea' },
+    ],
+  };
+}
+
+function unitsConfig(t, buildings) {
+  const bldOptions = [{ value: '', label: '—' }, ...buildings.map((b) => ({ value: b.id, label: b.label || b.building_type || b.id }))];
+  return {
+    path: 'units', titleKey: 'd.tab.units', icon: DoorOpen,
+    columns: [
+      { key: 'label', label: t('d.unit.label'), render: (r) => r.label || '—' },
+      { key: 'unit_type', label: t('common.type') },
+      { key: 'area', label: t('d.unit.area'), align: 'num', render: (r) => num(r.area) },
+      { key: 'rent_monthly', label: t('d.unit.rent'), align: 'num', render: (r) => money(r.rent_monthly) },
+      { key: 'other_income', label: t('d.unit.other'), align: 'num', render: (r) => money(r.other_income) },
+      { key: 'lease_end', label: t('d.unit.leaseEnd') },
+      { key: 'is_vacant', label: t('d.unit.vacant'), render: (r) => (Number(r.is_vacant) === 1 ? <Badge tone="warning">{t('d.unit.vacant')}</Badge> : <Badge tone="success">{t('d.unit.occupied')}</Badge>) },
+    ],
+    fields: [
+      { key: 'label', label: t('d.unit.label'), half: true },
+      { key: 'unit_type', label: t('common.type'), placeholder: 'ex. 4½', half: true },
+      { key: 'building_id', label: t('d.tab.buildings'), type: 'select', options: bldOptions, half: true },
+      { key: 'area', label: t('d.unit.area'), type: 'number', half: true },
+      { key: 'bedrooms', label: t('d.unit.bedrooms'), type: 'number', half: true },
+      { key: 'bathrooms', label: t('d.unit.bathrooms'), type: 'number', half: true },
+      { key: 'rent_monthly', label: t('d.unit.rent'), type: 'number', half: true },
+      { key: 'other_income', label: t('d.unit.other'), type: 'number', half: true },
+      { key: 'lease_type', label: t('d.unit.leaseType'), type: 'select', options: LEASE_TYPES.map((v) => ({ value: v, label: v || '—' })), half: true },
+      { key: 'lease_end', label: t('d.unit.leaseEnd'), placeholder: 'AAAA-MM-JJ', half: true },
+      { key: 'occupant', label: t('d.unit.occupant'), half: true },
+      { key: 'is_vacant', label: t('d.unit.vacant'), type: 'checkbox', half: true },
+      { key: 'notes', label: t('common.notes'), type: 'textarea' },
+    ],
+  };
+}
+
+function expensesConfig(t) {
+  return {
+    path: 'expenses', titleKey: 'd.tab.expenses', icon: Receipt,
+    columns: [
+      { key: 'category', label: t('d.exp.category'), render: (r) => t(`d.exp.cat.${r.category}`) || r.category },
+      { key: 'label', label: t('common.name'), render: (r) => r.label || '—' },
+      { key: 'amount', label: t('d.exp.amount'), align: 'num', render: (r) => money(r.amount) },
+      { key: 'period', label: t('d.exp.period'), render: (r) => t(`d.exp.period.${r.period}`) || r.period },
+    ],
+    fields: [
+      { key: 'category', label: t('d.exp.category'), type: 'select', required: true, options: EXPENSE_CATS.map((c) => ({ value: c, label: t(`d.exp.cat.${c}`) })), half: true },
+      { key: 'label', label: t('common.name'), half: true },
+      { key: 'amount', label: t('d.exp.amount'), type: 'number', half: true },
+      { key: 'period', label: t('d.exp.period'), type: 'select', options: [{ value: 'annuel', label: t('d.exp.period.annuel') }, { value: 'mensuel', label: t('d.exp.period.mensuel') }], half: true },
+      { key: 'notes', label: t('common.notes'), type: 'textarea' },
+    ],
+    defaults: { period: 'annuel', category: 'taxes_municipales' },
+  };
+}
+
+function transactionsConfig(t) {
+  return {
+    path: 'transactions', titleKey: 'd.tab.transactions', icon: History,
+    columns: [
+      { key: 'date', label: t('d.tx.date'), render: (r) => r.date || '—' },
+      { key: 'status', label: t('common.status'), render: (r) => <Badge tone="info">{t(`d.tx.st.${r.status}`) || r.status}</Badge> },
+      { key: 'price', label: t('d.tx.price'), align: 'num', render: (r) => money(r.price) },
+      { key: 'source', label: t('d.tx.source') },
+    ],
+    fields: [
+      { key: 'date', label: t('d.tx.date'), placeholder: 'AAAA-MM-JJ', half: true },
+      { key: 'status', label: t('common.status'), type: 'select', options: TX_STATUS.map((s) => ({ value: s, label: t(`d.tx.st.${s}`) })), half: true },
+      { key: 'price', label: t('d.tx.price'), type: 'number', half: true },
+      { key: 'source', label: t('d.tx.source'), placeholder: 'Centris / Registre foncier / JLR', half: true },
+      { key: 'party_seller', label: t('d.tx.seller'), half: true },
+      { key: 'party_buyer', label: t('d.tx.buyer'), half: true },
+      { key: 'notes', label: t('common.notes'), type: 'textarea' },
+    ],
+    defaults: { status: 'inscription' },
+  };
+}
+
+// ─────────────────────────── Generic add/edit modal ───────────────────────────
+function EntityForm({ cfg, propertyId, row, onClose, onSaved }) {
+  const { t } = useI18n();
+  const isEdit = !!row;
+  const [form, setForm] = useState(() => {
+    const init = { ...(cfg.defaults || {}), ...(row || {}) };
+    return init;
+  });
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const save = useMutation({
+    mutationFn: (body) => (isEdit ? api.patch(`/${cfg.path}/${row.id}`, body) : api.post(`/${cfg.path}`, body)),
+    onSuccess: () => { onSaved(); onClose(); },
+  });
+
+  const submit = () => {
+    const body = { ...form, property_id: propertyId };
+    // Normalise les nombres et la case à cocher.
+    for (const fld of cfg.fields) {
+      if (fld.type === 'number' && body[fld.key] != null && body[fld.key] !== '') body[fld.key] = Number(body[fld.key]);
+      if (fld.type === 'checkbox') body[fld.key] = body[fld.key] ? 1 : 0;
+    }
+    save.mutate(body);
+  };
+
+  return (
+    <Modal
+      title={isEdit ? t('common.edit') : t('common.new')}
+      onClose={onClose}
+      size="lg"
+      footer={(
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" disabled={save.isPending} onClick={submit}>{isEdit ? t('common.save') : t('common.create')}</Button>
+        </>
+      )}
+    >
+      {save.isError && <div className="notice notice-warn"><AlertTriangle size={16} />{String(save.error?.message || 'Erreur')}</div>}
+      <div className="field-row">
+        {cfg.fields.map((fld) => {
+          const full = !fld.half;
+          const el = fld.type === 'select' ? (
+            <Select value={form[fld.key] ?? ''} onChange={(e) => set(fld.key, e.target.value)}>
+              {fld.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </Select>
+          ) : fld.type === 'textarea' ? (
+            <Textarea rows={2} value={form[fld.key] ?? ''} onChange={(e) => set(fld.key, e.target.value)} />
+          ) : fld.type === 'checkbox' ? (
+            <input type="checkbox" className="checkbox" checked={!!Number(form[fld.key])} onChange={(e) => set(fld.key, e.target.checked ? 1 : 0)} />
+          ) : (
+            <input className="input" type={fld.type === 'number' ? 'number' : 'text'} value={form[fld.key] ?? ''} placeholder={fld.placeholder} onChange={(e) => set(fld.key, e.target.value)} />
+          );
+          return (
+            <div className="field" key={fld.key} style={full ? { gridColumn: '1 / -1' } : undefined}>
+              <label>{fld.label}{fld.required ? ' *' : ''}</label>
+              {el}
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────── Generic entity table (per tab) ───────────────────────────
+function EntityTable({ cfg, propertyId, items, onChanged }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(null); // row | 'new' | null
+
+  const remove = useMutation({
+    mutationFn: (id) => api.del(`/${cfg.path}/${id}`),
+    onSuccess: () => onChanged(),
+  });
+  const Icon = cfg.icon;
+
+  return (
+    <>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="spacer" />
+        <Button variant="primary" size="sm" icon={Plus} onClick={() => setEditing('new')}>{t('common.add')}</Button>
+      </div>
+      {items.length === 0 ? (
+        <EmptyState icon={Icon} title={t('d.empty')} />
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                {cfg.columns.map((c) => <th key={c.key} className={c.align === 'num' ? 'num' : undefined}>{c.label}</th>)}
+                <th style={{ width: 76 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((r) => (
+                <tr key={r.id} onClick={() => setEditing(r)}>
+                  {cfg.columns.map((c) => (
+                    <td key={c.key} className={c.align === 'num' ? 'num' : undefined}>
+                      {c.render ? c.render(r) : (r[c.key] ?? <span className="muted">—</span>)}
+                    </td>
+                  ))}
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditing(r)} title={t('common.edit')} />
+                    <Button variant="ghost" size="sm" icon={Trash2} onClick={() => { if (confirm(t('common.confirmDelete'))) remove.mutate(r.id); }} title={t('common.delete')} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && (
+        <EntityForm
+          cfg={cfg}
+          propertyId={propertyId}
+          row={editing === 'new' ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { onChanged(); qc.invalidateQueries({ queryKey: ['analysis', propertyId] }); }}
+        />
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────── Profitability (Rentabilité) tab ───────────────────────────
+function ProfitabilityTab({ propertyId }) {
+  const { t } = useI18n();
+  const [value, setValue] = useState('');
+  const [vacancy, setVacancy] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['analysis', propertyId, value, vacancy],
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      if (value !== '') qs.set('value', value);
+      if (vacancy !== '') qs.set('vacancy', String(Number(vacancy) / 100));
+      const s = qs.toString();
+      return api.get(`/properties/${propertyId}/analysis${s ? `?${s}` : ''}`);
+    },
+  });
+
+  if (isLoading) return <div className="muted">…</div>;
+  const f = data?.financials;
+  if (!f) return null;
+
+  const kpis = [
+    { label: t('d.fin.gpi'), value: money(f.grossPotentialIncome), sub: t('d.fin.annual') },
+    { label: t('d.fin.egi'), value: money(f.effectiveGrossIncome), sub: f.vacancyLoss ? `− ${money(f.vacancyLoss)} ${t('d.fin.vacancy')}` : t('d.fin.annual') },
+    { label: t('d.fin.opex'), value: money(f.operatingExpenses), sub: f.expenseRatio != null ? `${t('d.fin.expRatio')} ${pct(f.expenseRatio)}` : '' },
+    { label: t('d.fin.noi'), value: money(f.netOperatingIncome), sub: f.noiPerDoor != null ? `${money(f.noiPerDoor)} ${t('d.fin.perDoor')}` : '' },
+    { label: t('d.fin.capRate'), value: pct(f.capRate, 2), sub: 'TGA' },
+    { label: t('d.fin.grm'), value: mult(f.grossRentMultiplier), sub: 'MRB' },
+    { label: t('d.fin.nrm'), value: mult(f.netRentMultiplier), sub: 'MRN' },
+    { label: t('d.fin.perDoorPrice'), value: money(f.pricePerDoor), sub: `${f.doors} ${t('d.fin.doors')}` },
+  ];
+
+  return (
+    <div>
+      {(f.alerts || []).map((a, i) => (
+        <div key={i} className={`notice notice-${a.level === 'warn' ? 'warn' : 'info'}`}>
+          {a.level === 'warn' ? <AlertTriangle size={16} /> : <Info size={16} />}{a.message}
+        </div>
+      ))}
+
+      <Card style={{ marginBottom: 16 }}>
+        <div className="field-row">
+          <div className="field">
+            <label>{t('d.fin.refValue')}</label>
+            <input className="input" type="number" value={value} placeholder={data?.valueSource === 'transaction active' ? `${num(data.value)} (${t('d.fin.fromTx')})` : t('d.fin.refValueHint')} onChange={(e) => setValue(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>{t('d.fin.vacancyRate')}</label>
+            <input className="input" type="number" value={vacancy} placeholder="0" onChange={(e) => setVacancy(e.target.value)} />
+          </div>
+        </div>
+        <div className="muted" style={{ fontSize: 12 }}>{t('d.fin.note')}</div>
+      </Card>
+
+      <div className="kpi-grid" style={{ marginBottom: 16 }}>
+        {kpis.map((k) => (
+          <div className="kpi" key={k.label}>
+            <div className="label">{k.label}</div>
+            <div className="value">{k.value}</div>
+            {k.sub && <div className="sub">{k.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {f.expenseLines?.length > 0 && (
+        <Card style={{ padding: 0 }}>
+          <table className="table">
+            <thead><tr><th>{t('d.exp.category')}</th><th>{t('common.name')}</th><th className="num">{t('d.fin.annual')}</th></tr></thead>
+            <tbody>
+              {f.expenseLines.map((e) => (
+                <tr key={e.id}><td>{t(`d.exp.cat.${e.category}`) || e.category}</td><td>{e.label}</td><td className="num">{money(e.annual)}</td></tr>
+              ))}
+              <tr><td colSpan={2}><strong>{t('d.fin.opex')}</strong></td><td className="num"><strong>{money(f.operatingExpenses)}</strong></td></tr>
+            </tbody>
+          </table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────── Read-only list (comparables / reports — Module 2) ───────────────────────────
+function ReadOnlyList({ icon: Icon, items, columns, hint }) {
+  const { t } = useI18n();
+  if (!items || items.length === 0) return <EmptyState icon={Icon} title={t('d.empty')} hint={hint} />;
+  return (
+    <div className="table-wrap">
+      <table className="table">
+        <thead><tr>{columns.map((c) => <th key={c.key} className={c.align === 'num' ? 'num' : undefined}>{c.label}</th>)}</tr></thead>
+        <tbody>
+          {items.map((r) => (
+            <tr key={r.id}>{columns.map((c) => <td key={c.key} className={c.align === 'num' ? 'num' : undefined}>{c.render ? c.render(r) : (r[c.key] ?? '—')}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─────────────────────────── Characterization (Caractérisation) ───────────────────────────
+function CharacterizationTab({ bundle, refetch }) {
+  const { t } = useI18n();
+  const p = bundle.property;
+  return (
+    <div>
+      <Card style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <div className="muted">{t('common.type')}</div><div>{p.genre}</div>
+          <div className="muted">Adresse</div><div>{p.address || '—'}{p.city ? `, ${p.city}` : ''}</div>
+          <div className="muted">{t('d.prop.zoning')}</div><div>{p.zoning || '—'}</div>
+          <div className="muted">{t('d.prop.lot')}</div><div className="mono">{p.lot_number || '—'}</div>
+          <div className="muted">MLS / Centris</div><div className="mono">{p.mls_number || '—'}</div>
+          <div className="muted">{t('common.status')}</div><div><Badge tone="neutral">{p.status}</Badge></div>
+        </div>
+      </Card>
+      <EntityTable cfg={buildingsConfig(t)} propertyId={p.id} items={bundle.buildings} onChanged={refetch} />
+    </div>
+  );
+}
+
+// ─────────────────────────── Page ───────────────────────────
+const TABS = [
+  { id: 'charact', labelKey: 'd.tab.charact', icon: Building },
+  { id: 'units', labelKey: 'd.tab.units', icon: DoorOpen },
+  { id: 'expenses', labelKey: 'd.tab.expenses', icon: Receipt },
+  { id: 'profit', labelKey: 'd.tab.profit', icon: Calculator },
+  { id: 'transactions', labelKey: 'd.tab.transactions', icon: History },
+  { id: 'comparables', labelKey: 'd.tab.comparables', icon: Scale },
+  { id: 'reports', labelKey: 'd.tab.reports', icon: FileText },
+];
+
+export default function PropertyDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [tab, setTab] = useState('charact');
+
+  const { data: bundle, isLoading, isError } = useQuery({
+    queryKey: ['bundle', id],
+    queryFn: () => api.get(`/properties/${id}/bundle`),
+  });
+  const refetch = () => qc.invalidateQueries({ queryKey: ['bundle', id] });
+
+  if (isLoading) return <div className="page"><div className="muted">…</div></div>;
+  if (isError || !bundle) return <div className="page"><EmptyState icon={Building} title={t('d.notFound')} action={<Button onClick={() => navigate('/properties')}>{t('d.back')}</Button>} /></div>;
+
+  const p = bundle.property;
+
+  return (
+    <div className="page">
+      <button className="crumb" onClick={() => navigate('/properties')}><ChevronLeft size={16} />{t('d.back')}</button>
+      <div className="page-header">
+        <div>
+          <h1>{p.name || p.address || t('nav.properties')}</h1>
+          <div className="page-subtitle">
+            <Badge tone="info">{p.genre}</Badge>{' '}
+            {p.address ? `${p.address}${p.city ? `, ${p.city}` : ''}` : (p.city || '')}
+          </div>
+        </div>
+      </div>
+
+      <div className="tab-row">
+        <div className="tabs">
+          {TABS.map((tb) => (
+            <button key={tb.id} className={`tab ${tab === tb.id ? 'active' : ''}`} onClick={() => setTab(tb.id)}>{t(tb.labelKey)}</button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'charact' && <CharacterizationTab bundle={bundle} refetch={refetch} />}
+      {tab === 'units' && <EntityTable cfg={unitsConfig(t, bundle.buildings)} propertyId={p.id} items={bundle.units} onChanged={refetch} />}
+      {tab === 'expenses' && <EntityTable cfg={expensesConfig(t)} propertyId={p.id} items={bundle.expenses} onChanged={refetch} />}
+      {tab === 'profit' && <ProfitabilityTab propertyId={p.id} />}
+      {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={p.id} items={bundle.transactions} onChanged={refetch} />}
+      {tab === 'comparables' && (
+        <ReadOnlyList
+          icon={Scale}
+          items={bundle.comparables}
+          hint={t('d.comp.hint')}
+          columns={[
+            { key: 'address', label: 'Adresse' },
+            { key: 'kind', label: t('common.type') },
+            { key: 'date', label: t('d.tx.date') },
+            { key: 'price', label: t('d.tx.price'), align: 'num', render: (r) => money(r.price) },
+            { key: 'area', label: t('d.unit.area'), align: 'num', render: (r) => num(r.area) },
+          ]}
+        />
+      )}
+      {tab === 'reports' && (
+        <ReadOnlyList
+          icon={FileText}
+          items={bundle.reports}
+          hint={t('d.rep.hint')}
+          columns={[
+            { key: 'title', label: t('common.name') },
+            { key: 'report_type', label: t('common.type') },
+            { key: 'date', label: t('d.tx.date') },
+          ]}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Building2, Trash2 } from 'lucide-react';
 import api from '../api/client.js';
@@ -13,6 +14,7 @@ const GENRE_LABEL = {
 
 export default function Properties() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
@@ -64,12 +66,12 @@ export default function Properties() {
             </thead>
             <tbody>
               {rows.map((p) => (
-                <tr key={p.id}>
+                <tr key={p.id} onClick={() => navigate(`/properties/${p.id}`)}>
                   <td><strong>{p.name || <span className="muted">—</span>}</strong>{p.address && <div className="muted" style={{ fontSize: 12 }}>{p.address}</div>}</td>
                   <td><Badge tone="info">{GENRE_LABEL[p.genre] || p.genre}</Badge></td>
                   <td>{p.city || <span className="muted">—</span>}</td>
                   <td><Badge tone="neutral">{p.status}</Badge></td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" icon={Trash2} onClick={() => remove.mutate(p.id)} title={t('common.delete')} />
                   </td>
                 </tr>
