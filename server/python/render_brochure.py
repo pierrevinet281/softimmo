@@ -281,7 +281,9 @@ def page1(c, d, th):
 
     # Pied : courtier (gauche) + bloc prix rouge (droite) + barre rouge
     fy = gy + rows * (rh + rgap) + 28
-    draw_image(c, broker.get("photo"), M, T(fy + 70), 70, 70, radius=4)
+    # Photo du courtier : fournie, sinon portrait par défaut embarqué (fond blanc).
+    bphoto = broker.get("photo") or asset("broker", "portrait.png")
+    draw_image(c, bphoto, M, T(fy + 70), 70, 70, radius=4)
     bx = M + 84; bw = PW / 2 - 10 - bx  # largeur dispo avant le bloc prix
     draw_fit(c, broker.get("name", ""), bx, T(fy + 14), bw, F_BOLD, 15, INK, min_size=10)
     for i, ln in enumerate([broker.get("title", ""), broker.get("subtitle", ""), broker.get("agency", "")]):
