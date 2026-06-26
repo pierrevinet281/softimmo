@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 24 sessions, tout sur `main`) :**
+**Où on en est (après 25 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,16 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 25 — Brochure : remplir la page 8,5×11 + logo mieux placé (2026-06-26)
+
+- Page **est** bien 612×792 (8,5×11) ; le « trop large » venait du **contenu qui ne remplissait
+  pas la hauteur**. Corrigé : **photos hautes** (`iw_h` 200→250) + espacement grille
+  (`rgap` 6→8) → le contenu occupe toute la page (courtier/prix près du bas, marge ~30).
+- **Logo eXp** agrandi (hauteur 56→66) et **titre positionné juste après le logo** (`tx` dynamique
+  = `M + largeur_logo + 22`) au lieu d'un décalage fixe. Conforme au modèle.
 
 ---
 

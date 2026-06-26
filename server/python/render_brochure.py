@@ -232,14 +232,15 @@ def page1(c, d, th):
             c.drawRightString(PW - M, T(46), "COLLECTION"); c.drawRightString(PW - M, T(66), "DE LUXE")
     else:
         logo = img.get("logo") or th.get("logo_default")
+        tx = M + 175
         if logo and os.path.exists(logo):
             lim = _load(logo, rgb=False)
-            lh = 56; lw = lh * (lim.size[0] / lim.size[1])  # taille par hauteur, aspect préservé
+            lh = 66; lw = lh * (lim.size[0] / lim.size[1])  # taille par hauteur, aspect préservé
             c.drawImage(ImageReader(lim), M, T(bh) + (bh - lh) / 2, lw, lh, mask="auto")
+            tx = M + lw + 22  # titre juste après le logo
         else:
             c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
             c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
-        tx = M + 175
         title_w = PW - M - 167 - tx  # largeur dispo jusqu'à la médaille (ms 155 + écart)
         draw_fit(c, title, tx, T(34), title_w, F_BOLD, 24, th["title_fg"], min_size=15)
         draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, th["sub_fg"], min_size=9)
@@ -247,8 +248,8 @@ def page1(c, d, th):
         # La médaille est dessinée APRÈS les images (plus bas) pour que ses rubans débordent
         # par-dessus la photo/carte (cf. brochure de référence).
 
-    # Images : photo (gauche) + carte (droite)
-    iy_top = bh + 14; iw_h = 200
+    # Images : photo (gauche) + carte (droite) — hautes pour remplir la page (8,5×11).
+    iy_top = bh + 14; iw_h = 250
     gap = 12; lw = (PW - 2 * M - gap) * 0.56; rw = (PW - 2 * M - gap) - lw
     draw_image(c, img.get("hero"), M, T(iy_top + iw_h), lw, iw_h, radius=4)
     draw_image(c, img.get("map"), M + lw + gap, T(iy_top + iw_h), rw, iw_h, radius=4)
@@ -281,7 +282,7 @@ def page1(c, d, th):
     # Grille de spécifications (2 colonnes de paires libellé/valeur)
     gy = ay + 48
     left = d.get("specs_left", []); right = d.get("specs_right", [])
-    rows = max(len(left), len(right)); rh = 28; rgap = 6
+    rows = max(len(left), len(right)); rh = 28; rgap = 8
     colw = (PW - 2 * M - 24) / 2  # 2 demi-largeurs (chaque = libellé + valeur)
     lab_w = colw * 0.52; val_w = colw - lab_w
 
