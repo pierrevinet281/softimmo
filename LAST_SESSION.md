@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 22 sessions, tout sur `main`) :**
+**Où on en est (après 23 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,15 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 23 — Brochure unifamiliale : médaille (rubans sur carte) + héros ×2 (2026-06-26)
+
+- Analyse alpha du PNG médaille : centre du cercle à **0,31 depuis le haut** (→ 0,69 du bas).
+  Facteur corrigé (était 0,60) + médaille à 150 px → **cercle centré verticalement sur la bande**
+  et **rubans débordant par-dessus la carte** (médaille dessinée après l'image). Conforme à la réf.
+- **Super-héros page 2 doublé** (hauteur 104 → 208 px).
 
 ---
 
