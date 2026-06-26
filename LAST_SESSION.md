@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 20 sessions, tout sur `main`) :**
+**Où on en est (après 21 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,16 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 21 — Brochure unifamiliale : logo eXp + photo SuperPierre (2026-06-26)
+
+- Actifs : `exp_logo_white.png`/`exp_logo_black.png` (logo eXp Agence Immobilière) + `superpierre.png`
+  (photo, costume eXp, cape rouge, transparent). `render_brochure.py` : thème unifamilial
+  `logo_default`. **Bannière p.1** : vrai logo eXp (blanc, aspect préservé, sans recadrage) remplace
+  le texte. **Page 2** : `hero_default` = photo **SuperPierre** (remplace l'illustration `hero.png`,
+  supprimée). Rendu vérifié, fidèle au modèle. Exemple régénéré.
 
 ---
 
