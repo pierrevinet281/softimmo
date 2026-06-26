@@ -24,6 +24,30 @@ export function makeCrudRouter({ repo, entityType, schema, requiredOnCreate = []
     res.status(201).json(row);
   }));
 
+  // Création en lot (import / copier-coller). Best-effort : crée chaque rangée valide,
+  // renvoie { created, errors } pour signaler les rangées rejetées sans tout annuler.
+  r.post('/bulk', wrap(async (req, res) => {
+    const rows = Array.isArray(req.body) ? req.body : (req.body?.rows || []);
+    if (!Array.isArray(rows) || rows.length === 0) throw badRequest('rows (tableau non vide) est requis');
+    if (rows.length > 2000) throw badRequest('Trop de rangées (max 2000)');
+    const created = []; const errors = [];
+    rows.forEach((raw, i) => {
+      try {
+        const data = validate(raw);
+        for (const f of requiredOnCreate) {
+          if (data[f] === undefined || data[f] === null || data[f] === '') throw new Error(`${f} est requis`);
+        }
+        created.push(repo.create(data));
+      } catch (e) {
+        errors.push({ index: i, error: e.message });
+      }
+    });
+    if (created.length) {
+      Activity.log({ kind: 'import', entity_type: entityType, summary: `Import ${created.length} ${entityType}(s)` });
+    }
+    res.status(201).json({ created, errors, count: created.length });
+  }));
+
   r.get('/:id', wrap(async (req, res) => {
     const row = repo.get(req.params.id);
     if (!row) throw notFound(`${entityType} introuvable`);

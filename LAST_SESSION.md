@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 7 sessions, tout sur `main`) :**
+**Où on en est (après 8 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,30 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 8 — UX : saisie en ligne (dépenses) + import du rent roll (2026-06-26)
+
+### Réalisé (retours utilisateur)
+- **Édition en ligne des dépenses** : composant `InlineTable` (`components/EntityTable.jsx`) —
+  cellules éditables (input/select), **rangée d'ajout direct** en bas (saisie rapide sans boîte
+  de dialogue ; commit au blur de la rangée ou via Entrée / bouton +). Onglet **Dépenses** câblé
+  (`ExpensesTab`), **bouton + dialogue conservé** (« Ajouter (formulaire) »).
+- **Import / copier-coller du rent roll** : composant `PasteImportModal` — coller un tableau
+  Excel/Sheets (TSV/CSV/`;` auto-détecté), **mapping de colonnes** (auto-rapproché par en-tête),
+  aperçu, conversion nombres FR/EN. Onglet **Rent roll** câblé (`UnitsTab`) avec bouton
+  « Importer / coller », **table + dialogue conservés**.
+- **Endpoint bulk** : `POST /:entity/bulk` (fabrique `_crud.js`) — création en lot best-effort,
+  retourne `{ created, errors, count }` (rangées invalides signalées sans tout annuler ; max 2000).
+- **i18n FR/EN** (`imp.*`, `d.exp.inline*`) ; CSS cellules (`.cell-input`, `.paste-preview`).
+- **Vérifs** : `vite build` OK (1654 modules) ; bulk testé (2 créées / 1 rejetée avec message).
+
+### Décisions (session 8)
+- **Deux voies d'ajout conservées** partout (dialogue ET saisie rapide) : inline pour les
+  dépenses (peu de champs), import collé pour le rent roll (dizaines/centaines d'unités).
+- Inputs **non contrôlés** en édition de cellule (commit au blur) → pas de perte de focus au
+  refetch ; `InlineTable` réutilisable pour d'autres entités.
 
 ---
 

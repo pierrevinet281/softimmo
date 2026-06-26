@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
-  History, Scale, FileText, AlertTriangle, Info,
+  History, Scale, FileText, AlertTriangle, Info, Plus, Upload,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState } from '../components/ui.jsx';
-import { EntityTable } from '../components/EntityTable.jsx';
+import { EntityTable, EntityForm, InlineTable, PasteImportModal } from '../components/EntityTable.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { money, num, pct, mult } from '../lib/format.js';
 
@@ -241,6 +241,44 @@ function CharacterizationTab({ bundle, refetch }) {
   );
 }
 
+// ─────────────────────────── Dépenses : tableau à édition en ligne (+ dialogue) ───────────────────────────
+function ExpensesTab({ p, items, refetch }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [dialog, setDialog] = useState(false);
+  const cfg = expensesConfig(t);
+  const onSaved = () => { refetch(); qc.invalidateQueries({ queryKey: ['analysis', p.id] }); };
+  return (
+    <div>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="muted" style={{ fontSize: 13 }}>{t('d.exp.inlineHint')}</div>
+        <div className="spacer" />
+        <Button variant="outline" size="sm" icon={Plus} onClick={() => setDialog(true)}>{t('d.exp.addForm')}</Button>
+      </div>
+      <InlineTable cfg={cfg} propertyId={p.id} items={items} onChanged={onSaved} extraInvalidate={[['analysis', p.id]]} />
+      {dialog && <EntityForm cfg={cfg} propertyId={p.id} row={null} onClose={() => setDialog(false)} onSaved={onSaved} />}
+    </div>
+  );
+}
+
+// ─────────────────────────── Rent roll : table + import copier-coller ───────────────────────────
+function UnitsTab({ p, items, buildings, refetch }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [importing, setImporting] = useState(false);
+  const cfg = unitsConfig(t, buildings);
+  const onChanged = () => { refetch(); qc.invalidateQueries({ queryKey: ['analysis', p.id] }); };
+  return (
+    <>
+      <EntityTable
+        cfg={cfg} propertyId={p.id} items={items} onChanged={refetch} extraInvalidate={[['analysis', p.id]]}
+        headerActions={<Button variant="outline" size="sm" icon={Upload} onClick={() => setImporting(true)}>{t('imp.paste')}</Button>}
+      />
+      {importing && <PasteImportModal cfg={cfg} propertyId={p.id} onClose={() => setImporting(false)} onDone={onChanged} />}
+    </>
+  );
+}
+
 // ─────────────────────────── Page ───────────────────────────
 const TABS = [
   { id: 'charact', labelKey: 'd.tab.charact', icon: Building },
@@ -292,8 +330,8 @@ export default function PropertyDetail() {
       </div>
 
       {tab === 'charact' && <CharacterizationTab bundle={bundle} refetch={refetch} />}
-      {tab === 'units' && <EntityTable cfg={unitsConfig(t, bundle.buildings)} propertyId={p.id} items={bundle.units} onChanged={refetch} extraInvalidate={[['analysis', p.id]]} />}
-      {tab === 'expenses' && <EntityTable cfg={expensesConfig(t)} propertyId={p.id} items={bundle.expenses} onChanged={refetch} extraInvalidate={[['analysis', p.id]]} />}
+      {tab === 'units' && <UnitsTab p={p} items={bundle.units} buildings={bundle.buildings} refetch={refetch} />}
+      {tab === 'expenses' && <ExpensesTab p={p} items={bundle.expenses} refetch={refetch} />}
       {tab === 'profit' && <ProfitabilityTab propertyId={p.id} />}
       {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={p.id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', p.id]]} />}
       {tab === 'comparables' && (
