@@ -19,11 +19,14 @@ function monthsBetween(fromStr, toStr) {
   return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) + (b.getDate() - a.getDate()) / 30;
 }
 
-// Une inclusion peut être un tableau de clés ou un objet {clé: truthy}.
-function hasIncl(inclusions, key) {
-  if (!inclusions) return false;
-  if (Array.isArray(inclusions)) return inclusions.includes(key);
-  return !!inclusions[key];
+// Quantité d'une inclusion. Accepte un objet {clé: qté} (forme courante), un objet
+// {clé: true} (qté 1), ou un tableau de clés (qté 1 par présence) — rétrocompatible.
+function inclQty(inclusions, key) {
+  if (!inclusions) return 0;
+  if (Array.isArray(inclusions)) return inclusions.includes(key) ? 1 : 0;
+  const v = inclusions[key];
+  if (v === true) return 1;
+  return Number(v) || 0;
 }
 
 // Libellé lisible à partir d'une clé d'inclusion (déterministe, sans catalogue codé en dur).
@@ -71,22 +74,22 @@ export function adjustComparable(subject, comp, params, asOf) {
     });
   }
 
-  // 2) Inclusions : pour chaque élément où sujet ≠ comparable, ± valeur marché.
+  // 2) Inclusions : pour chaque élément, ajustement = (qté sujet − qté comp) × prix unitaire.
   const inclPrices = params.inclusions || {};
   for (const [key, priceRaw] of Object.entries(inclPrices)) {
     const price = n(priceRaw);
     if (!price) continue;
-    const sHas = hasIncl(subject.inclusions, key);
-    const cHas = hasIncl(c.inclusions, key);
-    if (sHas === cHas) continue;
-    const delta = (sHas ? 1 : 0) - (cHas ? 1 : 0); // +1 si le sujet l'a en plus, −1 sinon
+    const sQty = inclQty(subject.inclusions, key);
+    const cQty = inclQty(c.inclusions, key);
+    if (sQty === cQty) continue;
+    const delta = sQty - cQty; // >0 : le sujet en a plus → on ajoute ; <0 : on retranche
     const amount = delta * price;
+    const label = prettyIncl(key);
     lines.push({
-      key: `incl_${key}`, label: prettyIncl(key),
-      subject: sHas ? 'oui' : 'non', comp: cHas ? 'oui' : 'non', delta, unit: '', rate: price, amount,
-      explanation: sHas
-        ? `Le sujet possède « ${prettyIncl(key)} », pas le comparable : on ajoute ${price.toLocaleString('fr-CA')} $.`
-        : `Le comparable possède « ${prettyIncl(key)} », pas le sujet : on retranche ${price.toLocaleString('fr-CA')} $.`,
+      key: `incl_${key}`, label,
+      subject: sQty, comp: cQty, delta, unit: '', rate: price, amount,
+      explanation: `« ${label} » : ${sQty} (sujet) vs ${cQty} (comparable), écart ${delta > 0 ? '+' : ''}${delta} ; `
+        + `à ${price.toLocaleString('fr-CA')} $/unité, on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(amount).toLocaleString('fr-CA')} $.`,
     });
   }
 

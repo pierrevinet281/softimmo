@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  FileBarChart, Scale, Calculator, AlertTriangle, Info, ShieldAlert, Save,
+  FileBarChart, Scale, Calculator, AlertTriangle, Info, ShieldAlert, Save, Upload, Plus, Trash2, Ruler,
 } from 'lucide-react';
 import api from '../api/client.js';
-import { Card, Button, Select, EmptyState, Badge } from '../components/ui.jsx';
-import { EntityTable } from '../components/EntityTable.jsx';
+import { Card, Button, Select, Modal, EmptyState, Badge } from '../components/ui.jsx';
+import { EntityTable, InclusionsField } from '../components/EntityTable.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { money, num } from '../lib/format.js';
 
@@ -215,6 +215,71 @@ function AcmResults({ result, clientView, setClientView }) {
   );
 }
 
+// ─────────────────────────── Calculatrice de superficie ───────────────────────────
+// Additionne des pièces/sections (longueur × largeur) pour obtenir une superficie totale,
+// quand le courtier ne connaît pas la superficie par cœur. Déterministe.
+function SurfaceCalculator({ onApply, onClose }) {
+  const { t } = useI18n();
+  const [rows, setRows] = useState([{ label: '', l: '', w: '' }]);
+  const areaOf = (r) => (Number(r.l) || 0) * (Number(r.w) || 0);
+  const total = Math.round(rows.reduce((s, r) => s + areaOf(r), 0));
+  const setRow = (i, k, v) => setRows(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
+  const add = () => setRows([...rows, { label: '', l: '', w: '' }]);
+  const del = (i) => setRows(rows.length > 1 ? rows.filter((_, j) => j !== i) : rows);
+  return (
+    <Modal
+      title={t('ev.calc.title')}
+      onClose={onClose}
+      footer={(
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" disabled={!total} onClick={() => onApply(total)}>{t('ev.calc.apply')} ({num(total)} pi²)</Button>
+        </>
+      )}
+    >
+      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{t('ev.calc.hint')}</div>
+      <div className="table-wrap">
+        <table className="table">
+          <thead><tr><th>{t('ev.calc.room')}</th><th className="num">{t('ev.calc.length')}</th><th className="num">{t('ev.calc.width')}</th><th className="num">{t('ev.calc.area')}</th><th style={{ width: 40 }} /></tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td className="cell"><input className="cell-input" value={r.label} placeholder={`${t('ev.calc.room')} ${i + 1}`} onChange={(e) => setRow(i, 'label', e.target.value)} /></td>
+                <td className="cell"><input className="cell-input num" type="number" value={r.l} onChange={(e) => setRow(i, 'l', e.target.value)} /></td>
+                <td className="cell"><input className="cell-input num" type="number" value={r.w} onChange={(e) => setRow(i, 'w', e.target.value)} /></td>
+                <td className="num">{num(Math.round(areaOf(r)))}</td>
+                <td><Button variant="ghost" size="sm" icon={Trash2} onClick={() => del(i)} /></td>
+              </tr>
+            ))}
+            <tr style={{ fontWeight: 700 }}><td colSpan={3}>{t('ev.calc.total')}</td><td className="num">{num(total)} pi²</td><td /></tr>
+          </tbody>
+        </table>
+      </div>
+      <Button variant="outline" size="sm" icon={Plus} onClick={add} style={{ marginTop: 12 }}>{t('ev.calc.addRoom')}</Button>
+    </Modal>
+  );
+}
+
+// ─────────────────────────── Import PDF Matrix ───────────────────────────
+function MatrixImport({ propertyId, onDone }) {
+  const { t } = useI18n();
+  const ref = useRef(null);
+  const up = useMutation({
+    mutationFn: (file) => { const fd = new FormData(); fd.append('file', file); return api.upload(`/properties/${propertyId}/comparables/import-matrix`, fd); },
+    onSuccess: (r) => { onDone(r); if (r?.count != null) alert(t('ev.importDone').replace('{n}', r.count)); },
+    onError: (e) => alert(String(e?.message || 'Erreur')),
+  });
+  return (
+    <>
+      <input type="file" accept="application/pdf" ref={ref} style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) up.mutate(f); e.target.value = ''; }} />
+      <Button variant="outline" size="sm" icon={Upload} disabled={up.isPending} onClick={() => ref.current?.click()}>
+        {up.isPending ? t('ev.importing') : t('ev.importMatrix')}
+      </Button>
+    </>
+  );
+}
+
 // ─────────────────────────── Page ───────────────────────────
 export default function Evaluation() {
   const { t } = useI18n();
@@ -224,6 +289,7 @@ export default function Evaluation() {
   const [params, setParams] = useState(null);
   const [clientView, setClientView] = useState(false);
   const [result, setResult] = useState(null);
+  const [calcOpen, setCalcOpen] = useState(false);
 
   const { data: props } = useQuery({ queryKey: ['properties', 'all'], queryFn: () => api.get('/properties?limit=500&sort=updated_at&dir=desc') });
   const { data: paramData } = useQuery({ queryKey: ['acmParams'], queryFn: () => api.get('/acm/params') });
@@ -239,7 +305,7 @@ export default function Evaluation() {
   if (bundle && subject == null) {
     const livable = (bundle.buildings || []).reduce((s, x) => s + (Number(x.livable_area) || 0), 0) || '';
     const year = (bundle.buildings || []).find((x) => x.year_built)?.year_built ?? '';
-    setSubject({ living_area: livable, year_built: year, inclusions: [], municipal_assessment: bundle.property?.municipal_assessment ?? '' });
+    setSubject({ living_area: livable, year_built: year, inclusions: {}, municipal_assessment: bundle.property?.municipal_assessment ?? '' });
   }
 
   const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).map((k) => ({ value: k, label: prettyIncl(k) })), [params]);
@@ -266,7 +332,10 @@ export default function Evaluation() {
           <h1>{t('nav.evaluation')}</h1>
           <div className="page-subtitle">{t('ev.subtitle')}</div>
         </div>
+        <div className="spacer" style={{ flex: 1 }} />
+        <Button variant="outline" icon={Ruler} onClick={() => setCalcOpen(true)}>{t('ev.calc.btn')}</Button>
       </div>
+      {calcOpen && <SurfaceCalculator onClose={() => setCalcOpen(false)} onApply={(total) => { setCalcOpen(false); if (subject) setSubject({ ...subject, living_area: total }); }} />}
 
       <Card style={{ marginBottom: 16 }}>
         <div className="field" style={{ marginBottom: 0, maxWidth: 480 }}>
@@ -293,22 +362,8 @@ export default function Evaluation() {
               <div className="field"><label>{t('ev.assessment')}</label><input className="input" type="number" value={subject.municipal_assessment ?? ''} onChange={(e) => setSubject({ ...subject, municipal_assessment: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
-              <label>{t('ev.inclusions')}</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {inclOptions.map((o) => {
-                  const arr = subject.inclusions || [];
-                  const checked = arr.includes(o.value);
-                  return (
-                    <label key={o.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                      <input type="checkbox" className="checkbox" checked={checked} onChange={() => {
-                        const s = new Set(arr); if (s.has(o.value)) s.delete(o.value); else s.add(o.value);
-                        setSubject({ ...subject, inclusions: [...s] });
-                      }} />
-                      {o.label}
-                    </label>
-                  );
-                })}
-              </div>
+              <label>{t('ev.inclusions')} ({t('ev.inclQty')})</label>
+              <InclusionsField value={subject.inclusions} options={inclOptions} onChange={(v) => setSubject({ ...subject, inclusions: v })} />
             </div>
           </Card>
 
@@ -319,6 +374,7 @@ export default function Evaluation() {
             propertyId={propertyId}
             items={bundle?.comparables || []}
             onChanged={refetchComps}
+            headerActions={<MatrixImport propertyId={propertyId} onDone={refetchComps} />}
           />
 
           {/* 3. Paramètres */}

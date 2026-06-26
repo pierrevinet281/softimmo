@@ -1,11 +1,16 @@
 // Mounts CRUD routes for all Softimmo business entities + a property "bundle" endpoint
 // that returns a property with all its children (for the Module 1 analysis view).
 import { Router } from 'express';
+import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
+import multer from 'multer';
 import { z } from 'zod';
-import { wrap, notFound } from '../lib/errors.js';
+import { wrap, notFound, badRequest } from '../lib/errors.js';
+import { runWorker } from '../services/python.js';
 import { makeCrudRouter } from './_crud.js';
 import {
-  Clients, Properties, Buildings, Units, Expenses, Transactions, Comparables, Reports, Documents,
+  Clients, Properties, Buildings, Units, Expenses, Transactions, Comparables, Reports, Documents, Activity,
 } from '../db/repositories/index.js';
 import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js';
 import { computeAcm } from '../engine/acm.js';
@@ -112,6 +117,33 @@ export default function mountBusiness(parent = Router()) {
 
     const result = computeAcm({ subject, comparables, params, asOf: body.asOf });
     res.json({ property_id: pid, subject, params, ...result });
+  }));
+
+  // Import d'un PDF Matrix « 4 par page courtier » → extraction (worker Python pdfplumber)
+  // → création des comparables (déterministe, validation humaine ensuite dans le tableau).
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+  parent.post('/properties/:id/comparables/import-matrix', upload.single('file'), wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    if (!req.file) throw badRequest('Aucun fichier téléversé');
+
+    const tmp = path.join(os.tmpdir(), `matrix-${Date.now()}-${Math.round(Math.random() * 1e6)}.pdf`);
+    fs.writeFileSync(tmp, req.file.buffer);
+    let extracted;
+    try {
+      const out = await runWorker('acm_matrix', { path: tmp }, { timeoutMs: 60000 });
+      extracted = out.comparables || [];
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ }
+    }
+
+    const created = [];
+    for (const c of extracted) {
+      const { original_price, postal_code, ...rest } = c; // colonnes non présentes sur comparables
+      created.push(Comparables.create({ ...rest, property_id: property.id, seller_redacted: 1 }));
+    }
+    Activity.log({ kind: 'import', entity_type: 'comparable', entity_id: property.id, summary: `Import Matrix : ${created.length} comparable(s)` });
+    res.status(201).json({ count: created.length, comparables: created });
   }));
 
   return parent;

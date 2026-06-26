@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 8 sessions, tout sur `main`) :**
+**Où on en est (après 9 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,34 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 9 — Évaluation : calculatrice, inclusions quantifiées, import PDF Matrix (2026-06-26)
+
+### Réalisé (retours utilisateur)
+- **Import PDF Matrix « 4 par page courtier »** : worker Python `server/python/acm_matrix.py`
+  (pdfplumber, déterministe) — découpe par en-tête « <prix> $ No Centris <no>(<code>) », extrait
+  prix vendu/inscrit, adresse/ville, dates, JSM, année, sup. habitable/terrain, éval. foncière,
+  CAC, **inclusions quantifiées** (garage (2), piscine, foyer, spa…). Endpoint
+  `POST /properties/:id/comparables/import-matrix` (multer) → crée les comparables (source
+  « Matrix PDF », `seller_redacted`). Bouton **« Importer PDF Matrix »** sur l'onglet Comparables.
+  Testé sur l'exemple : **6 comparables** extraits (prix, superficies, éval., inclusions) → ACM OK.
+  `pdfplumber`/`pypdf` ajoutés à `requirements.txt` (installés dans le venv).
+- **Inclusions avec QUANTITÉS** (ex. 4 foyers, 2 piscines, garage double) : stockage `{clé:qté}`,
+  moteur ACM ajuste `(qté sujet − qté comp) × prix` avec explication ; `InclusionsField`
+  (champ partagé) passe de cases à des **compteurs**. Rétrocompatible (tableau de clés → qté 1).
+- **Calculatrice de superficie** (bouton en haut à droite de `/evaluation`) : additionne des
+  pièces (longueur × largeur) → superficie totale, **appliquée au sujet**. Déterministe.
+- **i18n FR/EN** (`ev.calc.*`, `ev.import*`, `ev.inclQty`). **Vérifs** : `vite build` OK ;
+  moteur quantités testé (4 vs 1 foyer → +15 000 $) ; import HTTP testé (6 comparables persistés,
+  ACM attendu 1 479 670 $).
+
+### Décisions (session 9)
+- **Import Matrix = création directe** des comparables (puis édition/validation dans le tableau,
+  conforme à « table extraite éditable » de `docs/12` §1) plutôt qu'un aperçu intermédiaire.
+- **Extraction par regex sur le texte positionnel** (pdfplumber) : le format Matrix est régulier ;
+  champs accentués parfois en mojibake (cosmétique, n'affecte pas les nombres). IA non utilisée.
 
 ---
 
