@@ -82,9 +82,12 @@ F_BOLD = "Sg-B" if _reg("Sg-B", os.path.join(WF, "segoeuib.ttf")) else "Helvetic
 F_SB = "Sg-SB" if _reg("Sg-SB", os.path.join(WF, "seguisb.ttf")) else F_BOLD
 
 
+# Marge extérieure (haut/gauche/droite/bas) — rien ne touche le bord (sécurité d'impression).
+MO = 30
+
 def T(y):
-    """Convertit une coordonnée 'depuis le haut' en coordonnée ReportLab (depuis le bas)."""
-    return PH - y
+    """Coordonnée 'depuis le haut' (sous la marge supérieure) → coordonnée ReportLab (du bas)."""
+    return PH - MO - y
 
 
 def _cover(img, tw, th):
@@ -202,13 +205,13 @@ THEMES = {
 
 # ───────────────────────────── Page 1 ─────────────────────────────
 def page1(c, d, th):
-    M = 36
+    M = MO
     img = d.get("images", {})
     broker = d.get("broker", {})
 
-    # Bannière (variante selon le thème)
+    # Bannière (variante selon le thème) — insérée dans la marge (ne touche pas les bords).
     bh = 96
-    c.setFillColor(th["banner_bg"]); c.rect(0, T(bh), PW, bh, fill=1, stroke=0)
+    c.setFillColor(th["banner_bg"]); c.rect(M, T(bh), PW - 2 * M, bh, fill=1, stroke=0)
     title = d.get("title", "")
     if th["title_upper"]:
         title = title.upper()
@@ -237,7 +240,7 @@ def page1(c, d, th):
             c.setFillColor(WHITE); c.setFont(F_BOLD, 30); c.drawString(M, T(bh) + 36, "eXp")
             c.setFont(F_REG, 9); c.drawString(M, T(bh) + 22, "AGENCE IMMOBILIÈRE")
         tx = M + 175
-        title_w = PW - M - 150 - tx  # largeur dispo jusqu'à la médaille
+        title_w = PW - M - 167 - tx  # largeur dispo jusqu'à la médaille (ms 155 + écart)
         draw_fit(c, title, tx, T(34), title_w, F_BOLD, 24, th["title_fg"], min_size=15)
         draw_fit(c, d.get("city", ""), tx, T(54), title_w, F_REG, 13, th["sub_fg"], min_size=9)
         draw_fit(c, d.get("summary_line", ""), tx, T(74), title_w, F_REG, 13, th["sub_fg"], min_size=9)
@@ -253,16 +256,15 @@ def page1(c, d, th):
     # Médaille « Propriété Sélectionnée » (modèle unifamilial) : centre du badge aligné sur le
     # centre vertical de la bande ; rubans débordant sous la bande, par-dessus l'image.
     if th["banner"] == "medal":
-        band_center = PH - bh / 2.0
         medal = img.get("medal") or th.get("medal_default")
         if medal and os.path.exists(medal):
-            ms = 150
-            # Centre du cercle du badge mesuré à ~0,31 depuis le haut du PNG → 0,69 depuis le bas.
-            # On l'aligne sur le centre vertical de la bande ; les rubans (bas) débordent ensuite
-            # par-dessus la carte (la médaille est dessinée APRÈS l'image).
-            medal_y = band_center - 0.69 * ms
-            c.drawImage(ImageReader(_load(medal, rgb=False)), PW - M - ms, medal_y, ms, ms, mask="auto")
+            # ms=155 : avec le cercle à 0,31 du haut du PNG, aligner le SOMMET de la médaille sur
+            # le haut de la bande place le cercle pile au centre vertical de la bande (0,31·155≈48
+            # = bh/2) — donc pas de débordement vers le haut, et les rubans débordent sur la carte.
+            ms = 155
+            c.drawImage(ImageReader(_load(medal, rgb=False)), PW - M - ms, T(0) - ms, ms, ms, mask="auto")
         else:
+            band_center = T(bh / 2.0)
             mx = PW - M - 50
             c.setFillColor(HexColor("#0F2E5C")); c.circle(mx, band_center, 46, fill=1, stroke=0)
             c.setStrokeColor(HexColor("#C9A24B")); c.setLineWidth(3); c.circle(mx, band_center, 46, fill=0, stroke=1)
@@ -325,11 +327,11 @@ def page1(c, d, th):
 
 # ───────────────────────────── Page 2 ─────────────────────────────
 def page2(c, d, th):
-    M = 36
+    M = MO
     rooms = d.get("rooms", [])
-    # Bannière (couleur du thème)
+    # Bannière (couleur du thème) — insérée dans la marge.
     bh = 40
-    c.setFillColor(th["p2_banner_bg"]); c.rect(0, T(bh), PW, bh, fill=1, stroke=0)
+    c.setFillColor(th["p2_banner_bg"]); c.rect(M, T(bh), PW - 2 * M, bh, fill=1, stroke=0)
     draw_fit(c, d.get("headline", d.get("title", "")), M, T(27), PW - 2 * M, F_BOLD, 18, th["p2_title_fg"], min_size=12)
 
     # Description (boîte selon le thème, hauteur bornée — le texte s'ajuste pour ne jamais déborder)
