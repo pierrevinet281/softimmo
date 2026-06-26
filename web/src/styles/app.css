@@ -207,6 +207,7 @@ table.table { width: 100%; border-collapse: collapse; }
 .cell-input:focus { outline: none; border-color: var(--color-accent); background: var(--color-bg-card); box-shadow: 0 0 0 2px var(--color-accent-subtle); }
 .cell-input.num { text-align: right; font-family: var(--font-mono); }
 .inline-newrow td { background: var(--color-bg-secondary); }
+.table tbody tr.row-selected { background: var(--color-accent-subtle); }
 .paste-preview { max-height: 280px; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
 .paste-preview table { font-size: 12px; }
 .paste-preview th, .paste-preview td { padding: 6px 8px; white-space: nowrap; }

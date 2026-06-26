@@ -106,20 +106,36 @@ export function InclusionsField({ value, options, onChange }) {
 }
 
 // Tableau d'entités avec ajout/édition/suppression. `extraInvalidate` : queryKeys à rafraîchir.
-export function EntityTable({ cfg, propertyId, items, onChanged, extraInvalidate = [], headerActions = null }) {
+export function EntityTable({ cfg, propertyId, items, onChanged, extraInvalidate = [], headerActions = null, selectable = false }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [editing, setEditing] = useState(null);
+  const [selected, setSelected] = useState(() => new Set());
 
+  const afterChange = () => { onChanged(); extraInvalidate.forEach((k) => qc.invalidateQueries({ queryKey: k })); };
   const remove = useMutation({
     mutationFn: (id) => api.del(`/${cfg.path}/${id}`),
-    onSuccess: () => { onChanged(); extraInvalidate.forEach((k) => qc.invalidateQueries({ queryKey: k })); },
+    onSuccess: afterChange,
+  });
+  const bulkRemove = useMutation({
+    mutationFn: (ids) => api.post(`/${cfg.path}/bulk-delete`, { ids }),
+    onSuccess: () => { setSelected(new Set()); afterChange(); },
   });
   const Icon = cfg.icon;
+
+  const toggle = (id) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const allChecked = items.length > 0 && items.every((r) => selected.has(r.id));
+  const toggleAll = () => setSelected(allChecked ? new Set() : new Set(items.map((r) => r.id)));
 
   return (
     <>
       <div className="toolbar" style={{ marginBottom: 12 }}>
+        {selectable && selected.size > 0 && (
+          <Button variant="danger" size="sm" icon={Trash2}
+            onClick={() => { if (confirm(t('common.confirmDeleteN').replace('{n}', selected.size))) bulkRemove.mutate([...selected]); }}>
+            {t('common.deleteN').replace('{n}', selected.size)}
+          </Button>
+        )}
         <div className="spacer" />
         {headerActions}
         <Button variant="primary" size="sm" icon={Plus} onClick={() => setEditing('new')}>{cfg.addLabel || t('common.add')}</Button>
@@ -131,13 +147,19 @@ export function EntityTable({ cfg, propertyId, items, onChanged, extraInvalidate
           <table className="table">
             <thead>
               <tr>
+                {selectable && <th style={{ width: 36 }}><input type="checkbox" className="checkbox" checked={allChecked} onChange={toggleAll} /></th>}
                 {cfg.columns.map((c) => <th key={c.key} className={c.align === 'num' ? 'num' : undefined}>{c.label}</th>)}
                 <th style={{ width: 76 }} />
               </tr>
             </thead>
             <tbody>
               {items.map((r) => (
-                <tr key={r.id} onClick={() => setEditing(r)}>
+                <tr key={r.id} onClick={() => setEditing(r)} className={selected.has(r.id) ? 'row-selected' : undefined}>
+                  {selectable && (
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" className="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} />
+                    </td>
+                  )}
                   {cfg.columns.map((c) => (
                     <td key={c.key} className={c.align === 'num' ? 'num' : undefined}>
                       {c.render ? c.render(r) : (r[c.key] ?? <span className="muted">—</span>)}
