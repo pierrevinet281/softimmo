@@ -29,7 +29,12 @@
 - [ ] Sortie « Rapport d'analyse » (PDF + numérique).
 
 ## Phase 3 — Module 2 : Évaluation
-> Spec détaillée : `docs/10-evaluation-module.md` (Evalo & similaires, carte 3D, AVM stat.).
+> Specs : `docs/10-evaluation-module.md` (Evalo, carte 3D, AVM) + **`docs/12-acm-comparables.md`**
+> (ACM : import PDF Matrix « 4 par page », ajustements, prix d'inscription, stats APCIQ).
+- [ ] **ACM** : import/extraction PDF Matrix (pdfplumber) → comparables éditables ;
+      ajustements (superficie×coût constr., inclusions, âge, date de vente) ; prix de vente
+      attendu + prix d'inscription (règle de 3 sur ratio stats) ; corroboration éval.
+      foncière ; plafond expirés ; concurrence en vigueur. Ajouts schéma (voir `docs/12` §7).
 - [ ] Moteurs comparaison / coût / revenu + réconciliation ; ratios & vérifications.
 - [ ] Profils par type (unifamilial → RPA) ; points de vue vendeur/acheteur.
 - [ ] Branchement données secteur (StatCan, SCHL, MTQ, Données Québec) + Local Logic opt.

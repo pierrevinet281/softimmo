@@ -5,6 +5,31 @@
 
 ---
 
+## Session 4 — Spec ACM (comparables, ajustements, prix) (2026-06-25)
+
+### Réalisé
+- Étude des fichiers d'exemple : **Matrix « 4 par page courtier »**
+  (`Sample ACM/4_par_page_courtier_Imp_rial_8299.pdf`) et **stats APCIQ**
+  (`Statistiques/pdf_fr_statistics_STATS_MUNGENRE_202605O.pdf`) — extraits via `pypdf`.
+- **Spec ACM** `docs/12-acm-comparables.md` (cœur du module Évaluation, déterministe) :
+  téléversement PDF Matrix → extraction (statut/prix/dates/JSM/sup./année/éval./inclusions)
+  → **ajustements** des vendus (superficie × coût construction, inclusions piscine/foyer/…,
+  âge, date de vente) → **prix de vente attendu** ; **prix d'inscription** par règle de 3
+  sur le ratio APCIQ « prix de vente / prix inscrit » ; **éval. foncière** = corroboration
+  seulement (alerte si gros écart) ; **expirés** = plafond ; **en vigueur** = concurrence ;
+  données Evalo/marché/revenus = ajustements additionnels. Garde-fous APCIQ (indicatif,
+  exclusions 50-150 %, prudence). Ajouts de schéma listés (`docs/12` §7).
+- Références ajoutées dans `docs/10` et `docs/04` (Phase 3).
+
+### Décisions (session 4)
+- **ACM = méthode principale** du module Évaluation ; tout le reste (AVM, environnement,
+  démo, revenus, éval. foncière) = **soutien/ajustements**, jamais la base du prix.
+- Extraction PDF **déterministe** (pdfplumber/pypdf) ; IA en repli seulement.
+- Paramètres d'ajustement = **défauts éditables** (coût constr. $/pi², prix inclusions,
+  âge, % appréciation).
+
+---
+
 ## Session 3 — Menu « Mise en marché » + specs Évaluation/Local Logic (2026-06-25)
 
 ### Réalisé

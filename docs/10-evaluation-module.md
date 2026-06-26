@@ -13,7 +13,7 @@
 |---|---|---|
 | **AVM – Valeur marchande** | Prédiction de valeur basée sur transactions notariées (3,5 M propriétés QC) + indice de confiance | Module 2 §AVM — modèle statistique sur comparables ; voir dépendance données ci-dessous |
 | **AVM – Valeur locative** | Estimation des loyers de marché (analyse d'investissement) | §AVM locatif (alimente l'approche revenus) |
-| **Comparables ventes & locations** | Sélection auto des comparables pertinents (type, superficie, localisation) | Réutilise table `comparables` + curation (réordonner/noter/pondérer, style RPR) |
+| **Comparables ventes & locations** | Sélection auto des comparables pertinents (type, superficie, localisation) | **ACM** = méthode principale → import PDF Matrix + ajustements + prix d'inscription : **`docs/12-acm-comparables.md`** |
 | **Indice de confiance & statistiques** | Score de confiance (ex. 93,1 %), écart-type, fourchette de prix | §Confiance — calculé depuis la dispersion des comparables |
 | **Enjeux environnementaux** | Zones inondables, milieux humides, terrains contaminés, glissements de terrain (min. Environnement) | §Environnement — données ouvertes Données Québec / GéoIndex |
 | **Historique & infos municipales** | Historique propriété, évaluation municipale, permis ; MAJ trimestrielle | Module 1 (`transactions`, `reports`) + rôle municipal |
