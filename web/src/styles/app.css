@@ -182,3 +182,20 @@ table.table { width: 100%; border-collapse: collapse; }
 .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); font-weight: 700; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border-subtle); }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) { .field-row { grid-template-columns: 1fr; } }
+
+/* ── Property detail (Module 1) ── */
+.crumb { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 13px; font-weight: 600; background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 12px; }
+.crumb:hover { color: var(--color-accent); }
+.notice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; border: 1px solid transparent; margin-bottom: 10px; }
+.notice svg { flex-shrink: 0; margin-top: 1px; }
+.notice-warn { background: var(--color-warning-subtle); color: var(--color-warning); border-color: var(--color-warning); }
+.notice-info { background: var(--color-info-subtle); color: var(--color-info); border-color: var(--color-info); }
+.notice-muted { background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+.mono { font-family: var(--font-mono); }
+.num { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+.tab-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.kpi { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 16px; }
+.kpi .label { color: var(--color-text-tertiary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+.kpi .value { font-family: var(--font-display); font-size: 24px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.kpi .sub { color: var(--color-text-secondary); font-size: 12px; margin-top: 2px; }

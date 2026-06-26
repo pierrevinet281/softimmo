@@ -11,22 +11,65 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 5 sessions, tout sur `main`) :**
+**Où on en est (après 6 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
-- **Phase 1 livrée et fonctionnelle** : socle d'enrichissement re-brandé Softimmo + modèle
-  de données métier (9 tables + repos + routes CRUD + `/properties/:id/bundle`), i18n FR/EN
-  + bascule, navigation par module, page **Propriétés** fonctionnelle. **L'app démarre**
-  (`npm run dev` → web `:5180`, API `:8787`).
-- **Specs prêtes pour la construction** des modules : Évaluation (`10`+`11`+`12`, dont ACM
-  détaillée), Marketing (`09`). Restent en placeholders côté UI.
+- **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
+  (9 tables + repos + routes CRUD + `/properties/:id/bundle`), i18n FR/EN + bascule,
+  navigation par module, page **Propriétés**. **L'app démarre** (`npm run dev` → web `:5180`,
+  API `:8787`).
+- **Phase 2 — Module 1 (Analyse de propriété) CONSTRUIT** (session 6) : **page détail**
+  `/properties/:id` à 7 onglets (Caractérisation+bâtiments, Rent roll, Dépenses, Rentabilité,
+  Transactions, Comparables, Rapports) ; **CRUD générique** (modals config-driven) pour
+  bâtiments/unités/dépenses/transactions ; **moteur de rentabilité déterministe**
+  (`engine/finance.js` : GPI→EGI→RNE, MRB, MRN, TGA, $/porte, ratio dépenses + alertes) et
+  **détection d'anomalies de superficie**, exposés par `GET /properties/:id/analysis`.
+  Testé bout-en-bout (calculs exacts) ; build web OK.
+- **Specs prêtes pour la construction** : Évaluation (`10`+`11`+`12`, dont ACM détaillée),
+  Marketing (`09`). Restent en placeholders côté UI.
 
-**Prochaine session = CONSTRUCTION (pas de la spec) :** voir *Prochaines tâches* en bas →
-**Phase 2 : Module 1 (Analyse de propriété)**, puis Phase 3 (Évaluation, spec déjà complète).
+**Prochaine session = Phase 3 : Module 2 (Évaluation)** — spec complète (`10`/`11`/`12`,
+ACM). Voir *Prochaines tâches* en bas. (Restes Module 1 = import assisté + moteur `render/`.)
 
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 6 — BUILD Phase 2 : Module 1 (Analyse de propriété) (2026-06-26)
+
+### Réalisé
+- **Moteur financier déterministe** `server/src/engine/finance.js` (PUR, sans IA) :
+  `computeProfitability()` → revenus bruts potentiels (GPI) → effectifs (EGI, vacance réelle
+  + taux structurel éditable) → **RNE**, puis **MRB, MRN, TGA/cap rate, $/porte, RNE/porte,
+  ratio de dépenses** ; alertes de cohérence (ratio dépenses < 30 %, RNE négatif).
+  `detectAreaAnomalies()` : empreinte > terrain, habitable > empreinte × étages, somme unités
+  > habitable, nb bâtiments déclaré vs saisi. Défauts éditables documentés (jamais des vérités).
+- **Endpoint** `GET /properties/:id/analysis` (`routes/business.js`) : `value` via `?value=`
+  sinon repli sur le prix de la transaction active la plus récente ; `?vacancy=` (0..1).
+  Retourne `{ value, valueSource, financials, anomalies }`.
+- **Page détail** `web/src/pages/PropertyDetail.jsx` (route `/properties/:id`, lignes de la
+  liste Propriétés cliquables) : **7 onglets** — Caractérisation (kv + bâtiments), Rent roll,
+  Dépenses, **Rentabilité** (KPI cards + ventilation des dépenses + champs valeur/vacance +
+  alertes), Transactions, Comparables (lecture seule, renvoi au module Évaluation), Rapports.
+- **CRUD générique config-driven** : `EntityTable` + `EntityForm` (modals) pilotés par des
+  specs de champs/colonnes par entité — DRY, miroir des fabriques repo/route côté serveur.
+  Couvre bâtiments, unités, dépenses, transactions (API CRUD déjà en place).
+- **Formatage** `web/src/lib/format.js` (fr-CA : `money`/`num`/`pct`/`mult`). Styles ajoutés
+  (`.kpi`, `.notice`, `.crumb`, `.num`…). **i18n FR/EN** complété (préfixe `d.*`).
+- **Vérifs** : `vite build` OK (1652 modules) ; endpoint testé bout-en-bout sur un triplex
+  (GPI 45 840, EGI 29 040, RNE 19 200, TGA 2,75 %, MRB 15,2, $/porte 233 000) ; données de
+  test supprimées (cascade).
+
+### Décisions (session 6)
+- **`value` (réf. ratios) non stockée sur la propriété** : query param + repli transaction
+  active. Les ratios marché (MRB/MRN/TGA/$ porte) restent **null tant qu'aucune valeur** n'est
+  fournie — pas d'invention de chiffre.
+- **Comparables/Rapports en lecture seule** dans Module 1 : l'ACM (curation, ajustements) est
+  construite dans le **Module 2 (Évaluation)** pour éviter le doublon.
+- **CRUD piloté par config** (specs de champs) plutôt que des formulaires manuels par entité —
+  cohérent avec les fabriques du socle, extensible aux futurs modules.
 
 ---
 
@@ -190,24 +233,32 @@ socle d'enrichissement).
 
 ---
 
-## Prochaines tâches — BUILD Phase 2 : Module 1 (Analyse de propriété)
-> Les specs des modules sont prêtes (`docs/09`-`12`). Il s'agit maintenant de **construire**.
-> Après le Module 1, enchaîner sur le **Module 2 (Évaluation)** : spec complète dans
-> `docs/10` (Evalo, carte 3D), `docs/11` (Local Logic) et `docs/12` (ACM, grille explicable).
-1. **Détail de propriété** (page `/properties/:id`) consommant `/properties/:id/bundle` :
-   onglets Caractérisation (multi-bâtiments), Rent roll (unités), Dépenses, Rapports,
-   Transactions, Comparables.
-2. **Formulaires** d'édition par bâtiment / unité / dépense (CRUD déjà dispo côté API).
-3. **Tableau de rentabilité** (calcul côté serveur, déterministe, sans IA) : revenus
-   bruts → effectifs → RNE ; **MRB, MRN, TGA/cap rate, $/porte** ; contrôle de cohérence
-   (alerte ratio dépenses < 30 %). Voir `docs/03-feature-catalog.md` §1 et `docs/08`.
-4. **Détection d'anomalies** de superficie ; import assisté (extract + mapping).
+## Prochaines tâches — BUILD Phase 3 : Module 2 (Évaluation)
+> Spec complète : `docs/10` (Evalo, AVM, carte 3D), `docs/11` (Local Logic), `docs/12`
+> (ACM Matrix, ajustements, grille explicable courtier+client). **Construire**, pas spécifier.
+1. **Page Évaluation** (`/evaluation`) reliée à une propriété : choix du sujet + points de vue
+   vendeur/acheteur. Structure à onglets (méthodes + réconciliation + sortie).
+2. **ACM (méthode principale, déterministe)** : saisie/curation des comparables (réordonner,
+   noter pire/égal/meilleur, pondérer), **grille d'ajustements explicable** (chaque ligne =
+   écart × taux, montant, explication ; total vendu→ajusté ; 2 vues courtier/client) selon
+   `docs/12` §2.1. Prix de vente attendu + prix d'inscription (ratio APCIQ). Paramètres =
+   défauts éditables.
+3. **Méthodes coût et revenu** (selon type) + **réconciliation** pondérée justifiée. Réutiliser
+   `engine/finance.js` (RNE÷TGA pour la capitalisation directe).
+4. **Garde-fous conformité** : sortie = **« opinion de valeur marchande »** (jamais
+   « évaluation ») + avertissement légal auto ; **caviardage vendeur** sur exports client ;
+   ne pas divulguer prix de comparables avant publication au Registre foncier.
 5. Base du moteur **`render/`** (HTML→PDF) avec en-têtes/pieds de conformité (mentions,
-   avertissement « opinion ≠ évaluation ») — partagé avec Modules 2-5.
-6. i18n : compléter les catalogues au fil des nouvelles pages.
+   avertissement « opinion ≠ évaluation ») — **partagé Modules 2-5** ; première sortie =
+   opinion de valeur + annexe sources + sommaire exécutif.
+
+## Restes Module 1 (à reprendre quand utile)
+- **Import assisté** depuis fiches Centris / extraits / rôle (workers extract + mapping).
+- **Téléversement de fichiers** pour les rapports d'expertise (champ `file_path`).
+- Étude de trafic (DJMA via MTQ/Données Québec) pour commercial/terrain.
 
 ## Tâches reportées
-- Moteur `render/` (déplacé en Phase 2, partagé).
+- Moteur `render/` (partagé Modules 2-5).
 - Durcissement des schémas zod (enums/types) des entités métier.
 - Renommage final du slug `leadgen` (Phase 8).
 
