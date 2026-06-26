@@ -60,20 +60,65 @@ function comparablesConfig(t, inclOptions) {
 // ─────────────────────────── Paramètres d'ajustement (éditables) ───────────────────────────
 const SCALAR_PARAMS = [
   { key: 'construction_cost_per_sqft', labelKey: 'ev.p.cost' },
-  { key: 'age_adjustment_per_year', labelKey: 'ev.p.age' },
+  { key: 'age_adjustment_pct_per_year', labelKey: 'ev.p.age', step: 0.001 },
   { key: 'monthly_appreciation_pct', labelKey: 'ev.p.apprec', step: 0.001 },
   { key: 'sale_to_list_ratio', labelKey: 'ev.p.saleList', step: 0.001 },
   { key: 'sale_to_assessment_ratio', labelKey: 'ev.p.saleAssess', step: 0.001 },
 ];
 
-function ParamsPanel({ params, onChange, onSave, saving }) {
+// Statistiques APCIQ : fichier réutilisable (en mémoire), téléversement, extraction des ratios.
+function StatsRatios({ city, genre, onRatios }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const fileRef = useRef(null);
+  const { data: fileInfo } = useQuery({ queryKey: ['acmStatsFile'], queryFn: () => api.get('/acm/stats/file') });
+  const upload = useMutation({
+    mutationFn: (file) => { const fd = new FormData(); fd.append('file', file); return api.upload('/acm/stats/upload', fd); },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['acmStatsFile'] }),
+    onError: (e) => alert(String(e?.message || 'Erreur')),
+  });
+  const lookup = useMutation({
+    mutationFn: () => api.post('/acm/stats/lookup', { municipality: city, genre }),
+    onSuccess: (r) => {
+      if (r?.not_found) { alert(r.reason || t('ev.stats.notFound')); return; }
+      onRatios(r);
+      alert(t('ev.stats.applied').replace('{m}', r.matched_municipality).replace('{g}', r.genre_label).replace('{p}', r.period || ''));
+    },
+    onError: (e) => alert(String(e?.message || 'Erreur')),
+  });
+  return (
+    <div className="notice notice-muted" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+      <div style={{ fontSize: 13 }}>
+        <strong>{t('ev.stats.title')}</strong> — {fileInfo
+          ? `${fileInfo.filename} (${(fileInfo.uploaded_at || '').slice(0, 10)})`
+          : t('ev.stats.none')}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input type="file" accept="application/pdf" ref={fileRef} style={{ display: 'none' }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ''; }} />
+        <Button variant="outline" size="sm" icon={Upload} disabled={upload.isPending} onClick={() => fileRef.current?.click()}>
+          {upload.isPending ? t('ev.importing') : (fileInfo ? t('ev.stats.replace') : t('ev.stats.upload'))}
+        </Button>
+        <Button variant="outline" size="sm" icon={FileBarChart} disabled={!fileInfo || !city || lookup.isPending}
+          onClick={() => lookup.mutate()}>
+          {lookup.isPending ? '…' : t('ev.stats.extract').replace('{c}', city || '?')}
+        </Button>
+      </div>
+      <div className="muted" style={{ fontSize: 12 }}>{t('ev.stats.hint')}</div>
+    </div>
+  );
+}
+
+function ParamsPanel({ params, onChange, onSave, saving, city, genre }) {
   const { t } = useI18n();
   const setScalar = (k, v) => onChange({ ...params, [k]: v === '' ? null : Number(v) });
   const setIncl = (k, v) => onChange({ ...params, inclusions: { ...params.inclusions, [k]: v === '' ? 0 : Number(v) } });
+  const applyRatios = (r) => onChange({ ...params, sale_to_list_ratio: r.sale_to_list_ratio ?? params.sale_to_list_ratio, sale_to_assessment_ratio: r.sale_to_assessment_ratio ?? params.sale_to_assessment_ratio });
   return (
     <details className="card" style={{ marginBottom: 16 }}>
       <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('ev.params')}</summary>
       <div className="muted" style={{ fontSize: 12, margin: '8px 0 14px' }}>{t('ev.paramsNote')}</div>
+      <StatsRatios city={city} genre={genre} onRatios={applyRatios} />
       <div className="field-row">
         {SCALAR_PARAMS.map((p) => (
           <div className="field" key={p.key}>
@@ -379,7 +424,7 @@ export default function Evaluation() {
 
           {/* 3. Paramètres */}
           <div className="section-label" style={{ marginTop: 20 }}>{t('ev.paramsTitle')}</div>
-          <ParamsPanel params={params} onChange={setParams} onSave={() => putParams.mutate(params)} saving={putParams.isPending} />
+          <ParamsPanel params={params} onChange={setParams} onSave={() => putParams.mutate(params)} saving={putParams.isPending} city={bundle?.property?.city} genre={bundle?.property?.genre} />
 
           {/* 4. Calcul */}
           <div className="toolbar" style={{ marginBottom: 16 }}>

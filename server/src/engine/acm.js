@@ -57,7 +57,8 @@ export function adjustComparable(subject, comp, params, asOf) {
   const lines = [];
   const c = normComp(comp);
   const cost = n(params.construction_cost_per_sqft) ?? 0;
-  const ageRate = n(params.age_adjustment_per_year) ?? 0;
+  // Ajustement d'âge exprimé en % du prix vendu par an d'écart (rétrocompat : ancien $/an).
+  const agePct = n(params.age_adjustment_pct_per_year) ?? 0;
   const apprec = n(params.monthly_appreciation_pct) ?? 0;
 
   // 1) Superficie habitable : (sujet − comp) × coût de construction.
@@ -93,21 +94,21 @@ export function adjustComparable(subject, comp, params, asOf) {
     });
   }
 
-  // 3) Âge du bâtiment : (âge comp − âge sujet) × ajustement/an.
+  // 3) Âge du bâtiment : (âge comp − âge sujet) × % d'ajustement/an × prix vendu du comparable.
   const asOfYear = new Date(asOf).getFullYear();
   const subjYear = n(subject.year_built);
-  if (subjYear != null && c.yearBuilt != null && ageRate) {
+  if (subjYear != null && c.yearBuilt != null && agePct && c.soldPrice) {
     const subjAge = asOfYear - subjYear;
     const compAge = asOfYear - c.yearBuilt;
     const delta = compAge - subjAge; // comp plus vieux → positif → on remonte le comp
-    const amount = delta * ageRate;
+    const amount = delta * agePct * c.soldPrice;
     if (delta !== 0) {
       lines.push({
         key: 'age', label: 'Âge du bâtiment',
-        subject: subjAge, comp: compAge, delta, unit: 'an', rate: ageRate, amount,
+        subject: subjAge, comp: compAge, delta, unit: 'an', rate: agePct, amount,
         explanation: `Le comparable a ${Math.abs(delta)} an(s) de ${delta > 0 ? 'plus' : 'moins'} que le sujet ; `
-          + `à ${ageRate.toLocaleString('fr-CA')} $/an, on ${amount >= 0 ? 'ajoute' : 'retranche'} `
-          + `${Math.abs(amount).toLocaleString('fr-CA')} $.`,
+          + `à ${(agePct * 100).toFixed(2)} %/an du prix, on ${amount >= 0 ? 'ajoute' : 'retranche'} `
+          + `${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.`,
       });
     }
   }

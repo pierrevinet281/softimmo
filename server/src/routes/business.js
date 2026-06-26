@@ -8,9 +8,10 @@ import multer from 'multer';
 import { z } from 'zod';
 import { wrap, notFound, badRequest } from '../lib/errors.js';
 import { runWorker } from '../services/python.js';
+import config from '../lib/config.js';
 import { makeCrudRouter } from './_crud.js';
 import {
-  Clients, Properties, Buildings, Units, Expenses, Transactions, Comparables, Reports, Documents, Activity,
+  Clients, Properties, Buildings, Units, Expenses, Transactions, Comparables, Reports, Documents, Activity, Settings,
 } from '../db/repositories/index.js';
 import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js';
 import { computeAcm } from '../engine/acm.js';
@@ -144,6 +145,34 @@ export default function mountBusiness(parent = Router()) {
     }
     Activity.log({ kind: 'import', entity_type: 'comparable', entity_id: property.id, summary: `Import Matrix : ${created.length} comparable(s)` });
     res.status(201).json({ count: created.length, comparables: created });
+  }));
+
+  // ── Stats APCIQ (ratios vente/inscrit & vente/éval) ──
+  // Le PDF « STATS_MUNGENRE » couvre toutes les régions pour une période : il est conservé
+  // et réutilisable pour plusieurs propriétés. Le courtier peut : utiliser le fichier en
+  // mémoire, en téléverser un nouveau, ou saisir les ratios manuellement.
+  const STATS_KEY = 'acm_stats_file';
+  parent.get('/acm/stats/file', wrap(async (req, res) => {
+    const f = Settings.get(STATS_KEY, null);
+    res.json(f ? { filename: f.filename, uploaded_at: f.uploaded_at } : null);
+  }));
+  parent.post('/acm/stats/upload', upload.single('file'), wrap(async (req, res) => {
+    if (!req.file) throw badRequest('Aucun fichier téléversé');
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, `acm-stats-${Date.now()}.pdf`);
+    fs.writeFileSync(dest, req.file.buffer);
+    const info = { path: dest, filename: req.file.originalname, uploaded_at: new Date().toISOString() };
+    Settings.set(STATS_KEY, info);
+    res.status(201).json({ filename: info.filename, uploaded_at: info.uploaded_at });
+  }));
+  parent.post('/acm/stats/lookup', wrap(async (req, res) => {
+    const f = Settings.get(STATS_KEY, null);
+    if (!f?.path || !fs.existsSync(f.path)) throw badRequest('Aucun fichier de statistiques en mémoire. Téléversez-en un.');
+    const { municipality, genre } = req.body || {};
+    if (!municipality) throw badRequest('municipality requis');
+    const out = await runWorker('acm_stats', { path: f.path, municipality, genre: genre || 'unifamilial' }, { timeoutMs: 60000 });
+    res.json(out);
   }));
 
   return parent;
