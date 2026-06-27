@@ -138,10 +138,15 @@ def _textbox(slide, x, y, w, h, lines, anchor=MSO_ANCHOR.TOP, wrap=True, name=No
     return _name(tb, name)
 
 
+PLACEHOLDER_IMG = asset("_placeholder.png")  # réserve grise nommée (remplaçable dans PowerPoint)
+
+
 def _pic(slide, path, x, y, w, h, name=None):
-    """Image au cadre exact (peut légèrement déformer) ; cadre gris « image » si absente."""
-    if path and os.path.exists(path):
-        _name(slide.shapes.add_picture(path, Pt(x), Pt(y), Pt(w), Pt(h)), name)
+    """Image au cadre exact. Emplacement vide = image de réserve NOMMÉE → le courtier peut
+    « Changer l'image » dans PowerPoint (le nom de forme est conservé → sync de l'image)."""
+    src = path if (path and os.path.exists(path)) else PLACEHOLDER_IMG
+    if os.path.exists(src):
+        _name(slide.shapes.add_picture(src, Pt(x), Pt(y), Pt(w), Pt(h)), name)
     else:
         _rect(slide, x, y, w, h, fill=PLACEHOLDER, text="image", size=8, color="5A5A5A", name=name)
 
