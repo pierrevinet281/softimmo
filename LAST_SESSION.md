@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 28 sessions, tout sur `main`) :**
+**Où on en est (après 29 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,26 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 29 — Photos de propriété + QR configurable + pagination jumeau PPTX (2026-06-27)
+
+Rend les brochures **réellement utilisables** (vraies photos au lieu de placeholders). PR #35→#37.
+
+- **Photos de propriété** (PR #35) : table `property_media` (rôles hero|map|interior|gallery,
+  position) + repo `PropertyMedia` ; API `GET/POST/PATCH/DELETE /properties/:id/photos` + `.../raw`
+  (upload multi-images → `data/uploads/properties/:id/`) ; `buildBrochureData` câble
+  `images.hero/map` + `interior[]` (repli galerie) ; **onglet UI « Photos »** (vignettes, rôle,
+  suppression). i18n FR/EN.
+- **Lien QR configurable** (PR #36) : colonne `properties.brochure_qr_url` (fiche Centris, site,
+  mailto:…) éditée dans l'onglet Photos ; `listing_url` de la brochure = ce lien (sinon site courtier).
+- **Pagination jumeau PPTX** (PR #37) : le tableau des pièces du `.pptx` se pagine comme le PDF
+  (diapo de suite + pied sur la dernière si trop de pièces). Hauteurs de rangées explicites.
+
+**Reste à faire brochure** (nécessite l'utilisateur) : **valider le rendu PPTX dans PowerPoint**
+(bouger des éléments → je ré-extrais via `extract_pptx_layout.py`) ; **modèles RPA / Commercial /
+Entreprise** (fournir les gabarits de référence) ; option héros page 2 plus grand (régler dans le PPTX).
 
 ---
 
