@@ -79,6 +79,9 @@ NAME_MAP = {
     "broker2_text": "ZoneTexte 1",
     "qr": "Image 45",
     "photo1": "Image 11", "photo2": "Image 12", "photo3": "Image 14",
+    # Éléments propres au thème luxe (titre or + verrou « COLLECTION DE LUXE »).
+    "luxe_title": "ZoneTexte LuxeTitre",
+    "luxe_lock": "Image LuxeVerrou",
 }
 
 
