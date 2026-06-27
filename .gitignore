@@ -19,3 +19,6 @@ Thumbs.db
 .vite/
 coverage/
 exemples-brochures/
+
+# Mises en page de brochure personnalisées (générées au runtime depuis un PPTX)
+server/python/layouts/*.json
