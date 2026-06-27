@@ -211,12 +211,11 @@ export default function mountBusiness(parent = Router()) {
   }
 
   // Modèles de brochure disponibles (le courtier DOIT en choisir un — voir UI).
-  const BROCHURE_TEMPLATES = ['unifamilial', 'luxe'];
+  const BROCHURE_TEMPLATES = ['unifamilial', 'luxe', 'rpa', 'commercial', 'industriel'];
   parent.get('/properties/:id/brochure.pdf', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
-    const template = String(req.query.template || 'unifamilial');
-    if (template === 'rpa') throw badRequest('Le modèle « Résidence pour aînés » arrive bientôt.');
+    const template = String(req.query.template || 'unifamilial');
     if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
     const pid = property.id;
     const bundle = {
@@ -239,8 +238,7 @@ export default function mountBusiness(parent = Router()) {
   parent.get('/properties/:id/brochure.pptx', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
-    const template = String(req.query.template || 'unifamilial');
-    if (template === 'rpa') throw badRequest('Le modèle « Résidence pour aînés » arrive bientôt.');
+    const template = String(req.query.template || 'unifamilial');
     if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
     const pid = property.id;
     const bundle = {

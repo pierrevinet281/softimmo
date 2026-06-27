@@ -458,7 +458,9 @@ function PhotosTab({ property, refetch }) {
 const BROCHURE_TEMPLATES = [
   { id: 'unifamilial', labelKey: 'd.bro.unifamilial', descKey: 'd.bro.unifamilial.d' },
   { id: 'luxe', labelKey: 'd.bro.luxe', descKey: 'd.bro.luxe.d' },
-  { id: 'rpa', labelKey: 'd.bro.rpa', descKey: 'd.bro.rpa.d', soon: true },
+  { id: 'rpa', labelKey: 'd.bro.rpa', descKey: 'd.bro.rpa.d' },
+  { id: 'commercial', labelKey: 'd.bro.commercial', descKey: 'd.bro.commercial.d' },
+  { id: 'industriel', labelKey: 'd.bro.industriel', descKey: 'd.bro.industriel.d' },
 ];
 
 function TemplateLayout({ template }) {
