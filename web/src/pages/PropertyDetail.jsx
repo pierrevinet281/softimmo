@@ -391,6 +391,45 @@ const BROCHURE_TEMPLATES = [
   { id: 'rpa', labelKey: 'd.bro.rpa', descKey: 'd.bro.rpa.d', soon: true },
 ];
 
+function TemplateLayout({ template }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const ref = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const { data } = useQuery({
+    queryKey: ['tpl-layout', template],
+    queryFn: () => api.get(`/brochure/templates/${template}/layout`),
+  });
+  const inv = () => qc.invalidateQueries({ queryKey: ['tpl-layout', template] });
+  const onFile = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    setBusy(true); setMsg(null);
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const r = await api.upload(`/brochure/templates/${template}/layout`, fd);
+      setMsg(t('d.bro.tpl.done').replace('{n}', (r.roles || []).length));
+      inv();
+    } catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+  };
+  const reset = async () => { await api.del(`/brochure/templates/${template}/layout`); inv(); };
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Button size="sm" variant="ghost" icon={Upload} onClick={() => ref.current?.click()} disabled={busy}>
+          {busy ? t('d.bro.tpl.uploading') : t('d.bro.tpl.update')}
+        </Button>
+        <input ref={ref} type="file" accept=".pptx" hidden onChange={onFile} />
+        {data?.customized && <Badge tone="info">{t('d.bro.tpl.custom')}</Badge>}
+        {data?.customized && <Button size="sm" variant="ghost" onClick={reset}>{t('d.bro.tpl.reset')}</Button>}
+      </div>
+      {msg && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{msg}</div>}
+      <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t('d.bro.tpl.hint')}</div>
+    </div>
+  );
+}
+
 function BrochureChooser({ propertyId, onClose }) {
   const { t } = useI18n();
   const gen = (tplId, fmt) => {
@@ -414,10 +453,13 @@ function BrochureChooser({ propertyId, onClose }) {
             </div>
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t(tpl.descKey)}</div>
             {!tpl.soon && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <Button size="sm" icon={FileDown} onClick={() => gen(tpl.id, 'pdf')}>{t('d.bro.pdf')}</Button>
-                <Button size="sm" variant="outline" icon={Presentation} onClick={() => gen(tpl.id, 'pptx')}>{t('d.bro.pptx')}</Button>
-              </div>
+              <>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <Button size="sm" icon={FileDown} onClick={() => gen(tpl.id, 'pdf')}>{t('d.bro.pdf')}</Button>
+                  <Button size="sm" variant="outline" icon={Presentation} onClick={() => gen(tpl.id, 'pptx')}>{t('d.bro.pptx')}</Button>
+                </div>
+                <TemplateLayout template={tpl.id} />
+              </>
             )}
           </div>
         ))}
