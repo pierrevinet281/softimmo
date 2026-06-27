@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 32 sessions, tout sur `main`) :**
+**Où on en est (après 33 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,27 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 33 — 5 modèles de brochure + round-trip niveau PROPRIÉTÉ (2026-06-27)
+
+Refonte présentation selon la spec courtier (PR #46-#47). **2 niveaux de round-trip distincts.**
+
+- **5 modèles** (PR #46) : ajout RPA (vert/terracotta), Commercial (marine), Industriel
+  (acier/orange) — thèmes « bannière simple » réutilisant la géométrie unifamiliale, palettes
+  éditables ; chacun sélectionnable, génère PDF+PPTX, personnalisable via round-trip.
+- **Round-trip niveau PROPRIÉTÉ** (PR #47, Phase 2a) : `load_layout(template, override)` →
+  résolution **3 niveaux** (défaut → modèle `layouts/<t>.json` → surcharge propriété en DB).
+  `pptx_to_layout` a un mode « en ligne » (sans `out`). Surcharge propriété stockée dans
+  `documents` (doc_type='brochure'). Routes `GET/POST(sync)/DELETE
+  /properties/:id/brochure/:template/presentation`. **UI** : 2 boutons distincts —
+  « Synchroniser ma présentation » (propriété) vs « Mettre à jour le modèle » (modèle).
+
+**Reste (spec courtier, Phase 2b)** : synchroniser aussi le **CONTENU édité** (texte/images
+du PPTX), pas seulement les positions — voir docs/09 (b) `ingest_pptx`. Actuellement le sync
+ne propage que la **disposition** (layout). Modèles RPA/Commercial/Industriel = palettes de
+départ, à affiner via le round-trip ou avec de vrais gabarits.
 
 ---
 
