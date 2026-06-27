@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
   History, Scale, FileText, AlertTriangle, Info, Plus, Upload, FileDown, Presentation,
-  Image as ImageIcon, Trash2,
+  Image as ImageIcon, Trash2, Megaphone, Copy, Check,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
@@ -281,6 +281,76 @@ function UnitsTab({ p, items, buildings, refetch }) {
   );
 }
 
+// ─────────────────────────── Marketing : annonces texte (déterministe) ───────────────────────────
+function CopyField({ label, text, limit }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text || ''); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* ignore */ }
+  };
+  const over = limit && (text || '').length > limit;
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <strong style={{ fontSize: 13 }}>{label}</strong>
+        <span className="muted" style={{ fontSize: 11, color: over ? 'var(--color-danger)' : undefined }}>
+          {(text || '').length}{limit ? ` / ${limit}` : ''} car.
+        </span>
+        <div style={{ flex: 1 }} />
+        <Button size="sm" variant="ghost" icon={copied ? Check : Copy} onClick={copy}>
+          {copied ? t('d.mkt.copied') : t('d.mkt.copy')}
+        </Button>
+      </div>
+      <div style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 6, padding: 10, lineHeight: 1.5 }}>{text}</div>
+    </div>
+  );
+}
+
+function MarketingTab({ propertyId }) {
+  const { t } = useI18n();
+  const [lang, setLang] = useState('fr');
+  const [emoji, setEmoji] = useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ['mkt', propertyId, lang, emoji],
+    queryFn: () => api.get(`/properties/${propertyId}/marketing-copy?lang=${lang}&emoji=${emoji}`),
+  });
+  const f = data?.formats;
+  const sel = { padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13 };
+  return (
+    <Card>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t('d.mkt.hint')}</div>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <select value={lang} onChange={(e) => setLang(e.target.value)} style={sel}>
+          <option value="fr">Français</option>
+          <option value="en">English</option>
+          <option value="bi">Bilingue (FR + EN)</option>
+        </select>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+          <input type="checkbox" checked={emoji} onChange={(e) => setEmoji(e.target.checked)} /> {t('d.mkt.emoji')}
+        </label>
+      </div>
+      {isLoading || !f ? (
+        <div className="muted">…</div>
+      ) : (
+        <div>
+          <CopyField label={t('d.mkt.kijijiTitle')} text={f.kijiji.title} limit={70} />
+          <CopyField label={t('d.mkt.kijijiBody')} text={f.kijiji.body} />
+          <CopyField label="Facebook" text={f.facebook.text} />
+          <CopyField label="Facebook Marketplace" text={f.marketplace.description} />
+          <CopyField label="Instagram" text={f.instagram.caption} limit={2200} />
+          <CopyField label={t('d.mkt.xthread')} text={f.twitter.thread.join('\n\n')} />
+          <CopyField label="LinkedIn" text={f.linkedin.text} limit={3000} />
+          {data.disclaimers && (
+            <div className="muted" style={{ fontSize: 11, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
+              {data.disclaimers.map((d, i) => <div key={i}>• {d}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─────────────────────────── Photos de propriété ───────────────────────────
 // Téléversement + assignation de rôle (photo principale / carte / intérieur / galerie) ;
 // alimente les brochures (PDF + PPTX). Les images sans rôle servent de repli.
@@ -477,6 +547,7 @@ const TABS = [
   { id: 'transactions', labelKey: 'd.tab.transactions', icon: History },
   { id: 'comparables', labelKey: 'd.tab.comparables', icon: Scale },
   { id: 'photos', labelKey: 'd.tab.photos', icon: ImageIcon },
+  { id: 'marketing', labelKey: 'd.tab.marketing', icon: Megaphone },
   { id: 'reports', labelKey: 'd.tab.reports', icon: FileText },
 ];
 
@@ -543,6 +614,7 @@ export default function PropertyDetail() {
         />
       )}
       {tab === 'photos' && <PhotosTab property={p} refetch={refetch} />}
+      {tab === 'marketing' && <MarketingTab propertyId={p.id} />}
       {tab === 'reports' && (
         <ReadOnlyList
           icon={FileText}
