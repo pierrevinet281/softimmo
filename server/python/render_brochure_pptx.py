@@ -62,6 +62,24 @@ THEMES = {
     },
 }
 
+
+def _theme_pptx(banner, price, desc, value, p2=None):
+    """Thème « bannière simple » (logo + titre, sans médaille) — RPA/commercial/industriel."""
+    return {
+        "banner": banner, "title_fg": "FFFFFF", "sub_fg": "FFFFFF", "title_upper": False, "luxe": False,
+        "label_bg": banner, "label_fg": "FFFFFF", "value_bg": value, "value_fg": "1A1A1A",
+        "rule": banner, "price_bg": price, "price_fg": "FFFFFF", "bar": price, "qr": price,
+        "p2_banner": p2 or banner, "p2_title_fg": "FFFFFF", "desc_bg": desc,
+        "th_bg": banner, "th_fg": "FFFFFF", "row": "F1F4F5", "row_alt": value, "row_fg": "1A1A1A",
+        "logo": asset("unifamilial", "exp_logo_white.png"), "medal": None,
+        "hero": asset("unifamilial", "superpierre.png"),
+    }
+
+
+THEMES["rpa"] = _theme_pptx("2E6E5E", "C25E3A", "DCE9E5", "DCE9E5")
+THEMES["commercial"] = _theme_pptx("243B53", "C0392B", "DCE2EC", "DCE2EC")
+THEMES["industriel"] = _theme_pptx("37474F", "E07B2C", "E0E4E6", "E0E4E6")
+
 PLACEHOLDER = "E9EDF3"
 
 

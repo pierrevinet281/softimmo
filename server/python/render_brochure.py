@@ -286,6 +286,26 @@ THEMES = {
 }
 
 
+def _theme(banner_bg, price, *, p2=None, desc="#E8EDEF", value="#DDE3E6"):
+    """Construit un thème « bannière simple » (logo + titre, sans médaille) — RPA/commercial/industriel.
+    Couleurs par défaut éditables ; la disposition reste celle du modèle unifamilial."""
+    bb = HexColor(banner_bg); pr = HexColor(price); p2c = HexColor(p2 or banner_bg)
+    return {
+        "banner": "medal", "banner_bg": bb, "title_fg": WHITE, "title_upper": False, "sub_fg": WHITE,
+        "label_bg": bb, "label_fg": WHITE, "value_bg": HexColor(value), "value_fg": INK,
+        "rule": bb, "price_bg": pr, "price_fg": WHITE, "bar": pr, "qr_color": pr,
+        "p2_banner_bg": p2c, "p2_title_fg": WHITE, "desc_bg": HexColor(desc),
+        "th_bg": bb, "th_fg": WHITE, "row_alt": HexColor(value), "row": HexColor("#F1F4F5"), "row_fg": INK,
+        "logo_default": asset("unifamilial", "exp_logo_white.png"),
+        "hero_default": asset("unifamilial", "superpierre.png"),
+    }
+
+
+THEMES["rpa"] = _theme("#2E6E5E", "#C25E3A", desc="#DCE9E5", value="#DCE9E5")          # résidence aînés (vert/terracotta)
+THEMES["commercial"] = _theme("#243B53", "#C0392B", desc="#DCE2EC", value="#DCE2EC")    # corporatif (marine/rouge)
+THEMES["industriel"] = _theme("#37474F", "#E07B2C", desc="#E0E4E6", value="#E0E4E6")    # industriel (acier/orange)
+
+
 # ───────────────────────────── Page 1 ─────────────────────────────
 # Positions issues du gabarit PowerPoint (espace 540×720), projetées en Lettre via pbox().
 def _luxe_header(c, d, th, title):
