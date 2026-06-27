@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 33 sessions, tout sur `main`) :**
+**Où on en est (après 34 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,24 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 34 — Round-trip propriété : synchronisation du CONTENU (Phase 2b) (2026-06-27)
+
+Complète la spec courtier (PR #49). Le **texte** édité dans le PPTX d'une propriété est
+maintenant propagé (en plus des positions).
+
+- `ingest_pptx.py` : worker extrayant layout + **CONTENU** des formes nommées (titre/ville/
+  résumé, adresse/MLS, prix en texte libre, accroche, description, tableau des pièces).
+  Sortie **UTF-8 explicite** (`sys.stdout.buffer`, accents).
+- `render_brochure(_pptx).py` : honorent `price_text`.
+- `business.js` : sync propriété → `ingest_pptx` → stocke `{layout, content}` dans `documents` ;
+  `brochureRenderData` fusionne les `CONTENT_FIELDS` par-dessus les données de la propriété.
+
+**Spec courtier = essentiellement complète.** Seul reste optionnel : **remplacement d'images
+via le PPTX** (les photos se gèrent déjà dans l'onglet Photos → priorité basse). Le sync
+niveau **modèle** reste layout-only (le contenu du modèle = données d'exemple).
 
 ---
 
