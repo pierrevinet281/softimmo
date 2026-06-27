@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 29 sessions, tout sur `main`) :**
+**Où on en est (après 31 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,27 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 30-31 — Round-trip PPTX SELF-SERVICE + correctif verrou luxe (2026-06-27)
+
+Le courtier peut désormais **ajuster les positions des brochures lui-même**, sans intervention
+sur le code. PR #39→#41, tout sur `main`.
+
+- **Verrou luxe** (PR #39) : « COLLECTION DE LUXE » n'est plus rogné (marge intérieure).
+- **Mise en page pilotée par JSON** (PR #40) : positions sorties du code →
+  `server/python/brochure_layout.py` (DEFAULT_LAYOUT + NAME_MAP rôle↔nom de forme PPTX). Les
+  deux moteurs lisent `load_layout(template)` ; `layouts/<template>.json` écrase les défauts
+  (git-ignoré). `pptx_to_layout.py` : worker .pptx édité → JSON (round-trip vérifié, 20 rôles).
+- **Bouton self-service** (PR #41) : API `GET/POST/DELETE /brochure/templates/:template/layout` ;
+  UI sélecteur de modèle → « Mettre à jour le modèle (PowerPoint) », badge « Personnalisé »,
+  « Réinitialiser ». Le courtier téléverse son PPTX édité → positions reportées automatiquement.
+
+**⚠️ Limite luxe** : le gabarit `Brochure Luxury\modele_brochure.pptx` est une quasi-copie de
+l'unifamiliale (bannière bleue) ; le look noir/or est **dans le code**. Self-service luxe =
+nécessite un VRAI gabarit luxe. **Reste** : valider rendu PPTX dans PowerPoint ; modèles
+RPA/Commercial/Entreprise (gabarits à fournir).
 
 ---
 
