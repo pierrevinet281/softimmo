@@ -11,7 +11,11 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 34 sessions, tout sur `main`) :**
+**Où on en est (après 36 sessions, tout sur `main`) :**
+- **Module 3 (Offre de services) LIVRÉ** (session 36) : générateur PDF déterministe vendeur/
+  acheteur, brandé, bilingue, conforme (voir entrée Session 36). Page `/offres` active.
+- **Module 4 (brochures + annonces)** : 5 modèles PDF+PPTX, round-trip propriété **complet**
+  (layout + texte + images) et niveau modèle ; annonces texte (Kijiji/FB/IG/X/LinkedIn).
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -37,13 +41,64 @@
 - **Specs prêtes pour la construction** : Évaluation avancée (`10` Evalo/AVM/carte 3D, `11`
   Local Logic), Marketing (`09`). Restent en placeholders côté UI.
 
-**Prochaine session = suite Module 2** (extraction PDF Matrix + stats APCIQ, AVM, carte 3D,
-revenus) **ou Module 3 (Offre de services)**. Voir *Prochaines tâches*. (Restes Module 1 =
-import assisté + moteur `render/` partagé.)
+**Prochaine session = Module 5 (Trousse de soutien client : guides vendeur/acheteur PDF
+brandés)** — réutilise le moteur Platypus de `render_offre.py`. **Ou** suite Module 2
+(stats APCIQ, AVM, carte 3D, revenus). **Ou** P2 Module 3 (variantes par type, éditeur de
+contenu complet). Voir *Prochaines tâches*.
 
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 36 — Module 3 : Offre de services (générateur PDF déterministe) (2026-06-27)
+
+**Module 3 (P1) LIVRÉ.** Générateur d'**offre de services** vendeur **et** acheteur, brandé,
+bilingue (FR prééminent), inspiré et amélioré de `Offre Ubee Rive-Nord Rehaussée.pdf`.
+Déterministe, **sans IA au runtime** (CLAUDE.md §3).
+
+- **Contenu** (`server/src/engine/offre-content.json`) : tout le texte par défaut, **bilingue
+  FR/EN** × **vendeur/acheteur** — pourquoi me choisir (champs/compétences/valeurs/promesse),
+  garantie, services, plan de mise en marché (objectifs/méthodes/activités), gestion des
+  opportunités, **calendrier type**, honoraires/rémunération, valeur ajoutée, témoignages,
+  prochaine étape. Aucune donnée codée en dur dans le moteur.
+- **Moteur PDF** (`server/python/render_offre.py`, **ReportLab Platypus** — flux, vs brochure à
+  position fixe) : bandeau de marque (logo eXp), sections bleues, encart « garantie » (bande
+  accent), tableau du calendrier, bloc témoignages, bloc coordonnées + photo courtier. **Pied
+  sur CHAQUE page** : agence + courtier (désignation) + n° de page + avertissement « document
+  de présentation, ne constitue pas un contrat de courtage » (LCI/OACIQ). Bilingue : `bi`
+  rend FR puis EN (saut de page). Date localisée par langue.
+- **Builder JS** (`server/src/engine/offre.js`) : résout défaut JSON → surcharge globale
+  `Settings('offre_content')` → surcharges ponctuelles (intro services, honoraires, témoignages,
+  prochaine étape) ; **neutralise les titres « spécialiste » prohibés** (r.1 publicité) ;
+  profil courtier partagé (`broker_profile`).
+- **Routes** (`business.js`) : `GET/POST /offre.pdf` (variant, lang, client_id, property_id,
+  date_iso, overrides) → stream PDF ; `GET/PUT /offre/config` (profil courtier + contenu éditable).
+- **UI** (`web/src/pages/Offres.jsx`, route `/offres` activée) : générateur (type, langue,
+  client, propriété, date) + éditeur **profil courtier** (brande aussi brochures/marketing) +
+  éditeur **témoignages** (par variante, FR+EN). i18n `off.*` FR/EN.
+- **Vérifié bout-en-bout** (serveur live) : `GET /offre/config`, `GET /offre.pdf`
+  (vendeur/fr, acheteur/bi), `PUT /offre/config`, `POST /offre.pdf` (overrides) → 200 PDF.
+  Rendu inspecté (FR + EN). Build web OK. Données de test nettoyées.
+- **Restes Module 3** (P2) : variantes de contenu par type de bien ; éditeur de contenu complet
+  (toutes sections, par langue) ; générateur « Guide vendeur/acheteur » ; jumeau éditable
+  (optionnel). Mentions OACIQ déjà gérées par le pied.
+
+---
+
+## Session 35 — Brochures : ajout/remplacement d'images via le PPTX (#51) (2026-06-27)
+
+Complète le round-trip propriété (images). Les **images** peuvent être ajoutées/remplacées
+soit via le formulaire/onglet Photos de l'app, soit **directement dans le PPTX** ; dans les
+deux cas l'app capte l'info et met à jour le code → PDF (cette propriété uniquement).
+
+- `ingest_pptx.py` : extrait aussi les **images** des formes nommées (hero/map/intérieurs/
+  photo courtier) si réellement remplacées (comparaison à l'octet du **placeholder**).
+- `render_brochure_pptx.py` : image **réserve** (`_placeholder.png`) dans les emplacements vides
+  → « Changer l'image » fonctionne dans PowerPoint avec des noms de formes stables.
+- `business.js` : `brochureRenderData` fusionne `content.images` / `interior` / `broker_photo`.
+- PR #51 mergé (sans entrée LAST_SESSION dédiée à l'époque — consignée ici).
 
 ---
 
@@ -748,7 +803,9 @@ socle d'enrichissement).
 5. **Moteur `render/`** (HTML→PDF) avec en-têtes/pieds de conformité (mentions, avertissement
    « opinion ≠ évaluation », **caviardage vendeur** des comparables) — **partagé Modules 2-5** ;
    première sortie = opinion de valeur + annexe sources + sommaire exécutif.
-6. Puis **Module 3 (Offre de services)** : générateur vendeur/acheteur (`docs/03` §3).
+6. ~~Module 3 (Offre de services) : générateur vendeur/acheteur~~ **LIVRÉ (session 36)**.
+   Suites P2 : variantes de contenu par type de bien ; éditeur de contenu complet (toutes
+   sections × langue) ; générateur **Guide vendeur/acheteur** (Module 5, même moteur Platypus).
 
 ## Restes Module 1 (à reprendre quand utile)
 - **Import assisté** depuis fiches Centris / extraits / rôle (workers extract + mapping).
