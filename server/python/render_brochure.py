@@ -292,8 +292,9 @@ def _luxe_header(c, d, th, title):
     draw_fit(c, d.get("summary_line", ""), tx, PY(79), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
     logo = img.get("logo") or th.get("logo_default")
     if logo and os.path.exists(logo):
-        lim = _load(logo, rgb=False); dw = PSc(180); dh = dw * (lim.size[1] / lim.size[0])
-        c.drawImage(ImageReader(lim), PX(520.15) - dw, PY(58) - dh / 2, dw, dh, mask="auto")
+        # Verrou aligné à droite avec une marge intérieure (bord droit à pptx 500, pas 520).
+        lim = _load(logo, rgb=False); dw = PSc(150); dh = dw * (lim.size[1] / lim.size[0])
+        c.drawImage(ImageReader(lim), PX(500.0) - dw, PY(58) - dh / 2, dw, dh, mask="auto")
     else:
         c.setFillColor(LX_GOLD); c.setFont(F_REG, pfont(17))
         c.drawRightString(PX(520.15), PY(52), "COLLECTION"); c.drawRightString(PX(520.15), PY(72), "DE LUXE")
