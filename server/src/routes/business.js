@@ -16,6 +16,7 @@ import {
 } from '../db/repositories/index.js';
 import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js';
 import { computeAcm } from '../engine/acm.js';
+import { buildMarketingCopy } from '../engine/marketingCopy.js';
 import { getAcmParams, setAcmParams, getAcmDefaults } from '../lib/acmParams.js';
 
 // Permissive schemas: every field optional + passthrough. Required-on-create is enforced
@@ -256,6 +257,25 @@ export default function mountBusiness(parent = Router()) {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
     res.setHeader('Content-Disposition', `attachment; filename="brochure-${pid}.pptx"`);
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
+  // ── Annonces texte (Module 4 — déterministe, sans IA) : Kijiji, FB, Marketplace, IG, X, LinkedIn ──
+  const defaultBroker = () => Settings.get('broker_profile', null) || {
+    name: 'Pierre Vinet', title: 'Courtier Immobilier', subtitle: 'Résidentiel et Commercial',
+    agency: 'eXp Agence Immobilière', company: 'Immobilier Pierre Vinet Inc.', phone: '514.651.7437',
+    email: 'pierre.vinet@exprealty.com', web: 'www.pierrevinet.com',
+  };
+  parent.get('/properties/:id/marketing-copy', wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const pid = property.id;
+    const bundle = {
+      property, broker: defaultBroker(),
+      buildings: Buildings.listBy('property_id', pid),
+      units: Units.listBy('property_id', pid),
+      transactions: Transactions.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
+    };
+    res.json(buildMarketingCopy(bundle, { lang: req.query.lang, emoji: req.query.emoji === 'true' }));
   }));
 
   // ── Mise en page des modèles de brochure (round-trip PowerPoint, docs/09) ──
