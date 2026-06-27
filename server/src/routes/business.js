@@ -258,6 +258,45 @@ export default function mountBusiness(parent = Router()) {
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
   }));
 
+  // ── Mise en page des modèles de brochure (round-trip PowerPoint, docs/09) ──
+  // Le courtier édite un gabarit PPTX puis le téléverse : on en extrait les positions
+  // (pptx_to_layout) vers server/python/layouts/<template>.json, lu ensuite par les moteurs.
+  const layoutPath = (tpl) => path.join(config.pythonDir, 'layouts', `${tpl}.json`);
+
+  parent.get('/brochure/templates/:template/layout', wrap(async (req, res) => {
+    const tpl = String(req.params.template);
+    if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
+    const p = layoutPath(tpl);
+    if (!fs.existsSync(p)) return res.json({ customized: false, roles: [] });
+    let roles = [];
+    try { roles = Object.keys(JSON.parse(fs.readFileSync(p, 'utf-8'))); } catch { /* ignore */ }
+    res.json({ customized: true, roles });
+  }));
+
+  parent.post('/brochure/templates/:template/layout', upload.single('file'), wrap(async (req, res) => {
+    const tpl = String(req.params.template);
+    if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
+    if (!req.file) throw badRequest('Aucun fichier PowerPoint téléversé');
+    if (!/\.pptx$/i.test(req.file.originalname || '')) throw badRequest('Le fichier doit être un .pptx');
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, `tpl-${tpl}-${Date.now()}.pptx`);
+    fs.writeFileSync(tmp, req.file.buffer);
+    try {
+      const out = await runWorker('pptx_to_layout', { pptx: tmp, out: layoutPath(tpl) }, { timeoutMs: 60000 });
+      res.status(201).json({ customized: true, roles: out.roles || [] });
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }));
+
+  parent.delete('/brochure/templates/:template/layout', wrap(async (req, res) => {
+    const tpl = String(req.params.template);
+    if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
+    try { fs.unlinkSync(layoutPath(tpl)); } catch { /* déjà absent */ }
+    res.status(204).end();
+  }));
+
   // ── Photos de propriété (téléversement + rôles pour la brochure) ──
   const PHOTO_ROLES = ['hero', 'map', 'interior', 'gallery'];
   const EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
