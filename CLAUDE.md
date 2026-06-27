@@ -15,6 +15,10 @@
 - **Tous les autres répertoires fournis sont en LECTURE SEULE.** Ne jamais y écrire,
   renommer, déplacer ou supprimer quoi que ce soit. Ils servent uniquement de
   référence et de gisement de gabarits.
+- **Exception (lanceurs)** : le dossier voisin `..\Scripts` (`…\Softimmo\Scripts`) contient
+  les scripts de démarrage/arrêt (`Demarrer-Softimmo.bat`, `Arreter-Softimmo.bat`,
+  `Demarrer-Softimmo-PRODUCTION.bat`, `Installation-Initiale.bat`) — créés à la demande
+  explicite de l'utilisateur. Y écrire des **lanceurs uniquement**.
 - Le code et le contenu de
   `D:\Google Drive\Personal Business\Logiciels\Backup-Enrichissement de contacts`
   **ne peuvent pas être modifiés à la source**. Ils ont été **copiés intégralement**
@@ -140,15 +144,21 @@ npm run build && npm start  # build web puis sert API+UI sur :8787
 
 Chaque session suit : **(a)** lire CLAUDE.md + LAST_SESSION.md → **(b)** charger les
 prochaines tâches → **(c)** développer en continu → **(d)** closeout :
-1. Inspecter le répertoire, mettre à jour la task list + la documentation.
-2. Mettre à jour `LAST_SESSION.md` (résumé, tâches reportées, prochaines tâches).
+1. Inspecter le répertoire ; mettre à jour la **GitHub issue #53** (tâches reportées),
+   `PLAN_GLOBAL.md`, `documentation/ARCHITECTURE.md` et `documentation/Pages Technical
+   Documentation/` (pages touchées).
+2. Mettre à jour `LAST_SESSION.md` (concis : résumé, tâches reportées, prochaines tâches).
 3. `git commit` + `push`.
 4. PR → squash & merge.
 5. Fast-forward sur `main`.
-6. Inviter l'utilisateur à faire un **backup**.
+6. Inviter l'utilisateur à faire un **backup** : `..\Backup-Softimmo\Lancer-Backup.bat`
+   (consigner le hash dans `documentation/BACKUP_LOG.md`).
 7. Fermeture de session.
 
 **Remote Git** : `https://github.com/pierrevinet281/softimmo`.
+**Docs internes** : feuille de route `PLAN_GLOBAL.md` ; architecture & pages dans
+`documentation/` ; specs de conception dans `docs/00`→`12` ; backlog = issue #53.
+**Lancement** : voir `..\Scripts\` (dev `:5180`/`:8787`, arrêt ciblé par ports).
 
 ---
 

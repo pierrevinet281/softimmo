@@ -1,0 +1,105 @@
+{
+  "_note": "Contenu PAR DÉFAUT de la brochure RPA (Module 4, format éditorial rpa_mlt). Déterministe, éditable par le courtier (surcharge par propriété via documents.data.content). Un champ vide n'est pas affiché. FR (Loi 96 FR prééminent ; EN à venir).",
+  "fr": {
+    "running_title": "Résidence pour aînés",
+    "cover": {
+      "pill": "Résidence certifiée",
+      "hero_tag": null,
+      "eyebrow": "Location · Appartements pour retraités",
+      "title": ["VIVEZ PLEINEMENT", "VOTRE RETRAITE"],
+      "subtitle": "Un milieu de vie d'exception, sécuritaire et chaleureux, où chaque détail est pensé pour votre confort et votre tranquillité d'esprit.",
+      "chips": [
+        { "icon": "house", "text": "Unités variées" },
+        { "icon": "shield", "text": "Sécurité 24 h / 7" },
+        { "icon": "hospital", "text": "Services sur place" }
+      ]
+    },
+    "comfort": {
+      "running": "Votre nouveau chez-vous",
+      "kicker": "Votre nouveau chez-vous",
+      "title": ["DES APPARTEMENTS PENSÉS", "POUR VOTRE CONFORT"],
+      "lead": "La résidence propose un grand choix d'unités lumineuses, chacune offrant une configuration unique. Insonorisation supérieure et possibilité d'un grand balcon privé : vous profitez d'un environnement paisible et d'un air pur, en toute sérénité.",
+      "wide_caption": { "icon": "couch", "text": "Des espaces communs lumineux et chaleureux" },
+      "features": [
+        { "icon": "house", "label": "Lumineux et spacieux", "desc": "Des unités aux configurations variées, baignées de lumière." },
+        { "icon": "leaf", "label": "Calme et air pur", "desc": "Insonorisation supérieure et grand balcon privé offert en option." },
+        { "icon": "bolt", "label": "Tout inclus", "desc": "Chauffage, électricité et taxes d'eau compris dans votre loyer." },
+        { "icon": "blender", "label": "Électroménagers fournis", "desc": "Cuisinière et réfrigérateur inclus; buanderie sur place." },
+        { "icon": "wifi", "label": "Tout connecté", "desc": "Forfait télé et téléphonie (afficheur et boîte vocale) inclus." },
+        { "icon": "car", "label": "Stationnement", "desc": "Espaces extérieurs disponibles, avec vignette." }
+      ],
+      "note": { "title": "Plusieurs options disponibles selon les unités.", "sub": "Demandez-moi la liste des unités actuellement disponibles." }
+    },
+    "security": {
+      "running": "Sérénité au quotidien",
+      "kicker": "Sécurité et tranquillité d'esprit",
+      "title": ["VEILLER SUR VOUS,", "JOUR ET NUIT"],
+      "lead": "La sécurité des résidents est la priorité absolue. Un encadrement professionnel et présent en tout temps offre une véritable tranquillité d'esprit, aux résidents comme à leurs familles.",
+      "panel_title": "Un environnement protégé",
+      "panel_items": [
+        { "icon": "nurse", "text": "Service infirmier d'urgence 24 h / 7 et programme de vigie sécuritaire." },
+        { "icon": "bell", "text": "Réceptionniste présente 24 h / 7 et concierges résidant sur place." },
+        { "icon": "key", "text": "Accès sécurisé par clé à puce individuelle." },
+        { "icon": "camera", "text": "Surveillance par caméras dans toutes les aires communes." },
+        { "icon": "fire", "text": "Détecteurs de fumée et de chaleur reliés à une centrale, et gicleurs dans tout l'immeuble." }
+      ],
+      "panel_caption": "Un accompagnement humain",
+      "services_kicker": "À même l'édifice",
+      "services_title": "Tous vos services, sans sortir dehors",
+      "services": [
+        { "icon": "steth", "label": "Clinique médicale", "desc": "Des soins accessibles directement sur place." },
+        { "icon": "pills", "label": "Pharmacie", "desc": "Vos ordonnances et conseils à deux pas de chez vous." },
+        { "icon": "cart", "label": "Dépanneur", "desc": "L'essentiel du quotidien, toujours à portée de main." }
+      ]
+    },
+    "amenities": {
+      "running": "Espaces communs et loisirs",
+      "kicker": "Des espaces à vivre, chaque jour",
+      "title": ["TOUT POUR VOUS DIVERTIR", "ET VOUS DÉTENDRE"],
+      "lead": "Profitez d'un accès à une foule d'installations intérieures et extérieures, pensées pour rester actif, se détendre et partager de bons moments.",
+      "gallery": [
+        { "icon": "swim", "caption": "Piscine intérieure" },
+        { "icon": "dumbbell", "caption": "Gymnase" },
+        { "icon": "film", "caption": "Salle de cinéma" },
+        { "icon": "book", "caption": "Grande bibliothèque" },
+        { "icon": "golf", "caption": "Mini-golf intérieur" },
+        { "icon": "church", "caption": "Chapelle sur place" }
+      ],
+      "pillars": [
+        { "icon": "dumbbell", "label": "Pour rester actif", "desc": "Piscine, gymnase, salle de jeux, billard et mini-golf." },
+        { "icon": "couch", "label": "Pour se détendre", "desc": "Cinéma, grande bibliothèque et salles de loisirs." },
+        { "icon": "church", "label": "Pour se recueillir", "desc": "Une chapelle accueillante, aménagée sur place." }
+      ]
+    },
+    "life": {
+      "running": "Une retraite active",
+      "kicker": "Une vie sociale riche et stimulante",
+      "title": ["CHAQUE JOUR,", "UNE NOUVELLE OCCASION"],
+      "lead": "Un club de l'âge d'or dynamique anime votre quotidien avec une multitude d'activités gratuites : jeux, ateliers, artisanat et conférences. Au fil des saisons, des événements thématiques rythment l'année.",
+      "events": [
+        { "icon": "champagne", "label": "Célébrations festives", "desc": "Soupers d'anniversaire mensuels et fêtes thématiques." },
+        { "icon": "cake", "label": "Plaisirs gourmands", "desc": "Épluchette de blé d'Inde, dégustations et crème glacée." },
+        { "icon": "tree", "label": "Traditions d'ici", "desc": "Cabane à sucre, Fête du printemps et Marché de Noël." }
+      ],
+      "neighborhood_kicker": "Un quartier accessible",
+      "neighborhood_title": "Toutes les commodités à proximité",
+      "neighborhood": [
+        { "icon": "bus", "label": "Transport facilité", "desc": "Navette vers les commerces et transport collectif à proximité." },
+        { "icon": "hospital", "label": "Santé à proximité", "desc": "Hôpitaux, centres spécialisés, CLSC et cliniques à quelques minutes." },
+        { "icon": "store", "label": "Commerces et services", "desc": "Supermarchés, épiceries et institutions financières tout autour." },
+        { "icon": "tree", "label": "Loisirs extérieurs", "desc": "Centres commerciaux, cinémas et parcs verdoyants à courte distance." }
+      ],
+      "finance": {
+        "icon": "coins",
+        "title": "Un avantage financier important",
+        "text": "Réduisez significativement vos coûts grâce au Crédit d'impôt pour le maintien à domicile des aînés."
+      }
+    },
+    "contact": {
+      "kicker": "Planifions votre visite",
+      "title": ["PARLONS DE VOTRE", "PROCHAIN CHEZ-VOUS"],
+      "cta": "Contactez-moi dès aujourd'hui pour en savoir plus sur ce milieu de vie exceptionnel ou pour planifier une visite personnalisée — c'est avec plaisir que je vous accompagnerai.",
+      "disclaimer": "De rares sorties de groupe ou soirées spéciales peuvent comporter des frais minimes. Renseignements fournis à titre indicatif et sujets à changement sans préavis."
+    }
+  }
+}
