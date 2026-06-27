@@ -212,10 +212,21 @@ export default function mountBusiness(parent = Router()) {
 
   // Modèles de brochure disponibles (le courtier DOIT en choisir un — voir UI).
   const BROCHURE_TEMPLATES = ['unifamilial', 'luxe', 'rpa', 'commercial', 'industriel'];
+
+  // Présentation PERSONNALISÉE d'une propriété (surcharge layout propre à cette propriété,
+  // sans incidence sur le modèle). Stockée dans `documents` (doc_type='brochure').
+  const getPresentation = (pid, tpl) =>
+    (Documents.listBy('property_id', pid) || []).find((doc) => doc.doc_type === 'brochure' && doc.template === tpl) || null;
+  function brochureRenderData(bundle, template) {
+    const data = { ...buildBrochureData(bundle), template };
+    const pres = getPresentation(bundle.property.id, template);
+    if (pres && pres.data && pres.data.layout) data.layout = pres.data.layout;  // surcharge propriété
+    return data;
+  }
   parent.get('/properties/:id/brochure.pdf', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
-    const template = String(req.query.template || 'unifamilial');
+    const template = String(req.query.template || 'unifamilial');
     if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
     const pid = property.id;
     const bundle = {
@@ -228,7 +239,7 @@ export default function mountBusiness(parent = Router()) {
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pdf`);
-    await runWorker('render_brochure', { data: { ...buildBrochureData(bundle), template }, out }, { timeoutMs: 60000 });
+    await runWorker('render_brochure', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="brochure-${pid}.pdf"`);
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
@@ -238,7 +249,7 @@ export default function mountBusiness(parent = Router()) {
   parent.get('/properties/:id/brochure.pptx', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
-    const template = String(req.query.template || 'unifamilial');
+    const template = String(req.query.template || 'unifamilial');
     if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
     const pid = property.id;
     const bundle = {
@@ -251,7 +262,7 @@ export default function mountBusiness(parent = Router()) {
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pptx`);
-    await runWorker('render_brochure_pptx', { data: { ...buildBrochureData(bundle), template }, out }, { timeoutMs: 60000 });
+    await runWorker('render_brochure_pptx', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
     res.setHeader('Content-Disposition', `attachment; filename="brochure-${pid}.pptx"`);
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
@@ -312,6 +323,47 @@ export default function mountBusiness(parent = Router()) {
     const tpl = String(req.params.template);
     if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
     try { fs.unlinkSync(layoutPath(tpl)); } catch { /* déjà absent */ }
+    res.status(204).end();
+  }));
+
+  // ── Présentation personnalisée d'UNE propriété (round-trip niveau propriété) ──
+  // Synchroniser le PPTX édité d'une propriété → surcharge layout propre à cette propriété
+  // (n'affecte PAS le modèle). Le PDF/PPTX de cette propriété en hérite à la prochaine génération.
+  parent.get('/properties/:id/brochure/:template/presentation', wrap(async (req, res) => {
+    if (!Properties.get(req.params.id)) throw notFound('property introuvable');
+    const pres = getPresentation(req.params.id, String(req.params.template));
+    const layout = pres && pres.data && pres.data.layout;
+    res.json({ customized: !!layout, roles: layout ? Object.keys(layout) : [] });
+  }));
+
+  parent.post('/properties/:id/brochure/:template/sync', upload.single('file'), wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const tpl = String(req.params.template);
+    if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
+    if (!req.file) throw badRequest('Aucun fichier PowerPoint téléversé');
+    if (!/\.pptx$/i.test(req.file.originalname || '')) throw badRequest('Le fichier doit être un .pptx');
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, `pres-${property.id}-${tpl}-${Date.now()}.pptx`);
+    fs.writeFileSync(tmp, req.file.buffer);
+    try {
+      const out = await runWorker('pptx_to_layout', { pptx: tmp }, { timeoutMs: 60000 }); // sans out → layout en ligne
+      const layout = out.layout || {};
+      const existing = getPresentation(property.id, tpl);
+      const data = { ...((existing && existing.data) || {}), layout };
+      if (existing) Documents.update(existing.id, { data });
+      else Documents.create({ property_id: property.id, template: tpl, doc_type: 'brochure', title: `Présentation ${tpl}`, format: 'pptx', status: 'final', data });
+      res.status(201).json({ customized: true, roles: out.roles || [] });
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }));
+
+  parent.delete('/properties/:id/brochure/:template/presentation', wrap(async (req, res) => {
+    if (!Properties.get(req.params.id)) throw notFound('property introuvable');
+    const pres = getPresentation(req.params.id, String(req.params.template));
+    if (pres) Documents.delete(pres.id);
     res.status(204).end();
   }));
 

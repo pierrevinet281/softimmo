@@ -95,8 +95,9 @@ def _deep_merge(base, override):
     return out
 
 
-def load_layout(template):
-    """Mise en page par défaut, écrasée par layouts/<template>.json si présent."""
+def load_layout(template, override=None):
+    """Résolution en 3 niveaux : DEFAULT_LAYOUT → modèle (layouts/<template>.json) →
+    surcharge propriété (`override`, ex. présentation personnalisée d'une propriété)."""
     layout = copy.deepcopy(DEFAULT_LAYOUT)
     path = os.path.join(LAYOUTS_DIR, "%s.json" % (template or "unifamilial"))
     if os.path.exists(path):
@@ -105,4 +106,6 @@ def load_layout(template):
                 layout = _deep_merge(layout, json.load(f))
         except Exception:  # noqa: BLE001 — JSON invalide → on garde les valeurs par défaut
             pass
+    if isinstance(override, dict):
+        layout = _deep_merge(layout, override)
     return layout

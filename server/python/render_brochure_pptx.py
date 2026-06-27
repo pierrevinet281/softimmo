@@ -364,7 +364,7 @@ def slide2(prs, d, th):
 def render(data, out):
     global LAYOUT
     tpl = data.get("template") or "unifamilial"
-    LAYOUT = load_layout(tpl)
+    LAYOUT = load_layout(tpl, override=data.get("layout"))  # surcharge propriété éventuelle
     th = THEMES.get(tpl, THEMES["unifamilial"])
     prs = Presentation()
     prs.slide_width = Pt(540); prs.slide_height = Pt(720)

@@ -463,6 +463,42 @@ const BROCHURE_TEMPLATES = [
   { id: 'industriel', labelKey: 'd.bro.industriel', descKey: 'd.bro.industriel.d' },
 ];
 
+function PptxSync({ statusUrl, postUrl, queryKey, labelKey, hintKey }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const ref = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const { data } = useQuery({ queryKey, queryFn: () => api.get(statusUrl) });
+  const inv = () => qc.invalidateQueries({ queryKey });
+  const onFile = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    setBusy(true); setMsg(null);
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const r = await api.upload(postUrl, fd);
+      setMsg(t('d.bro.synced').replace('{n}', (r.roles || []).length));
+      inv();
+    } catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+  };
+  const reset = async () => { await api.del(statusUrl); inv(); };
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Button size="sm" variant="ghost" icon={Upload} onClick={() => ref.current?.click()} disabled={busy}>
+          {busy ? t('d.bro.tpl.uploading') : t(labelKey)}
+        </Button>
+        <input ref={ref} type="file" accept=".pptx" hidden onChange={onFile} />
+        {data?.customized && <Badge tone="info">{t('d.bro.tpl.custom')}</Badge>}
+        {data?.customized && <Button size="sm" variant="ghost" onClick={reset}>{t('d.bro.tpl.reset')}</Button>}
+      </div>
+      {msg && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{msg}</div>}
+      <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t(hintKey)}</div>
+    </div>
+  );
+}
+
 function TemplateLayout({ template }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -530,6 +566,13 @@ function BrochureChooser({ propertyId, onClose }) {
                   <Button size="sm" icon={FileDown} onClick={() => gen(tpl.id, 'pdf')}>{t('d.bro.pdf')}</Button>
                   <Button size="sm" variant="outline" icon={Presentation} onClick={() => gen(tpl.id, 'pptx')}>{t('d.bro.pptx')}</Button>
                 </div>
+                <PptxSync
+                  statusUrl={`/properties/${propertyId}/brochure/${tpl.id}/presentation`}
+                  postUrl={`/properties/${propertyId}/brochure/${tpl.id}/sync`}
+                  queryKey={['pres', propertyId, tpl.id]}
+                  labelKey="d.bro.pres.update"
+                  hintKey="d.bro.pres.hint"
+                />
                 <TemplateLayout template={tpl.id} />
               </>
             )}

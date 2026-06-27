@@ -548,7 +548,7 @@ def _page2_footer(c, d, th):
 def render(data, out):
     global LAYOUT
     tpl = data.get("template") or "unifamilial"
-    LAYOUT = load_layout(tpl)
+    LAYOUT = load_layout(tpl, override=data.get("layout"))  # surcharge propriété éventuelle
     th = THEMES.get(tpl, THEMES["unifamilial"])
     c = canvas.Canvas(out, pagesize=letter)
     page1(c, data, th); c.showPage()
