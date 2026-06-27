@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
   History, Scale, FileText, AlertTriangle, Info, Plus, Upload, FileDown, Presentation,
+  Image as ImageIcon, Trash2,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
@@ -280,6 +281,82 @@ function UnitsTab({ p, items, buildings, refetch }) {
   );
 }
 
+// ─────────────────────────── Photos de propriété ───────────────────────────
+// Téléversement + assignation de rôle (photo principale / carte / intérieur / galerie) ;
+// alimente les brochures (PDF + PPTX). Les images sans rôle servent de repli.
+const PHOTO_ROLES = [
+  { id: 'hero', key: 'd.ph.hero' },
+  { id: 'map', key: 'd.ph.map' },
+  { id: 'interior', key: 'd.ph.interior' },
+  { id: 'gallery', key: 'd.ph.gallery' },
+];
+
+function PhotosTab({ propertyId }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const { data: photos = [], isLoading } = useQuery({
+    queryKey: ['photos', propertyId],
+    queryFn: () => api.get(`/properties/${propertyId}/photos`),
+  });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['photos', propertyId] });
+
+  const onUpload = async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = '';
+    if (!files.length) return;
+    setBusy(true); setErr(null);
+    try {
+      const fd = new FormData();
+      files.forEach((f) => fd.append('files', f));
+      await api.upload(`/properties/${propertyId}/photos`, fd);
+      invalidate();
+    } catch (e2) { setErr(e2.message); } finally { setBusy(false); }
+  };
+  const setRole = async (m, role) => { await api.patch(`/properties/${propertyId}/photos/${m.id}`, { role }); invalidate(); };
+  const remove = async (m) => { await api.del(`/properties/${propertyId}/photos/${m.id}`); invalidate(); };
+
+  return (
+    <Card>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t('d.ph.hint')}</div>
+      <Button icon={Upload} onClick={() => fileRef.current?.click()} disabled={busy}>
+        {busy ? t('d.ph.uploading') : t('d.ph.add')}
+      </Button>
+      <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onUpload} />
+      {err && <div style={{ color: 'var(--color-danger)', fontSize: 12, marginTop: 8 }}>{err}</div>}
+      {isLoading ? (
+        <div className="muted" style={{ marginTop: 16 }}>…</div>
+      ) : photos.length === 0 ? (
+        <div style={{ marginTop: 16 }}><EmptyState icon={ImageIcon} title={t('d.ph.empty')} /></div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginTop: 16 }}>
+          {photos.map((m) => (
+            <div key={m.id} className="card" style={{ padding: 8, border: '1px solid var(--color-border)' }}>
+              <img
+                src={api.url(m.url)}
+                alt={m.filename || ''}
+                style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 4, background: 'var(--color-surface-2)' }}
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                <select
+                  value={m.role}
+                  onChange={(e) => setRole(m, e.target.value)}
+                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                >
+                  {PHOTO_ROLES.map((r) => <option key={r.id} value={r.id}>{t(r.key)}</option>)}
+                </select>
+                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => remove(m)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─────────────────────────── Sélecteur de modèle de brochure ───────────────────────────
 // Le courtier DOIT choisir un modèle (notamment car le modèle Luxe affiche un logo de service
 // non encore souscrit). Aucun modèle n'est généré sans choix explicite.
@@ -332,6 +409,7 @@ const TABS = [
   { id: 'profit', labelKey: 'd.tab.profit', icon: Calculator },
   { id: 'transactions', labelKey: 'd.tab.transactions', icon: History },
   { id: 'comparables', labelKey: 'd.tab.comparables', icon: Scale },
+  { id: 'photos', labelKey: 'd.tab.photos', icon: ImageIcon },
   { id: 'reports', labelKey: 'd.tab.reports', icon: FileText },
 ];
 
@@ -397,6 +475,7 @@ export default function PropertyDetail() {
           ]}
         />
       )}
+      {tab === 'photos' && <PhotosTab propertyId={p.id} />}
       {tab === 'reports' && (
         <ReadOnlyList
           icon={FileText}

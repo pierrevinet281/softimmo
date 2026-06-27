@@ -19,3 +19,4 @@ export { default as Transactions } from './transactions.js';
 export { default as Comparables } from './comparables.js';
 export { default as Reports } from './reports.js';
 export { default as Documents } from './documents.js';
+export { default as PropertyMedia } from './propertyMedia.js';

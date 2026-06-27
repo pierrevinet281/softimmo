@@ -434,6 +434,23 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_property ON reports(property_id);
 
+-- ───────────────────────── Médias de propriété (photos) ─────────────────────────
+-- Photos téléversées, utilisées par les brochures et autres sorties marketing.
+-- `role` : hero (photo principale) | map (carte) | interior (intérieur) | gallery (non assigné).
+CREATE TABLE IF NOT EXISTS property_media (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  role          TEXT NOT NULL DEFAULT 'gallery',
+  position      INTEGER DEFAULT 0,
+  file_path     TEXT NOT NULL,
+  filename      TEXT,
+  mime          TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_property_media_property ON property_media(property_id);
+
 -- ───────────────────────── Documents générés ─────────────────────────
 -- Toute sortie produite (analyse, évaluation, offre, marketing, guide). `data` est
 -- l'instantané JSON ayant servi au rendu — base de l'aller-retour PPTX (docs/09).

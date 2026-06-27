@@ -12,6 +12,7 @@ import config from '../lib/config.js';
 import { makeCrudRouter } from './_crud.js';
 import {
   Clients, Properties, Buildings, Units, Expenses, Transactions, Comparables, Reports, Documents, Activity, Settings,
+  PropertyMedia,
 } from '../db/repositories/index.js';
 import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js';
 import { computeAcm } from '../engine/acm.js';
@@ -170,7 +171,17 @@ export default function mountBusiness(parent = Router()) {
     const cityProv = [p.city, p.province].filter(Boolean).join(' (') + (p.province ? ')' : '');
     const summary = [beds ? `${beds} chambres` : null, baths ? `${baths} salles de bain` : null]
       .filter(Boolean).join(' + ') + (b.livable_area ? ` (${Math.round(b.livable_area)} pi²)` : '');
+    // Photos téléversées → images de la brochure (rôles hero/map/interior ; gallery en repli).
+    const media = bundle.media || [];
+    const byRole = (r) => media.filter((m) => m.role === r).map((m) => m.file_path).filter(Boolean);
+    const gallery = byRole('gallery');
+    const hero = byRole('hero')[0] || gallery[0] || null;
+    const map = byRole('map')[0] || null;
+    const interior = [...byRole('interior'), ...gallery.filter((g) => g !== hero)].slice(0, 3);
     return {
+      images: { hero, map },
+      interior,
+      listing_url: p.centris_url || p.listing_url || null,
       title: GENRE_LABEL[p.genre] || GENRE_LABEL.autre,
       city: cityProv,
       summary_line: summary,
@@ -212,6 +223,7 @@ export default function mountBusiness(parent = Router()) {
       buildings: Buildings.listBy('property_id', pid),
       units: Units.listBy('property_id', pid),
       transactions: Transactions.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
+      media: PropertyMedia.listBy('property_id', pid, { sort: 'position', dir: 'asc' }),
     };
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
@@ -235,6 +247,7 @@ export default function mountBusiness(parent = Router()) {
       buildings: Buildings.listBy('property_id', pid),
       units: Units.listBy('property_id', pid),
       transactions: Transactions.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
+      media: PropertyMedia.listBy('property_id', pid, { sort: 'position', dir: 'asc' }),
     };
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
@@ -243,6 +256,68 @@ export default function mountBusiness(parent = Router()) {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
     res.setHeader('Content-Disposition', `attachment; filename="brochure-${pid}.pptx"`);
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
+  // ── Photos de propriété (téléversement + rôles pour la brochure) ──
+  const PHOTO_ROLES = ['hero', 'map', 'interior', 'gallery'];
+  const EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
+  const mediaOut = (m) => ({ ...m, url: `/properties/${m.property_id}/photos/${m.id}/raw` });
+
+  parent.get('/properties/:id/photos', wrap(async (req, res) => {
+    if (!Properties.get(req.params.id)) throw notFound('property introuvable');
+    res.json(PropertyMedia.listBy('property_id', req.params.id, { sort: 'position', dir: 'asc' }).map(mediaOut));
+  }));
+
+  parent.post('/properties/:id/photos', upload.array('files', 30), wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const files = req.files || [];
+    if (!files.length) throw badRequest('Aucune image téléversée');
+    const role = PHOTO_ROLES.includes(req.body?.role) ? req.body.role : 'gallery';
+    const dir = path.join(config.root, 'data', 'uploads', 'properties', property.id);
+    fs.mkdirSync(dir, { recursive: true });
+    const base = PropertyMedia.listBy('property_id', property.id).length;
+    const created = [];
+    files.forEach((f, i) => {
+      if (!String(f.mimetype || '').startsWith('image/')) return;
+      const id = `media_${Date.now()}_${i}`;
+      const dest = path.join(dir, `${id}${EXT[f.mimetype] || '.img'}`);
+      fs.writeFileSync(dest, f.buffer);
+      created.push(PropertyMedia.create({
+        id, property_id: property.id, role, position: base + i, file_path: dest,
+        filename: f.originalname || null, mime: f.mimetype || null,
+      }));
+    });
+    if (!created.length) throw badRequest('Format non supporté (images uniquement)');
+    res.status(201).json(created.map(mediaOut));
+  }));
+
+  parent.patch('/properties/:id/photos/:mediaId', wrap(async (req, res) => {
+    const m = PropertyMedia.get(req.params.mediaId);
+    if (!m || m.property_id !== req.params.id) throw notFound('photo introuvable');
+    const patch = {};
+    if (req.body?.role !== undefined) {
+      if (!PHOTO_ROLES.includes(req.body.role)) throw badRequest(`Rôle inconnu : ${req.body.role}`);
+      patch.role = req.body.role;
+    }
+    if (req.body?.position !== undefined) patch.position = Number(req.body.position) || 0;
+    res.json(mediaOut(PropertyMedia.update(req.params.mediaId, patch)));
+  }));
+
+  parent.delete('/properties/:id/photos/:mediaId', wrap(async (req, res) => {
+    const m = PropertyMedia.get(req.params.mediaId);
+    if (!m || m.property_id !== req.params.id) throw notFound('photo introuvable');
+    try { if (m.file_path) fs.unlinkSync(m.file_path); } catch { /* ignore */ }
+    PropertyMedia.delete(req.params.mediaId);
+    res.status(204).end();
+  }));
+
+  parent.get('/properties/:id/photos/:mediaId/raw', wrap(async (req, res) => {
+    const m = PropertyMedia.get(req.params.mediaId);
+    if (!m || m.property_id !== req.params.id || !m.file_path || !fs.existsSync(m.file_path)) throw notFound('photo introuvable');
+    if (m.mime) res.setHeader('Content-Type', m.mime);
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    res.sendFile(m.file_path, (err) => { if (err && !res.headersSent) res.status(500).end(); });
   }));
 
   // ── Stats APCIQ (ratios vente/inscrit & vente/éval) ──
