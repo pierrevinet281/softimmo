@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Building2, Sparkles, ShieldCheck, ListChecks,
   Upload, Store, Activity as ActivityIcon, Settings as SettingsIcon, Moon, Sun, Zap,
-  Home, FileBarChart, Megaphone, FileText, LifeBuoy, Contact, Briefcase,
+  Home, FileBarChart, Megaphone, FileText, LifeBuoy, Contact, Briefcase, UserCircle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from './api/client.js';
@@ -13,7 +13,13 @@ import Dashboard from './pages/Dashboard.jsx';
 import Properties from './pages/Properties.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
 import Evaluation from './pages/Evaluation.jsx';
-import Offres from './pages/Offres.jsx';
+import OffresList from './pages/OffresList.jsx';
+import OffreEdit from './pages/OffreEdit.jsx';
+import OffreTemplates from './pages/OffreTemplates.jsx';
+import BrokerAssetsList from './pages/BrokerAssetsList.jsx';
+import BrokerAssetEdit from './pages/BrokerAssetEdit.jsx';
+import BrokerTemplates from './pages/BrokerTemplates.jsx';
+import ProfilCourtier from './pages/ProfilCourtier.jsx';
 import ClientsPage from './pages/ClientsPage.jsx';
 import Placeholder from './pages/Placeholder.jsx';
 import Contacts from './pages/Contacts.jsx';
@@ -29,14 +35,24 @@ import Settings from './pages/Settings.jsx';
 // Navigation grouped by Softimmo module. `key` shows a live count from /stats.
 const NAV = [
   { to: '/', labelKey: 'nav.overview', icon: LayoutDashboard, end: true },
+  { sectionKey: 'sec.account' },
+  { to: '/profile', labelKey: 'nav.profile', icon: UserCircle },
   { sectionKey: 'sec.mandates' },
   { to: '/properties', labelKey: 'nav.properties', icon: Building2 },
   { to: '/clients', labelKey: 'nav.clients', icon: Home },
   { sectionKey: 'sec.analysis' },
   { to: '/evaluation', labelKey: 'nav.evaluation', icon: FileBarChart },
   { sectionKey: 'sec.promo' },
-  { to: '/assets-courtier', labelKey: 'nav.brokerAssets', icon: Briefcase },
-  { to: '/offres', labelKey: 'nav.offers', icon: FileText },
+  { to: '/offres', labelKey: 'nav.offers', icon: FileText, children: [
+    { to: '/offres', labelKey: 'nav.off.list', end: true },
+    { to: '/offres/edit', labelKey: 'nav.off.add' },
+    { to: '/offres/templates', labelKey: 'nav.off.templates' },
+  ] },
+  { to: '/assets-courtier', labelKey: 'nav.brokerAssets', icon: Briefcase, children: [
+    { to: '/assets-courtier', labelKey: 'nav.ba.list', end: true },
+    { to: '/assets-courtier/edit', labelKey: 'nav.ba.add' },
+    { to: '/assets-courtier/templates', labelKey: 'nav.ba.templates' },
+  ] },
   { to: '/trousse-demarrage', labelKey: 'nav.startKit', icon: LifeBuoy },
   { to: '/trousse-marketing', labelKey: 'nav.marketingKit', icon: Megaphone },
   { sectionKey: 'sec.crm' },
@@ -55,7 +71,8 @@ const NAV = [
 // path -> label key, for the topbar title.
 const TITLE_KEY = {
   '/': 'nav.overview', '/properties': 'nav.properties', '/clients': 'nav.clients',
-  '/evaluation': 'nav.evaluation', '/assets-courtier': 'nav.brokerAssets', '/offres': 'nav.offers',
+  '/evaluation': 'nav.evaluation', '/profile': 'nav.profile',
+  '/assets-courtier': 'nav.brokerAssets', '/offres': 'nav.offers',
   '/trousse-demarrage': 'nav.startKit', '/trousse-marketing': 'nav.marketingKit',
   '/contacts': 'nav.contacts', '/companies': 'nav.companies',
   '/lists': 'nav.lists', '/generate': 'nav.generate', '/verify': 'nav.verify',
@@ -79,7 +96,9 @@ export default function App() {
   const { data: stats } = useQuery({ queryKey: ['stats'], queryFn: () => api.get('/stats'), refetchInterval: 8000 });
   const counts = { contacts: stats?.contacts, companies: stats?.companies };
 
-  const title = t(TITLE_KEY[location.pathname] || 'app.tagline');
+  const prefixKey = location.pathname.startsWith('/assets-courtier') ? 'nav.brokerAssets'
+    : location.pathname.startsWith('/offres') ? 'nav.offers' : null;
+  const title = t(TITLE_KEY[location.pathname] || prefixKey || 'app.tagline');
 
   return (
     <div className="app-shell">
@@ -89,18 +108,36 @@ export default function App() {
           Softimmo
         </div>
         <nav className="sidebar-nav">
-          {NAV.map((item, i) => (
-            item.sectionKey
-              ? <div className="nav-section" key={`s${i}`}>{t(item.sectionKey)}</div>
-              : (
-                <NavLink key={item.to} to={item.to} end={item.end}
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                  <item.icon size={18} />
-                  <span>{t(item.labelKey)}</span>
-                  {item.key && counts[item.key] != null && <span className="count">{counts[item.key]}</span>}
-                </NavLink>
-              )
-          ))}
+          {NAV.map((item, i) => {
+            if (item.sectionKey) return <div className="nav-section" key={`s${i}`}>{t(item.sectionKey)}</div>;
+            if (item.children) {
+              return (
+                <div key={item.to} className="nav-group">
+                  <div className="nav-item nav-parent">
+                    <item.icon size={18} />
+                    <span>{t(item.labelKey)}</span>
+                  </div>
+                  <div className="nav-children">
+                    {item.children.map((ch) => (
+                      <NavLink key={ch.to} to={ch.to} end={ch.end}
+                        className={({ isActive }) => `nav-item nav-sub ${isActive ? 'active' : ''}`}>
+                        <span className="nav-bullet">•</span>
+                        <span>{t(ch.labelKey)}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <NavLink key={item.to} to={item.to} end={item.end}
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <item.icon size={18} />
+                <span>{t(item.labelKey)}</span>
+                {item.key && counts[item.key] != null && <span className="count">{counts[item.key]}</span>}
+              </NavLink>
+            );
+          })}
         </nav>
       </aside>
 
@@ -125,8 +162,15 @@ export default function App() {
           <Route path="/properties/:id" element={<PropertyDetail />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/evaluation" element={<Evaluation />} />
-          <Route path="/assets-courtier" element={<Placeholder titleKey="nav.brokerAssets" />} />
-          <Route path="/offres" element={<Offres />} />
+          <Route path="/profile" element={<ProfilCourtier />} />
+          <Route path="/offres" element={<OffresList />} />
+          <Route path="/offres/edit" element={<OffreEdit />} />
+          <Route path="/offres/edit/:id" element={<OffreEdit />} />
+          <Route path="/offres/templates" element={<OffreTemplates />} />
+          <Route path="/assets-courtier" element={<BrokerAssetsList />} />
+          <Route path="/assets-courtier/edit" element={<BrokerAssetEdit />} />
+          <Route path="/assets-courtier/edit/:id" element={<BrokerAssetEdit />} />
+          <Route path="/assets-courtier/templates" element={<BrokerTemplates />} />
           <Route path="/trousse-demarrage" element={<Placeholder titleKey="nav.startKit" />} />
           <Route path="/trousse-marketing" element={<Placeholder titleKey="nav.marketingKit" />} />
           <Route path="/contacts" element={<Contacts />} />

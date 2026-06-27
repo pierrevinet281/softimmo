@@ -12,12 +12,13 @@ import config from '../lib/config.js';
 import { makeCrudRouter } from './_crud.js';
 import {
   Clients, Properties, Buildings, Units, Expenses, Transactions, Comparables, Reports, Documents, Activity, Settings,
-  PropertyMedia,
+  PropertyMedia, BrokerAssets,
 } from '../db/repositories/index.js';
 import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js';
 import { computeAcm } from '../engine/acm.js';
 import { buildMarketingCopy } from '../engine/marketingCopy.js';
-import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS } from '../engine/offre.js';
+import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS, resolveOffreContent, applyOfferDiff } from '../engine/offre.js';
+import { buildRpaData, imagesFromMedia } from '../engine/rpaBrochure.js';
 import { getAcmParams, setAcmParams, getAcmDefaults } from '../lib/acmParams.js';
 
 // Permissive schemas: every field optional + passthrough. Required-on-create is enforced
@@ -34,6 +35,7 @@ const ENTITIES = [
   { path: 'comparables',  repo: Comparables,  type: 'comparable',  labelField: 'address',   required: ['property_id'] },
   { path: 'reports',      repo: Reports,      type: 'report',      labelField: 'title',     required: ['property_id'] },
   { path: 'documents',    repo: Documents,    type: 'document',    labelField: 'title',     required: ['doc_type'] },
+  { path: 'broker-assets', repo: BrokerAssets, type: 'broker_asset', labelField: 'name',     required: ['name'] },
 ];
 
 export default function mountBusiness(parent = Router()) {
@@ -250,7 +252,18 @@ export default function mountBusiness(parent = Router()) {
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pdf`);
-    await runWorker('render_brochure', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
+    if (template === 'rpa') {
+      // RPA : format éditorial distinct (render_rpa_brochure) — défauts + surcharge propriété + photos.
+      const pres = getPresentation(pid, 'rpa');
+      const data = buildRpaData({
+        broker: defaultBroker(),
+        contentOverride: pres?.data?.content || null,
+        images: imagesFromMedia(bundle.media),
+      });
+      await runWorker('render_rpa_brochure', { data, out }, { timeoutMs: 60000 });
+    } else {
+      await runWorker('render_brochure', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
+    }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="brochure-${pid}.pdf"`);
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
@@ -483,19 +496,37 @@ export default function mountBusiness(parent = Router()) {
     ? [p.address, p.city, p.province ? `(${p.province})` : null].filter(Boolean).join(', ')
     : null;
 
+  // Premier fichier d'un asset du courtier (bibliothèque Assets courtier) d'un type donné.
+  const firstAssetFile = (...types) => {
+    for (const ty of types) {
+      const rows = BrokerAssets.listBy('asset_type', ty) || [];
+      const a = rows.find((r) => r.file_path && fs.existsSync(r.file_path));
+      if (a) return a.file_path;
+    }
+    return null;
+  };
+  const existsPath = (p) => (p && fs.existsSync(p) ? p : null);
+
   function offreDataFromReq(src) {
     const variant = OFFRE_VARIANTS.includes(src.variant) ? src.variant : 'vendeur';
     const lang = OFFRE_LANGS.includes(src.lang) ? src.lang : 'fr';
     const client = src.client_id ? Clients.get(src.client_id) : null;
     const property = src.property_id ? Properties.get(src.property_id) : null;
     const broker = offreBroker();
+    // Logo / photo / bannière : branding du Profil d'abord, sinon bibliothèque Assets courtier,
+    // sinon valeur par défaut. (Un chemin enregistré mais introuvable est ignoré.)
+    const logo = existsPath(broker.logo) || firstAssetFile('logo') || offreAsset('unifamilial', 'exp_logo_white.png');
+    const photo = existsPath(broker.photo) || firstAssetFile('portrait', 'buste') || offreAsset('broker', 'portrait.png');
+    const banner = existsPath(broker.banner) || firstAssetFile('banner') || null;
     return buildOffreData({
       variant, lang, broker,
       settingsContent: Settings.get('offre_content', null),
       client: client ? { name: client.full_name } : (src.client_name ? { name: src.client_name } : null),
       property: property ? { line: propertyLine(property) } : (src.property_line ? { line: src.property_line } : null),
-      logo: broker.logo || offreAsset('unifamilial', 'exp_logo_white.png'),
-      broker_photo: broker.photo || offreAsset('broker', 'portrait.png'),
+      logo,
+      broker_photo: photo,
+      banner_image: banner,
+      theme: broker.theme || null,   // { band_color, title_color } (Profil du courtier)
       overrides: src.overrides || null,
       dateIso: src.date_iso || new Date().toISOString().slice(0, 10),
       dateText: src.date || null,
@@ -526,22 +557,293 @@ export default function mountBusiness(parent = Router()) {
 
   // Configuration éditable de l'offre : profil courtier + contenu (defaults + surcharges).
   parent.get('/offre/config', wrap(async (req, res) => {
+    const broker = offreBroker();
     res.json({
       variants: OFFRE_VARIANTS,
       langs: OFFRE_LANGS,
-      broker: offreBroker(),
+      broker,
       content: Settings.get('offre_content', null),  // null = on utilise les défauts intégrés
+      resolved: resolveOffreContent(Settings.get('offre_content', null)),  // défauts + surcharge (édition)
+      images: {
+        logo: broker.logo ? '/broker/profile/image/logo/raw' : null,
+        banner: broker.banner ? '/broker/profile/image/banner/raw' : null,
+        photo: broker.photo ? '/broker/profile/image/photo/raw' : null,
+      },
     });
   }));
 
   parent.put('/offre/config', wrap(async (req, res) => {
     const body = req.body || {};
-    if (body.broker !== undefined) Settings.set('broker_profile', body.broker);
+    if (body.broker !== undefined) {
+      // Préserver les chemins d'images (gérés par les endpoints d'upload, pas par le formulaire).
+      const cur = Settings.get('broker_profile', {}) || {};
+      const next = { ...body.broker };
+      for (const k of ['logo', 'banner', 'photo']) {
+        if (next[k] === undefined && cur[k]) next[k] = cur[k];
+      }
+      Settings.set('broker_profile', next);
+    }
     if (body.content !== undefined) Settings.set('offre_content', body.content);
-    res.json({
-      broker: offreBroker(),
-      content: Settings.get('offre_content', null),
+    res.json({ broker: offreBroker(), content: Settings.get('offre_content', null) });
+  }));
+
+  // ── Offres sauvegardées (entités) — stockées dans `documents` (doc_type='offre') ──
+  // Une offre nommée = variante + langue + client/propriété + surcharges + (futur) personnalisation.
+  // `data.is_template` la fait apparaître dans l'onglet Gabarits.
+  const offreOut = (d) => ({
+    id: d.id, name: d.title, client_id: d.client_id, property_id: d.property_id,
+    lang: d.lang, client_type: d.template || null,
+    created_at: d.created_at, updated_at: d.updated_at, ...(d.data || {}),
+  });
+  const offreDocFields = (b) => ({
+    title: (b.name || '').trim() || 'Offre sans nom',
+    client_id: b.client_id || null, property_id: b.property_id || null, lang: b.lang || 'fr',
+    template: b.client_type || null,
+    data: {
+      offer_name: (b.name || '').trim(), variant: b.variant || 'vendeur', lang: b.lang || 'fr',
+      client_id: b.client_id || null, property_id: b.property_id || null, client_type: b.client_type || null,
+      opportunity: b.opportunity || null, date_iso: b.date_iso || null,
+      is_template: !!b.is_template, overrides: b.overrides || null, customization: b.customization || null,
+    },
+  });
+
+  parent.get('/offres', wrap(async (req, res) => {
+    const r = Documents.list({ doc_type: 'offre', q: req.query.q, limit: 500, sort: 'updated_at', dir: 'desc' });
+    let rows = r.rows.map(offreOut);
+    if (req.query.templates === '1' || req.query.templates === 'true') rows = rows.filter((o) => o.is_template);
+    else if (req.query.templates === '0') rows = rows.filter((o) => !o.is_template);
+    res.json({ rows, total: rows.length });
+  }));
+  parent.post('/offres', wrap(async (req, res) => {
+    const b = req.body || {};
+    if (!b.name || !b.name.trim()) throw badRequest('name requis');
+    const doc = Documents.create({ doc_type: 'offre', ...offreDocFields(b) });
+    Activity.log({ kind: 'create', entity_type: 'offre', entity_id: doc.id, summary: `Offre « ${doc.title} »` });
+    res.status(201).json(offreOut(doc));
+  }));
+  parent.get('/offres/:id', wrap(async (req, res) => {
+    const d = Documents.get(req.params.id);
+    if (!d || d.doc_type !== 'offre') throw notFound('offre introuvable');
+    res.json(offreOut(d));
+  }));
+  parent.put('/offres/:id', wrap(async (req, res) => {
+    const d = Documents.get(req.params.id);
+    if (!d || d.doc_type !== 'offre') throw notFound('offre introuvable');
+    const upd = Documents.update(req.params.id, offreDocFields(req.body || {}));
+    res.json(offreOut(upd));
+  }));
+  parent.delete('/offres/:id', wrap(async (req, res) => {
+    const d = Documents.get(req.params.id);
+    if (!d || d.doc_type !== 'offre') throw notFound('offre introuvable');
+    Documents.delete(req.params.id);
+    res.json({ ok: true });
+  }));
+
+  // Données de rendu d'une offre SAUVEGARDÉE (PDF ou PPTX) : applique le contenu issu du
+  // jumeau PPTX synchronisé (prioritaire) sinon la personnalisation (ordre/inclusion/assets).
+  function offerRenderData(d) {
+    const o = offreOut(d);
+    const variant = OFFRE_VARIANTS.includes(o.variant) ? o.variant : 'vendeur';
+    const lang = OFFRE_LANGS.includes(o.lang) ? o.lang : 'fr';
+    const langs = lang === 'bi' ? ['fr', 'en'] : [lang];
+    const broker = offreBroker();
+    const logo = existsPath(broker.logo) || firstAssetFile('logo') || offreAsset('unifamilial', 'exp_logo_white.png');
+    const photo = existsPath(broker.photo) || firstAssetFile('portrait', 'buste') || offreAsset('broker', 'portrait.png');
+    const banner = existsPath(broker.banner) || firstAssetFile('banner') || null;
+    const resolveAsset = (a) => {
+      if (a && a.asset_id) { const x = BrokerAssets.get(a.asset_id); return x && existsPath(x.file_path); }
+      switch (a && a.kind) {
+        case 'logo': return logo;
+        case 'banner': return banner || logo;
+        case 'portrait': return photo;
+        case 'buste': return firstAssetFile('buste') || photo;
+        case 'photo': return firstAssetFile('autre', 'hero') || photo;
+        default: return null;
+      }
+    };
+    const global = resolveOffreContent(Settings.get('offre_content', null));
+    const contentOverride = {};
+    for (const l of langs) {
+      contentOverride[l] = o.pptx_content?.[l] || applyOfferDiff(global[l]?.[variant] || {}, o.customization?.[l], resolveAsset);
+    }
+    const client = o.client_id ? Clients.get(o.client_id) : null;
+    const property = o.property_id ? Properties.get(o.property_id) : null;
+    return buildOffreData({
+      variant, lang, broker, settingsContent: Settings.get('offre_content', null),
+      client: client ? { name: client.full_name } : null,
+      property: property ? { line: propertyLine(property) } : null,
+      logo, broker_photo: photo, banner_image: banner, theme: broker.theme || null,
+      contentOverride,
+      dateIso: o.date_iso || new Date().toISOString().slice(0, 10),
     });
+  }
+
+  const getOffre = (id) => { const d = Documents.get(id); if (!d || d.doc_type !== 'offre') throw notFound('offre introuvable'); return d; };
+
+  // PDF d'une offre sauvegardée.
+  parent.get('/offres/:id/pdf', wrap(async (req, res) => {
+    const d = getOffre(req.params.id);
+    await streamOffrePdf(res, offerRenderData(d), offreOut(d).name || 'offre');
+  }));
+
+  // Jumeau PPTX éditable d'une offre (aller-retour).
+  parent.get('/offres/:id/pptx', wrap(async (req, res) => {
+    const d = getOffre(req.params.id);
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `offre-${d.id}-${Date.now()}.pptx`);
+    await runWorker('render_offre_pptx', { data: offerRenderData(d), out }, { timeoutMs: 60000 });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="offre-${(offreOut(d).name || 'offre').replace(/[^\w.-]+/g, '_')}.pptx"`);
+    res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
+  // Synchronisation : le PPTX édité est ré-ingéré → contenu de l'offre + PDF mis à jour.
+  parent.post('/offres/:id/pptx/sync', upload.single('file'), wrap(async (req, res) => {
+    const d = getOffre(req.params.id);
+    if (!req.file) throw badRequest('Aucun fichier PPTX téléversé');
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, `offre-sync-${d.id}-${Date.now()}.pptx`);
+    fs.writeFileSync(tmp, req.file.buffer);
+    const imagesDir = path.join(dir, `offre-${d.id}-imgs`);
+    try {
+      const out = await runWorker('ingest_offre_pptx', { pptx: tmp, images_dir: imagesDir }, { timeoutMs: 60000 });
+      const o = offreOut(d);
+      const l0 = (o.lang === 'en') ? 'en' : 'fr';   // le PPTX porte une seule langue (bi → fr)
+      const data = { ...(d.data || {}) };
+      data.pptx_content = { ...(data.pptx_content || {}), [l0]: out.content };
+      data.pptx_synced_at = new Date().toISOString();
+      Documents.update(d.id, { data });
+      res.json(offreOut(Documents.get(d.id)));
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }));
+
+  // Images de marque du courtier (logo, bannière de fond, portrait). Stockées dans broker_profile.
+  const BROKER_IMG_KINDS = ['logo', 'banner', 'photo'];
+  parent.post('/broker/profile/image/:kind', upload.single('file'), wrap(async (req, res) => {
+    const kind = String(req.params.kind);
+    if (!BROKER_IMG_KINDS.includes(kind)) throw badRequest(`Type d'image inconnu : ${kind}`);
+    if (!req.file || !String(req.file.mimetype || '').startsWith('image/')) throw badRequest('Image requise');
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, `broker_${kind}_${Date.now()}${EXT[req.file.mimetype] || '.img'}`);
+    fs.writeFileSync(dest, req.file.buffer);
+    const broker = Settings.get('broker_profile', {}) || {};
+    try { if (broker[kind] && broker[kind] !== dest) fs.unlinkSync(broker[kind]); } catch { /* ignore */ }
+    broker[kind] = dest;
+    Settings.set('broker_profile', broker);
+    res.json({ kind, url: `/broker/profile/image/${kind}/raw?t=${Date.now()}` });
+  }));
+
+  parent.delete('/broker/profile/image/:kind', wrap(async (req, res) => {
+    const kind = String(req.params.kind);
+    if (!BROKER_IMG_KINDS.includes(kind)) throw badRequest(`Type d'image inconnu : ${kind}`);
+    const broker = Settings.get('broker_profile', {}) || {};
+    try { if (broker[kind]) fs.unlinkSync(broker[kind]); } catch { /* ignore */ }
+    broker[kind] = null;
+    Settings.set('broker_profile', broker);
+    res.json({ ok: true });
+  }));
+
+  parent.get('/broker/profile/image/:kind/raw', wrap(async (req, res) => {
+    const kind = String(req.params.kind);
+    if (!BROKER_IMG_KINDS.includes(kind)) throw notFound('image introuvable');
+    const broker = Settings.get('broker_profile', {}) || {};
+    const p = broker[kind];
+    if (!p || !fs.existsSync(p)) throw notFound('image introuvable');
+    res.setHeader('Cache-Control', 'private, max-age=30');
+    res.sendFile(p, (err) => { if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
+  // ── Assets du courtier : fichier (image/PDF) attaché à un asset ──
+  const ASSET_EXT = { ...EXT, 'application/pdf': '.pdf', 'image/svg+xml': '.svg' };
+  parent.post('/broker-assets/:id/file', upload.single('file'), wrap(async (req, res) => {
+    const a = BrokerAssets.get(req.params.id);
+    if (!a) throw notFound('asset introuvable');
+    if (!req.file) throw badRequest('Aucun fichier téléversé');
+    const mime = req.file.mimetype || '';
+    if (!mime.startsWith('image/') && mime !== 'application/pdf') throw badRequest('Format non supporté (image ou PDF)');
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, `asset_${a.id}_${Date.now()}${ASSET_EXT[mime] || '.bin'}`);
+    fs.writeFileSync(dest, req.file.buffer);
+    try { if (a.file_path && a.file_path !== dest) fs.unlinkSync(a.file_path); } catch { /* ignore */ }
+    const updated = BrokerAssets.update(a.id, { file_path: dest, filename: req.file.originalname || null, mime });
+    res.json(updated);
+  }));
+
+  parent.delete('/broker-assets/:id/file', wrap(async (req, res) => {
+    const a = BrokerAssets.get(req.params.id);
+    if (!a) throw notFound('asset introuvable');
+    try { if (a.file_path) fs.unlinkSync(a.file_path); } catch { /* ignore */ }
+    res.json(BrokerAssets.update(a.id, { file_path: null, filename: null, mime: null }));
+  }));
+
+  parent.get('/broker-assets/:id/raw', wrap(async (req, res) => {
+    const a = BrokerAssets.get(req.params.id);
+    if (!a || !a.file_path || !fs.existsSync(a.file_path)) throw notFound('fichier introuvable');
+    if (a.mime) res.setHeader('Content-Type', a.mime);
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    res.sendFile(a.file_path, (err) => { if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
+  // ── Aperçu des GABARITS de brochure (sans propriété) : rendu d'un exemple déterministe ──
+  // Permet à l'onglet « Gabarits › Brochures » de prévisualiser/télécharger chaque modèle.
+  function sampleBrochureData(template) {
+    return {
+      template,
+      broker: offreBroker(),
+      images: { hero: null, map: null },
+      interior: [],
+      listing_url: null,
+      title: 'Maison à vendre',
+      city: 'Blainville (Québec)',
+      summary_line: '4 chambres + 2 salles de bain (2 400 pi²)',
+      address: '123, RUE DES ÉRABLES, BLAINVILLE (QUÉBEC) J7C 0A0',
+      mls: '10000000',
+      price: 749000,
+      specs_left: [
+        ['Type de propriété', 'Unifamiliale'], ['Année de construction', 2008],
+        ['Nombre de pièces', 9], ['Nombre de chambres', 4], ['Nombre salles de bain', 2],
+      ],
+      specs_right: [
+        ['Surface habitable', '2 400 pc'], ['Surface du terrain', '6 500 pc'],
+        ['Structure', 'Ossature de bois'], ['Revêtement', 'Brique et fibrociment'], ['Zonage', 'Résidentiel'],
+      ],
+      headline: 'Exemple de brochure — modèle',
+      description: 'Ceci est un exemple servant à visualiser le modèle de brochure. Les photos, le texte et les caractéristiques seront remplacés par les données réelles de la propriété lors de la génération.',
+      rooms: [
+        ["Hall d'entrée", 'RDC', '2,1 x 1,8 m'], ['Salon', 'RDC', '4,5 x 4,0 m'],
+        ['Cuisine', 'RDC', '3,6 x 4,2 m'], ['Chambre principale', 'Étage', '4,0 x 3,8 m'],
+      ],
+    };
+  }
+  async function streamBrochureSample(res, template, fmt) {
+    if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `gabarit-${template}-${Date.now()}.${fmt}`);
+    if (template === 'rpa' && fmt === 'pdf') {
+      // Aperçu du gabarit RPA (format éditorial) à partir des défauts (réserves d'images élégantes).
+      await runWorker('render_rpa_brochure', { data: buildRpaData({ broker: defaultBroker() }), out }, { timeoutMs: 60000 });
+    } else {
+      const worker = fmt === 'pptx' ? 'render_brochure_pptx' : 'render_brochure';
+      await runWorker(worker, { data: sampleBrochureData(template), out }, { timeoutMs: 60000 });
+    }
+    res.setHeader('Content-Type', fmt === 'pptx'
+      ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      : 'application/pdf');
+    res.setHeader('Content-Disposition', `${fmt === 'pptx' ? 'attachment' : 'inline'}; filename="gabarit-${template}.${fmt}"`);
+    res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }
+  parent.get('/brochure/templates/:template/sample.pdf', wrap(async (req, res) => {
+    await streamBrochureSample(res, String(req.params.template), 'pdf');
+  }));
+  parent.get('/brochure/templates/:template/sample.pptx', wrap(async (req, res) => {
+    await streamBrochureSample(res, String(req.params.template), 'pptx');
   }));
 
   return parent;

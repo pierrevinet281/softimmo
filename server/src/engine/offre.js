@@ -96,18 +96,67 @@ export function buildOffreData(opts = {}) {
   const content = {};
   for (const l of langs) {
     content[l] = resolveVariant(l, variant, opts.settingsContent, Object.keys(ro).length ? ro : null);
+    // Surcharge par offre (personnalisation : ordre/inclusion/assets déjà appliqués, prêt au rendu).
+    if (opts.contentOverride && opts.contentOverride[l]) content[l] = opts.contentOverride[l];
   }
 
   return {
     langs, variant, broker,
     logo: opts.logo || null,
     broker_photo: opts.broker_photo || broker.photo || null,
+    banner_image: opts.banner_image || null,
+    theme: opts.theme || null,            // { band_color, title_color }
     client_name: opts.client?.name || null,
     property_line: opts.property?.line || null,
     date_iso: opts.dateIso || null,
     date: opts.dateText || null,
     content,
   };
+}
+
+// Applique la PERSONNALISATION d'une offre (diff) au contenu global d'une variante/langue,
+// produisant un contenu prêt au rendu : ordre + masquage des sections, inclusion/ordre des
+// éléments, et sections « asset » (image insérée). `resolveAsset(a)` renvoie le chemin image.
+//   diff = { order:[key...], hidden:{key:true}, items:{key:{order:[i...], excluded:{i:true}}},
+//            assets:{key:{kind, asset_id, caption}} }
+export function applyOfferDiff(base, diff, resolveAsset) {
+  base = base || {};
+  if (!diff || !Array.isArray(diff.order) || !diff.order.length) return base;
+  const out = { doc_title: base.doc_title, subtitle: base.subtitle };
+  const sections = [];
+  for (const key of diff.order) {
+    const hidden = !!(diff.hidden && diff.hidden[key]);
+    if (diff.assets && diff.assets[key]) {
+      const a = diff.assets[key];
+      out[key] = { kind: 'asset', image: resolveAsset ? resolveAsset(a) : null, caption: a.caption || '' };
+      sections.push({ key, custom: true, kind: 'asset', hidden });
+    } else if (base[key]) {
+      const sec = JSON.parse(JSON.stringify(base[key]));
+      const it = diff.items && diff.items[key];
+      if (it && Array.isArray(sec.items)) {
+        const ord = (Array.isArray(it.order) && it.order.length) ? it.order : sec.items.map((_, i) => i);
+        sec.items = ord.filter((i) => !(it.excluded && it.excluded[i])).map((i) => sec.items[i]).filter((x) => x !== undefined);
+      }
+      out[key] = sec;
+      const isCustom = !!(sec.kind && ['text', 'list', 'groups'].includes(sec.kind));
+      sections.push({ key, hidden, custom: isCustom, kind: sec.kind });
+    }
+  }
+  out.sections = sections;
+  return out;
+}
+
+// Contenu EFFECTIF (défauts + surcharge Settings) pour l'éditeur « Profil du courtier ».
+// Renvoie { fr: { vendeur, acheteur }, en: { vendeur, acheteur } }.
+export function resolveOffreContent(settingsContent) {
+  const out = {};
+  for (const lang of ['fr', 'en']) {
+    out[lang] = {};
+    for (const variant of OFFRE_VARIANTS) {
+      out[lang][variant] = resolveVariant(lang, variant, settingsContent, null);
+    }
+  }
+  return out;
 }
 
 export default buildOffreData;

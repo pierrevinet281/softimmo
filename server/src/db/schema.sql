@@ -476,3 +476,27 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 CREATE INDEX IF NOT EXISTS idx_documents_property ON documents(property_id);
 CREATE INDEX IF NOT EXISTS idx_documents_type     ON documents(doc_type);
+
+-- ───────────────────────── Assets du courtier ─────────────────────────
+-- Matériel marketing du COURTIER lui-même (carte d'affaires, bio, signature, logos,
+-- portraits, accroches, certificats, gabarits personnels). Réutilisable dans les offres,
+-- brochures et le marketing. `text` = contenu textuel (bio/accroche/signature) ; `file_path`
+-- = image/PDF téléversé. Voir docs/01 §« Assets courtier ».
+CREATE TABLE IF NOT EXISTS broker_assets (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  name          TEXT NOT NULL,
+  asset_type    TEXT NOT NULL DEFAULT 'autre', -- logo|portrait|carte|bio|signature|accroche|certificat|hero|autre
+  category      TEXT,
+  lang          TEXT,                          -- fr|en|bi|null
+  text          TEXT,                          -- contenu textuel (bio, accroche, signature…)
+  file_path     TEXT,                          -- image/PDF téléversé (optionnel)
+  filename      TEXT,
+  mime          TEXT,
+  tags          TEXT,                          -- JSON: liste d'étiquettes
+  notes         TEXT,
+  position      INTEGER DEFAULT 0,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_broker_assets_type ON broker_assets(asset_type);

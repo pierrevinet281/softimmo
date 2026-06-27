@@ -47,6 +47,25 @@ SOFT_LINE = HexColor("#D7DEEE")
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
+try:
+    from PIL import Image as PILImage, ImageDraw  # noqa: F401  (bannière/asset image optionnels)
+except Exception:  # noqa: BLE001
+    PILImage = None
+
+# Thème éditable par le courtier (Profil du courtier) : couleur des bannières/blocs et des
+# titres de section ; image de bannière facultative. Peuplé par render() à chaque rendu.
+THEME = {"band": BLUE, "title": BLUE, "band_text": WHITE}
+BANNER_IMG = None
+
+
+def _lum(c):
+    return 0.2126 * c.red + 0.7152 * c.green + 0.0722 * c.blue
+
+
+def _on(color):
+    """Couleur de texte lisible (blanc/encre) sur un fond donné."""
+    return INK if _lum(color) > 0.62 else WHITE
+
 
 def asset(*p):
     return os.path.join(ASSETS, *p)
@@ -97,42 +116,73 @@ def _bullets(items):
 
 
 # ── Bandeau de marque (cover) — Table pleine largeur, fond bleu ──
+def _banner_reader(path, w_pt, h_pt, dpi=150):
+    """Image de bannière (cover-crop) assombrie d'un voile pour lisibilité du texte blanc."""
+    if PILImage is None or not (path and os.path.exists(path)):
+        return None
+    try:
+        tw = max(2, int(w_pt / 72 * dpi)); th = max(2, int(h_pt / 72 * dpi))
+        im = PILImage.open(path).convert("RGB")
+        w, h = im.size; ta = tw / th; a = w / h
+        if a > ta:
+            nw = int(h * ta); x = (w - nw) // 2; im = im.crop((x, 0, x + nw, h))
+        else:
+            nh = int(w / ta); y = (h - nh) // 2; im = im.crop((0, y, w, y + nh))
+        im = im.resize((tw, th), PILImage.LANCZOS)
+        veil = PILImage.new("RGB", (tw, th), (15, 24, 52))
+        im = PILImage.blend(im, veil, 0.45)
+        import io as _io
+        buf = _io.BytesIO(); im.save(buf, "JPEG", quality=86); buf.seek(0)
+        return ImageReader(buf)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+class BrandHeader(Flowable):
+    """Bandeau de marque (cover) : image de bannière OU couleur de bannière du thème ;
+    logo (gauche) + titre/sous-titre/courtier (droite). Texte adapté au fond."""
+    H = 78
+
+    def __init__(self, data, content, width=CONTENT_W):
+        super().__init__()
+        self.width = width
+        self.height = self.H
+        self.logo = data.get("logo")
+        self.title = content.get("doc_title", "Proposition d'offre de services")
+        self.subtitle = content.get("subtitle")
+        broker = data.get("broker", {})
+        desig = " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s])
+        self.broker_line = "%s — %s" % (broker.get("name", ""), desig)
+        self._bimg = _banner_reader(BANNER_IMG, width, self.H) if BANNER_IMG else None
+        self.fg = WHITE if self._bimg else _on(THEME["band"])
+
+    def wrap(self, *a):
+        return self.width, self.height
+
+    def draw(self):
+        c = self.canv; w = self.width; h = self.height
+        if self._bimg:
+            c.drawImage(self._bimg, 0, 0, w, h, mask="auto")
+        else:
+            c.setFillColor(THEME["band"]); c.rect(0, 0, w, h, fill=1, stroke=0)
+        pad = 16; tx = pad
+        if self.logo and os.path.exists(self.logo):
+            try:
+                ir = ImageReader(self.logo); iw, ih = ir.getSize(); lh = 38.0; lw = lh * iw / ih
+                c.drawImage(ir, pad, (h - lh) / 2, lw, lh, mask="auto"); tx = pad + lw + 16
+            except Exception:  # noqa: BLE001
+                pass
+        sub = self.fg if self.fg == WHITE else INK2
+        c.setFillColor(self.fg); c.setFont(F_BOLD, 17)
+        c.drawString(tx, h - 28, self.title)
+        y = h - 44
+        if self.subtitle:
+            c.setFillColor(sub); c.setFont(F_REG, 10.5); c.drawString(tx, y, self.subtitle); y -= 15
+        c.setFillColor(self.fg); c.setFont(F_SB, 10); c.drawString(tx, y, self.broker_line)
+
+
 def _brand_header(data, content):
-    broker = data.get("broker", {})
-    logo = data.get("logo")
-    desig = " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s])
-    right = [
-        Paragraph(_esc(content.get("doc_title", "Proposition d'offre de services")),
-                  ParagraphStyle("ht", fontName=F_BOLD, fontSize=17, textColor=WHITE, leading=20)),
-    ]
-    if content.get("subtitle"):
-        right.append(Paragraph(_esc(content["subtitle"]),
-                     ParagraphStyle("hs", fontName=F_REG, fontSize=10.5, textColor=HexColor("#D7DEEE"), leading=14, spaceBefore=2)))
-    right.append(Spacer(1, 4))
-    right.append(Paragraph("%s — %s" % (_esc(broker.get("name", "")), _esc(desig)),
-                 ParagraphStyle("hb", fontName=F_SB, fontSize=10, textColor=WHITE, leading=13)))
-
-    left = ""
-    if logo and os.path.exists(logo):
-        try:
-            ir = ImageReader(logo)
-            iw, ih = ir.getSize()
-            h = 38.0
-            left = Image(logo, width=h * iw / ih, height=h)
-        except Exception:  # noqa: BLE001
-            left = ""
-
-    t = Table([[left, right]], colWidths=[120, CONTENT_W - 120])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), BLUE),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 16),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 16),
-        ("TOPPADDING", (0, 0), (-1, -1), 14),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
-        ("ALIGN", (0, 0), (0, 0), "CENTER"),
-    ]))
-    return t
+    return BrandHeader(data, content)
 
 
 MONTHS = {
@@ -233,7 +283,7 @@ def _timeline(heading, steps):
     rows = []
     for s in steps:
         rows.append([
-            Paragraph(_esc(s.get("label", "")), ParagraphStyle("tl", fontName=F_SB, fontSize=10, textColor=BLUE, leading=13)),
+            Paragraph(_esc(s.get("label", "")), ParagraphStyle("tl", fontName=F_SB, fontSize=10, textColor=THEME["title"], leading=13)),
             Paragraph(_esc(s.get("text", "")), ParagraphStyle("tr", fontName=F_REG, fontSize=10, textColor=INK, leading=14)),
         ])
     t = Table(rows, colWidths=[150, CONTENT_W - 150])
@@ -279,7 +329,7 @@ def _contact(data, lang):
     broker = data.get("broker", {})
     photo = data.get("broker_photo")
     lines = [Paragraph(_esc(broker.get("name", "")),
-             ParagraphStyle("cn", fontName=F_BOLD, fontSize=14, textColor=BLUE, leading=18))]
+             ParagraphStyle("cn", fontName=F_BOLD, fontSize=14, textColor=THEME["title"], leading=18))]
     desig = " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s])
     if desig:
         lines.append(Paragraph(_esc(desig), ParagraphStyle("cd", fontName=F_SB, fontSize=10, textColor=INK, leading=14)))
@@ -332,58 +382,115 @@ LABELS = {
 }
 
 
+# Ordre canonique des sections intégrées (sert de repli si aucun ordre fourni).
+CANON_SECTIONS = ["why", "guarantee", "services", "marketing", "opportunities",
+                  "timeline", "fees", "value_add", "testimonials", "next_steps"]
+
+
+# Rendu d'une section INTÉGRÉE (renvoie une liste de flowables ; [] si vide).
+def _render_builtin(key, sec):
+    if not sec:
+        return []
+    if key == "guarantee":
+        return [Spacer(1, 8), Band(sec.get("heading", ""), sec["body"], bg=THEME["band"], fg=_on(THEME["band"]))] if sec.get("body") else []
+    if key in ("why", "services"):
+        return _section_groups(sec.get("heading", ""), sec.get("intro"), sec.get("groups")) if sec.get("groups") else []
+    if key == "marketing":
+        return _section_groups(sec.get("heading", ""), None, sec.get("subgroups")) if sec.get("subgroups") else []
+    if key == "timeline":
+        return _timeline(sec.get("heading", ""), sec.get("steps"))
+    if key == "fees":
+        return _fees(sec.get("heading", ""), sec["body"], sec.get("note")) if sec.get("body") else []
+    if key in ("opportunities", "value_add"):
+        return _section_list(sec.get("heading", ""), sec.get("items"))
+    if key == "testimonials":
+        return _testimonials(sec.get("heading", ""), sec.get("items"))
+    if key == "next_steps":
+        return _fees(sec.get("heading", ""), sec["body"], None) if sec.get("body") else []
+    return []
+
+
+# Image (asset) insérée dans l'offre — pleine largeur, hauteur plafonnée, légende optionnelle.
+def _render_asset(sec):
+    img = sec.get("image")
+    if not img or not os.path.exists(img):
+        return []
+    iw, ih = (1000, 600)
+    if PILImage is not None:
+        try:
+            iw, ih = PILImage.open(img).size
+        except Exception:  # noqa: BLE001
+            pass
+    w = CONTENT_W
+    h = w * ih / iw
+    if h > 300:
+        h = 300; w = h * iw / ih
+    flow = [Spacer(1, 8), Image(img, width=w, height=h)]
+    if sec.get("caption"):
+        flow.append(Paragraph(_esc(sec["caption"]),
+                    ParagraphStyle("cap", fontName=F_IT, fontSize=8.5, textColor=INK2, leading=11, spaceBefore=3)))
+    return [KeepTogether(flow)]
+
+
+# Rendu d'une section PERSONNALISÉE selon son type (asset|text|list|groups).
+def _render_custom(sec):
+    if not sec:
+        return []
+    kind = sec.get("kind") or ("asset" if sec.get("image") else "groups" if sec.get("groups") else "list" if sec.get("items") else "text")
+    if kind == "asset":
+        return _render_asset(sec)
+    if kind == "groups":
+        return _section_groups(sec.get("heading", ""), sec.get("intro"), sec.get("groups") or [])
+    if kind == "list":
+        return _section_list(sec.get("heading", ""), sec.get("items") or [])
+    return _fees(sec.get("heading", ""), sec.get("body", ""), sec.get("note")) if sec.get("body") else (
+        [Paragraph(_esc(sec.get("heading", "")), S_H1)] if sec.get("heading") else [])
+
+
+def _section_order(content):
+    """Liste ordonnée [{key, hidden, custom, kind}] : explicite si fournie, sinon canonique."""
+    secs = content.get("sections")
+    if isinstance(secs, list) and secs:
+        return secs
+    return [{"key": k, "hidden": False} for k in CANON_SECTIONS if content.get(k)]
+
+
 def _story(data, lang):
     content = (data.get("content") or {}).get(lang) or {}
-    flow = []
-    flow.append(_brand_header(data, content))
+    flow = [_brand_header(data, content)]
     flow += _meta_block(data, lang)
     flow.append(Spacer(1, 6))
 
-    why = content.get("why") or {}
-    if why.get("groups"):
-        flow += _section_groups(why.get("heading", ""), why.get("intro"), why["groups"])
-
-    g = content.get("guarantee") or {}
-    if g.get("body"):
-        flow.append(Spacer(1, 8))
-        flow.append(Band(g.get("heading", ""), g["body"], bg=INK, fg=WHITE))
-
-    sv = content.get("services") or {}
-    if sv.get("groups"):
-        flow += _section_groups(sv.get("heading", ""), sv.get("intro"), sv["groups"])
-
-    mk = content.get("marketing") or {}
-    if mk.get("subgroups"):
-        flow += _section_groups(mk.get("heading", ""), None, mk["subgroups"])
-
-    op = content.get("opportunities") or {}
-    flow += _section_list(op.get("heading", ""), op.get("items"))
-
-    tl = content.get("timeline") or {}
-    flow += _timeline(tl.get("heading", ""), tl.get("steps"))
-
-    fe = content.get("fees") or {}
-    if fe.get("body"):
-        flow += _fees(fe.get("heading", ""), fe["body"], fe.get("note"))
-
-    va = content.get("value_add") or {}
-    flow += _section_list(va.get("heading", ""), va.get("items"))
-
-    te = content.get("testimonials") or {}
-    flow += _testimonials(te.get("heading", ""), te.get("items"))
-
-    ns = content.get("next_steps") or {}
-    if ns.get("body"):
-        flow += _fees(ns.get("heading", ""), ns["body"], None)
+    for s in _section_order(content):
+        if not isinstance(s, dict) or s.get("hidden"):
+            continue
+        key = s.get("key")
+        if not key:
+            continue
+        sec = content.get(key) or {}
+        flow += _render_custom(sec) if s.get("custom") else _render_builtin(key, sec)
 
     flow += _contact(data, lang)
     return flow
 
 
 def render(data, out):
+    global BANNER_IMG
     langs = data.get("langs") or ["fr"]
     langs = [l for l in langs if l in ("fr", "en")] or ["fr"]
     broker = data.get("broker", {})
+
+    # Thème éditable (Profil du courtier) : couleurs bannière/blocs + titres de section.
+    th = data.get("theme") or {}
+    def _c(v, d):
+        try:
+            return HexColor(v) if v else d
+        except Exception:  # noqa: BLE001
+            return d
+    THEME["band"] = _c(th.get("band_color"), BLUE)
+    THEME["title"] = _c(th.get("title_color"), BLUE)
+    S_H1.textColor = THEME["title"]
+    BANNER_IMG = data.get("banner_image") or None
 
     def footer(c, doc):
         c.saveState()
