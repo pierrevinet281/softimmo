@@ -17,6 +17,7 @@ import {
 import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js';
 import { computeAcm } from '../engine/acm.js';
 import { buildMarketingCopy } from '../engine/marketingCopy.js';
+import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS } from '../engine/offre.js';
 import { getAcmParams, setAcmParams, getAcmDefaults } from '../lib/acmParams.js';
 
 // Permissive schemas: every field optional + passthrough. Required-on-create is enforced
@@ -468,6 +469,79 @@ export default function mountBusiness(parent = Router()) {
     if (!municipality) throw badRequest('municipality requis');
     const out = await runWorker('acm_stats', { path: f.path, municipality, genre: genre || 'unifamilial' }, { timeoutMs: 60000 });
     res.json(out);
+  }));
+
+  // ── Module 3 : Offre de services (PDF déterministe, ReportLab — render_offre) ──
+  // Profil courtier partagé (broker_profile) + contenu éditable (offre_content, bilingue).
+  const offreAsset = (...p) => path.join(config.pythonDir, 'assets', ...p);
+  const offreBroker = () => Settings.get('broker_profile', null) || {
+    name: 'Pierre Vinet', title: 'Courtier immobilier', subtitle: 'résidentiel et commercial',
+    agency: 'eXp Agence Immobilière', company: 'Immobilier Pierre Vinet Inc.',
+    phone: '514.651.7437', email: 'pierre.vinet@exprealty.com', web: 'www.pierrevinet.com',
+  };
+  const propertyLine = (p) => p
+    ? [p.address, p.city, p.province ? `(${p.province})` : null].filter(Boolean).join(', ')
+    : null;
+
+  function offreDataFromReq(src) {
+    const variant = OFFRE_VARIANTS.includes(src.variant) ? src.variant : 'vendeur';
+    const lang = OFFRE_LANGS.includes(src.lang) ? src.lang : 'fr';
+    const client = src.client_id ? Clients.get(src.client_id) : null;
+    const property = src.property_id ? Properties.get(src.property_id) : null;
+    const broker = offreBroker();
+    return buildOffreData({
+      variant, lang, broker,
+      settingsContent: Settings.get('offre_content', null),
+      client: client ? { name: client.full_name } : (src.client_name ? { name: src.client_name } : null),
+      property: property ? { line: propertyLine(property) } : (src.property_line ? { line: src.property_line } : null),
+      logo: broker.logo || offreAsset('unifamilial', 'exp_logo_white.png'),
+      broker_photo: broker.photo || offreAsset('broker', 'portrait.png'),
+      overrides: src.overrides || null,
+      dateIso: src.date_iso || new Date().toISOString().slice(0, 10),
+      dateText: src.date || null,
+    });
+  }
+
+  async function streamOffrePdf(res, data, label) {
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `offre-${label}-${Date.now()}.pdf`);
+    await runWorker('render_offre', { data, out }, { timeoutMs: 60000 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="offre-${label}.pdf"`);
+    res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }
+
+  // Aperçu / téléchargement (paramètres simples en query) — ouverture directe dans un onglet.
+  parent.get('/offre.pdf', wrap(async (req, res) => {
+    const data = offreDataFromReq(req.query || {});
+    await streamOffrePdf(res, data, data.variant);
+  }));
+
+  // Génération avec surcharges ponctuelles (intro, honoraires, témoignages…) dans le corps.
+  parent.post('/offre.pdf', wrap(async (req, res) => {
+    const data = offreDataFromReq(req.body || {});
+    await streamOffrePdf(res, data, data.variant);
+  }));
+
+  // Configuration éditable de l'offre : profil courtier + contenu (defaults + surcharges).
+  parent.get('/offre/config', wrap(async (req, res) => {
+    res.json({
+      variants: OFFRE_VARIANTS,
+      langs: OFFRE_LANGS,
+      broker: offreBroker(),
+      content: Settings.get('offre_content', null),  // null = on utilise les défauts intégrés
+    });
+  }));
+
+  parent.put('/offre/config', wrap(async (req, res) => {
+    const body = req.body || {};
+    if (body.broker !== undefined) Settings.set('broker_profile', body.broker);
+    if (body.content !== undefined) Settings.set('offre_content', body.content);
+    res.json({
+      broker: offreBroker(),
+      content: Settings.get('offre_content', null),
+    });
   }));
 
   return parent;

@@ -1,0 +1,447 @@
+{
+  "_note": "Contenu par défaut de l'offre de services (Module 3). Déterministe, éditable par le courtier (surcharge via Settings 'offre_content'). Bilingue FR/EN (Loi 96 : FR prééminent). Aucune donnée codée en dur dans le moteur — tout vit ici.",
+  "fr": {
+    "vendeur": {
+      "doc_title": "Proposition d'offre de services — Vente",
+      "subtitle": "Mise en marché et vente de votre propriété",
+      "why": {
+        "heading": "Pourquoi me choisir ?",
+        "groups": [
+          { "label": "Mes champs d'activité", "items": [
+            "Immobilier résidentiel",
+            "Immobilier commercial (multi-logements, commercial / industriel et résidence pour aînés)",
+            "Vente d'entreprises"
+          ] },
+          { "label": "Mes compétences", "items": [
+            "30 ans d'expérience en ventes",
+            "25 ans d'expérience en marketing traditionnel et numérique",
+            "25 ans d'expérience à servir les propriétaires de grands immeubles",
+            "Approche consultative, stratégique et humaine"
+          ] },
+          { "label": "Mes valeurs", "items": [
+            "Écoute attentive et service humain",
+            "Transparence",
+            "Compétence et professionnalisme",
+            "Engagement aux meilleurs résultats"
+          ] },
+          { "label": "Ma promesse", "items": [
+            "Une stratégie efficace et des actions concrètes maximisant votre succès",
+            "Vous serez servi par moi-même, et non par des assistants juniors",
+            "Garantie de satisfaction"
+          ] }
+        ]
+      },
+      "guarantee": {
+        "heading": "100 % Garantie de satisfaction",
+        "body": "Si vous n'êtes pas entièrement satisfait de mes services et efforts, vous pouvez annuler votre contrat de courtage à n'importe quel moment, sans justification."
+      },
+      "services": {
+        "heading": "Mes services",
+        "intro": "Ceci ne représente qu'une partie des services que je peux vous offrir. Ma proposition sera adaptée en fonction de vos besoins et préférences, et pourra inclure des services à valeur ajoutée en plus des services de base.",
+        "groups": [
+          { "label": "Opinion de la valeur marchande et positionnement", "items": [
+            "Opinion de la valeur marchande de votre propriété par analyse comparative de marché (ACM)",
+            "Identification des acheteurs cibles",
+            "Détermination de la stratégie de prix"
+          ] },
+          { "label": "Inscription", "items": [
+            "Cueillette, audit et gestion sécurisée de la documentation",
+            "Création et publication d'une fiche complète sur Centris et Realtor.ca"
+          ] }
+        ]
+      },
+      "marketing": {
+        "heading": "Plan de mise en marché stratégique",
+        "subgroups": [
+          { "label": "Objectifs", "items": [
+            "Maximiser le prix de vente",
+            "Minimiser le délai de vente",
+            "Simplifier et concentrer les activités du vendeur"
+          ] },
+          { "label": "Méthodes", "items": [
+            "Maximiser la valeur perçue",
+            "Maximiser la visibilité",
+            "Créer un engagement simultané du plus grand nombre d'acheteurs"
+          ] },
+          { "label": "Activités", "items": [
+            "Recommandations de mise en valeur de votre propriété",
+            "Mise en scène virtuelle (virtual home staging)",
+            "Trousse multimédia promotionnelle de haute qualité : photos professionnelles et captures aériennes par drone, brochure percutante, montage vidéo, visite virtuelle 3D, page ou site web dédié, articles et annonces promotionnelles",
+            "Campagne de lancement éclair pour dominer la visibilité : diffusion multiplateforme (Centris, Realtor.ca), publications commanditées sur les médias sociaux (Facebook, Instagram, LinkedIn, X) et sites d'annonces (Kijiji, LesPAC, Marketplace)",
+            "Marketing ciblé : campagnes courriel, SMS, Messenger et InMail LinkedIn vers les acheteurs et investisseurs potentiels",
+            "Prospection proactive auprès de mon réseau privé d'investisseurs et de courtiers collaborateurs"
+          ] }
+        ]
+      },
+      "opportunities": {
+        "heading": "Gestion des opportunités",
+        "items": [
+          "Qualification des acheteurs potentiels et planification des visites",
+          "Démonstration de votre propriété",
+          "Réception, analyse et présentation des offres",
+          "Négociation stratégique",
+          "Coordination et suivi de la transaction jusqu'à l'acte notarié"
+        ]
+      },
+      "timeline": {
+        "heading": "Calendrier type",
+        "steps": [
+          { "label": "Préparation (jours 1 à 7)", "text": "Visite, opinion de la valeur marchande, stratégie de prix, recommandations de mise en valeur, séance photo et collecte des documents." },
+          { "label": "Lancement (jours 8 à 14)", "text": "Publication de la fiche sur Centris et Realtor.ca, campagne de lancement multiplateforme et début des visites." },
+          { "label": "Mise en marché active (semaines 3 et suivantes)", "text": "Visites, suivis hebdomadaires, ajustements stratégiques et réception des offres." },
+          { "label": "Transaction", "text": "Négociation, conditions, inspection et coordination jusqu'à la signature chez le notaire." }
+        ]
+      },
+      "fees": {
+        "heading": "Honoraires et rémunération",
+        "body": "Ma rémunération est entièrement conditionnelle au succès de la vente : aucun honoraire n'est payable tant que la transaction n'est pas conclue. Le pourcentage et les modalités sont convenus ensemble et inscrits au contrat de courtage.",
+        "note": "Les honoraires sont négociables et ne sont fixés par aucune loi ni aucun organisme."
+      },
+      "value_add": {
+        "heading": "Valeur ajoutée",
+        "items": [
+          "Visibilité accrue par l'affichage sur les sites d'eXp (Québec, Canada et international), en plus des plateformes Centris et Realtor.ca",
+          "Réseau de près de 100 000 courtiers collaborateurs dans plus de 20 pays",
+          "Marketing numérique avancé et production multimédia professionnelle",
+          "Accompagnement par le courtier lui-même, du premier rendez-vous jusqu'à l'acte notarié"
+        ]
+      },
+      "testimonials": { "heading": "Témoignages", "items": [] },
+      "next_steps": {
+        "heading": "Prochaine étape",
+        "body": "Contactez-moi pour une consultation gratuite et sans engagement. Ensemble, nous établirons une stratégie de mise en marché adaptée à votre propriété et à vos objectifs."
+      }
+    },
+    "acheteur": {
+      "doc_title": "Proposition d'offre de services — Achat",
+      "subtitle": "Accompagnement dans votre projet d'achat",
+      "why": {
+        "heading": "Pourquoi me choisir ?",
+        "groups": [
+          { "label": "Mes champs d'activité", "items": [
+            "Immobilier résidentiel",
+            "Immobilier commercial (multi-logements, commercial / industriel et résidence pour aînés)",
+            "Vente d'entreprises"
+          ] },
+          { "label": "Mes compétences", "items": [
+            "30 ans d'expérience en ventes et en négociation",
+            "25 ans d'expérience en marketing traditionnel et numérique",
+            "Connaissance approfondie du marché et des secteurs",
+            "Approche consultative, stratégique et humaine"
+          ] },
+          { "label": "Mes valeurs", "items": [
+            "Écoute attentive et service humain",
+            "Transparence",
+            "Compétence et professionnalisme",
+            "Engagement aux meilleurs résultats"
+          ] },
+          { "label": "Ma promesse", "items": [
+            "Une recherche ciblée et des conseils objectifs pour un achat éclairé",
+            "Vous serez servi par moi-même, et non par des assistants juniors",
+            "Garantie de satisfaction"
+          ] }
+        ]
+      },
+      "guarantee": {
+        "heading": "100 % Garantie de satisfaction",
+        "body": "Si vous n'êtes pas entièrement satisfait de mes services et efforts, vous pouvez mettre fin à notre entente à n'importe quel moment, sans justification."
+      },
+      "services": {
+        "heading": "Mes services",
+        "intro": "Ma proposition sera adaptée à votre projet, à votre budget et à vos préférences. Voici les principaux services que je vous offre comme acheteur.",
+        "groups": [
+          { "label": "Analyse de besoins et stratégie", "items": [
+            "Analyse de vos besoins, de votre budget et de vos critères",
+            "Préparation du financement avec un partenaire hypothécaire",
+            "Élaboration d'une stratégie de recherche et d'achat"
+          ] },
+          { "label": "Recherche et sélection", "items": [
+            "Recherche sur Centris et hors marché via mon réseau de courtiers",
+            "Présélection des propriétés et organisation des visites",
+            "Opinion de la valeur marchande des propriétés ciblées (ACM)"
+          ] }
+        ]
+      },
+      "marketing": {
+        "heading": "Stratégie d'achat",
+        "subgroups": [
+          { "label": "Objectifs", "items": [
+            "Trouver la propriété qui correspond à vos besoins",
+            "Acheter au juste prix et aux meilleures conditions",
+            "Sécuriser la transaction et minimiser les risques"
+          ] },
+          { "label": "Méthodes", "items": [
+            "Veille active du marché et alertes personnalisées",
+            "Accès aux occasions hors marché par mon réseau",
+            "Analyse rigoureuse de la valeur avant chaque offre"
+          ] },
+          { "label": "Activités", "items": [
+            "Visites accompagnées et analyse de chaque propriété",
+            "Vérifications préalables : déclarations du vendeur, certificat de localisation, charges et zonage",
+            "Coordination de l'inspection en bâtiment et des expertises requises",
+            "Rédaction et présentation des promesses d'achat"
+          ] }
+        ]
+      },
+      "opportunities": {
+        "heading": "Négociation et transaction",
+        "items": [
+          "Négociation stratégique du prix et des conditions",
+          "Gestion des conditions (financement, inspection, documents)",
+          "Coordination avec le notaire, le créancier et les experts",
+          "Accompagnement et suivi jusqu'à la signature de l'acte de vente"
+        ]
+      },
+      "timeline": {
+        "heading": "Calendrier type",
+        "steps": [
+          { "label": "Préparation (jours 1 à 7)", "text": "Analyse de besoins, préparation du financement et mise en place des alertes de recherche." },
+          { "label": "Recherche et visites", "text": "Présélection, visites accompagnées et analyse de la valeur des propriétés retenues." },
+          { "label": "Offre et conditions", "text": "Promesse d'achat, négociation, inspection et levée des conditions." },
+          { "label": "Transaction", "text": "Coordination des documents et signature de l'acte de vente chez le notaire." }
+        ]
+      },
+      "fees": {
+        "heading": "Honoraires et rémunération",
+        "body": "Dans la plupart des transactions, ma rémunération provient du contrat de courtage du vendeur ; le cas échéant, toute rémunération à votre charge vous est divulguée clairement et convenue à l'avance par écrit.",
+        "note": "Les honoraires sont négociables et ne sont fixés par aucune loi ni aucun organisme."
+      },
+      "value_add": {
+        "heading": "Valeur ajoutée",
+        "items": [
+          "Accès aux occasions hors marché via le réseau eXp (près de 100 000 courtiers dans plus de 20 pays)",
+          "Analyse objective de la valeur avant chaque offre",
+          "Négociation aguerrie au service de vos intérêts",
+          "Accompagnement par le courtier lui-même, de la recherche jusqu'à l'acte notarié"
+        ]
+      },
+      "testimonials": { "heading": "Témoignages", "items": [] },
+      "next_steps": {
+        "heading": "Prochaine étape",
+        "body": "Contactez-moi pour une consultation gratuite et sans engagement. Nous définirons ensemble votre projet d'achat et la stratégie pour y arriver."
+      }
+    }
+  },
+  "en": {
+    "vendeur": {
+      "doc_title": "Service Offer Proposal — Selling",
+      "subtitle": "Marketing and selling your property",
+      "why": {
+        "heading": "Why choose me?",
+        "groups": [
+          { "label": "My fields of practice", "items": [
+            "Residential real estate",
+            "Commercial real estate (multi-unit, commercial / industrial and seniors' residences)",
+            "Business sales"
+          ] },
+          { "label": "My skills", "items": [
+            "30 years of sales experience",
+            "25 years of experience in traditional and digital marketing",
+            "25 years serving owners of large buildings",
+            "A consultative, strategic and human approach"
+          ] },
+          { "label": "My values", "items": [
+            "Attentive listening and human service",
+            "Transparency",
+            "Competence and professionalism",
+            "Commitment to the best results"
+          ] },
+          { "label": "My promise", "items": [
+            "An effective strategy and concrete actions maximizing your success",
+            "You will be served by me personally, not by junior assistants",
+            "Satisfaction guarantee"
+          ] }
+        ]
+      },
+      "guarantee": {
+        "heading": "100% Satisfaction Guarantee",
+        "body": "If you are not fully satisfied with my services and efforts, you may cancel your brokerage contract at any time, without justification."
+      },
+      "services": {
+        "heading": "My services",
+        "intro": "This is only part of the services I can offer. My proposal will be tailored to your needs and preferences, and may include value-added services in addition to the core services.",
+        "groups": [
+          { "label": "Market value opinion and positioning", "items": [
+            "Market value opinion of your property through a comparative market analysis (CMA)",
+            "Identification of target buyers",
+            "Pricing strategy"
+          ] },
+          { "label": "Listing", "items": [
+            "Gathering, auditing and secure management of documentation",
+            "Creation and publication of a complete listing on Centris and Realtor.ca"
+          ] }
+        ]
+      },
+      "marketing": {
+        "heading": "Strategic marketing plan",
+        "subgroups": [
+          { "label": "Objectives", "items": [
+            "Maximize the sale price",
+            "Minimize the time on market",
+            "Simplify and focus the seller's activities"
+          ] },
+          { "label": "Methods", "items": [
+            "Maximize perceived value",
+            "Maximize visibility",
+            "Create simultaneous engagement from the largest number of buyers"
+          ] },
+          { "label": "Activities", "items": [
+            "Recommendations to showcase your property",
+            "Virtual home staging",
+            "High-quality promotional media kit: professional photos and aerial drone footage, a striking brochure, video editing, 3D virtual tour, a dedicated page or website, articles and promotional ads",
+            "Flash launch campaign to dominate visibility: multiplatform distribution (Centris, Realtor.ca), sponsored posts on social media (Facebook, Instagram, LinkedIn, X) and classified sites (Kijiji, LesPAC, Marketplace)",
+            "Targeted marketing: email, SMS, Messenger and LinkedIn InMail campaigns to potential buyers and investors",
+            "Proactive prospecting within my private network of investors and collaborating brokers"
+          ] }
+        ]
+      },
+      "opportunities": {
+        "heading": "Opportunity management",
+        "items": [
+          "Qualifying potential buyers and scheduling showings",
+          "Showing your property",
+          "Receiving, analyzing and presenting offers",
+          "Strategic negotiation",
+          "Coordinating and following the transaction through to the notarial deed"
+        ]
+      },
+      "timeline": {
+        "heading": "Typical timeline",
+        "steps": [
+          { "label": "Preparation (days 1 to 7)", "text": "Visit, market value opinion, pricing strategy, staging recommendations, photo session and document gathering." },
+          { "label": "Launch (days 8 to 14)", "text": "Listing published on Centris and Realtor.ca, multiplatform launch campaign and first showings." },
+          { "label": "Active marketing (week 3 onward)", "text": "Showings, weekly follow-ups, strategic adjustments and offer handling." },
+          { "label": "Transaction", "text": "Negotiation, conditions, inspection and coordination through to signing at the notary." }
+        ]
+      },
+      "fees": {
+        "heading": "Fees and compensation",
+        "body": "My compensation is entirely contingent on a successful sale: no fee is payable until the transaction closes. The percentage and terms are agreed together and set out in the brokerage contract.",
+        "note": "Fees are negotiable and are not set by any law or organization."
+      },
+      "value_add": {
+        "heading": "Added value",
+        "items": [
+          "Increased visibility through eXp's websites (Quebec, Canada and international), in addition to Centris and Realtor.ca",
+          "A network of nearly 100,000 collaborating brokers in more than 20 countries",
+          "Advanced digital marketing and professional multimedia production",
+          "Service by the broker himself, from the first meeting through to the notarial deed"
+        ]
+      },
+      "testimonials": { "heading": "Testimonials", "items": [] },
+      "next_steps": {
+        "heading": "Next step",
+        "body": "Contact me for a free, no-obligation consultation. Together we will set a marketing strategy tailored to your property and your goals."
+      }
+    },
+    "acheteur": {
+      "doc_title": "Service Offer Proposal — Buying",
+      "subtitle": "Support throughout your purchase",
+      "why": {
+        "heading": "Why choose me?",
+        "groups": [
+          { "label": "My fields of practice", "items": [
+            "Residential real estate",
+            "Commercial real estate (multi-unit, commercial / industrial and seniors' residences)",
+            "Business sales"
+          ] },
+          { "label": "My skills", "items": [
+            "30 years of sales and negotiation experience",
+            "25 years of experience in traditional and digital marketing",
+            "Deep knowledge of the market and neighbourhoods",
+            "A consultative, strategic and human approach"
+          ] },
+          { "label": "My values", "items": [
+            "Attentive listening and human service",
+            "Transparency",
+            "Competence and professionalism",
+            "Commitment to the best results"
+          ] },
+          { "label": "My promise", "items": [
+            "A targeted search and objective advice for an informed purchase",
+            "You will be served by me personally, not by junior assistants",
+            "Satisfaction guarantee"
+          ] }
+        ]
+      },
+      "guarantee": {
+        "heading": "100% Satisfaction Guarantee",
+        "body": "If you are not fully satisfied with my services and efforts, you may end our agreement at any time, without justification."
+      },
+      "services": {
+        "heading": "My services",
+        "intro": "My proposal will be tailored to your project, budget and preferences. Here are the main services I offer you as a buyer.",
+        "groups": [
+          { "label": "Needs analysis and strategy", "items": [
+            "Analysis of your needs, budget and criteria",
+            "Financing preparation with a mortgage partner",
+            "Development of a search and purchase strategy"
+          ] },
+          { "label": "Search and selection", "items": [
+            "Search on Centris and off-market through my broker network",
+            "Pre-selection of properties and organization of showings",
+            "Market value opinion of targeted properties (CMA)"
+          ] }
+        ]
+      },
+      "marketing": {
+        "heading": "Purchase strategy",
+        "subgroups": [
+          { "label": "Objectives", "items": [
+            "Find the property that matches your needs",
+            "Buy at the right price and on the best terms",
+            "Secure the transaction and minimize risk"
+          ] },
+          { "label": "Methods", "items": [
+            "Active market monitoring and personalized alerts",
+            "Access to off-market opportunities through my network",
+            "Rigorous value analysis before every offer"
+          ] },
+          { "label": "Activities", "items": [
+            "Accompanied showings and analysis of each property",
+            "Due diligence: seller's declarations, certificate of location, charges and zoning",
+            "Coordination of the building inspection and required expert assessments",
+            "Drafting and presenting promises to purchase"
+          ] }
+        ]
+      },
+      "opportunities": {
+        "heading": "Negotiation and transaction",
+        "items": [
+          "Strategic negotiation of price and terms",
+          "Management of conditions (financing, inspection, documents)",
+          "Coordination with the notary, lender and experts",
+          "Support and follow-up through to signing the deed of sale"
+        ]
+      },
+      "timeline": {
+        "heading": "Typical timeline",
+        "steps": [
+          { "label": "Preparation (days 1 to 7)", "text": "Needs analysis, financing preparation and setup of search alerts." },
+          { "label": "Search and showings", "text": "Pre-selection, accompanied showings and value analysis of shortlisted properties." },
+          { "label": "Offer and conditions", "text": "Promise to purchase, negotiation, inspection and removal of conditions." },
+          { "label": "Transaction", "text": "Document coordination and signing of the deed of sale at the notary." }
+        ]
+      },
+      "fees": {
+        "heading": "Fees and compensation",
+        "body": "In most transactions, my compensation comes from the seller's brokerage contract; where applicable, any compensation payable by you is clearly disclosed and agreed in advance in writing.",
+        "note": "Fees are negotiable and are not set by any law or organization."
+      },
+      "value_add": {
+        "heading": "Added value",
+        "items": [
+          "Access to off-market opportunities through the eXp network (nearly 100,000 brokers in more than 20 countries)",
+          "Objective value analysis before every offer",
+          "Seasoned negotiation in your interest",
+          "Service by the broker himself, from the search through to the notarial deed"
+        ]
+      },
+      "testimonials": { "heading": "Testimonials", "items": [] },
+      "next_steps": {
+        "heading": "Next step",
+        "body": "Contact me for a free, no-obligation consultation. Together we will define your purchase project and the strategy to achieve it."
+      }
+    }
+  }
+}
