@@ -160,7 +160,7 @@ def slide1(prs, d, th):
             (title, 20, True, th["title_fg"], PP_ALIGN.LEFT),
             (d.get("city", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT),
             (d.get("summary_line", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT)])
-        _pic_fit(s, img.get("logo") or th.get("logo"), 360, 44, w=160)
+        _pic_fit(s, img.get("logo") or th.get("logo"), 350, 44, w=150)
     else:
         _pic_fit(s, img.get("logo") or th.get("logo"), 33.75, 30.38, h=53.79)
         _textbox(s, 132.04, 24.56, 282, 65.43, [
