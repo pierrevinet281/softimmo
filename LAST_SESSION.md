@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 31 sessions, tout sur `main`) :**
+**Où on en est (après 32 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,22 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 32 — Formes nommées (round-trip luxe) + annonces texte Module 4 (2026-06-27)
+
+- **Round-trip self-service pour les 2 modèles** (PR #43) : les formes du jumeau PPTX portent
+  les noms stables du gabarit (NAME_MAP). Le .pptx téléchargé EST le gabarit. Éléments luxe
+  (`luxe_title` + `luxe_lock` = verrou) repositionnables. Vérifié : unifam 20 rôles, luxe 19.
+- **Module 4 — annonces texte** (PR #44) : `engine/marketingCopy.js` (PUR, déterministe) →
+  Kijiji, Facebook, Marketplace, Instagram, X (fil ≤280), LinkedIn ; limites de caractères
+  (docs/07) ; FR/EN/bilingue (Loi 96) ; émojis optionnels ; mention OACIQ injectée. Endpoint
+  `GET /properties/:id/marketing-copy` + **onglet UI « Marketing »** (langue, émojis, Copier).
+
+**Reste** (marketing) : carrousel vidéo/diapos (docs/07 §8) ; ingestion PPTX→données (docs/09 b) ;
+modèles RPA/Commercial/Entreprise (gabarits à fournir). Autres modules : 3 (Offre de services),
+suite 2 (AVM, carte 3D, revenus).
 
 ---
 
