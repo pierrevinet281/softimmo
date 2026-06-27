@@ -19,7 +19,7 @@ from brochure_layout import NAME_MAP  # noqa: E402
 SIMPLE_ROLES = [
     "banner", "logo", "title", "hero", "map", "medal", "address", "rule", "price",
     "broker_photo", "broker_text", "bottom_bar", "p2_title", "desc", "table",
-    "hero2", "broker2_text", "qr",
+    "hero2", "broker2_text", "qr", "luxe_title", "luxe_lock",
 ]
 
 

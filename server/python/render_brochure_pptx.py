@@ -19,7 +19,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 
-from brochure_layout import load_layout
+from brochure_layout import load_layout, NAME_MAP as NM
 
 # Mise en page courante (positions PPTX), peuplée par render() — voir brochure_layout.py.
 LAYOUT = {}
@@ -69,8 +69,18 @@ def _rgb(h):
     return RGBColor.from_string(h)
 
 
+def _name(sp, name):
+    """Nomme la forme (nom stable du gabarit → round-trip self-service via NAME_MAP)."""
+    if sp is not None and name:
+        try:
+            sp.name = name
+        except Exception:  # noqa: BLE001
+            pass
+    return sp
+
+
 def _rect(slide, x, y, w, h, fill=None, line=None, text=None, size=12, bold=False,
-          color="000000", align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, padx=2.0):
+          color="000000", align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, padx=2.0, name=None):
     sp = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Pt(x), Pt(y), Pt(w), Pt(h))
     try:
         sp.shadow.inherit = False
@@ -91,10 +101,10 @@ def _rect(slide, x, y, w, h, fill=None, line=None, text=None, size=12, bold=Fals
         p = tf.paragraphs[0]; p.alignment = align
         r = p.add_run(); r.text = text
         r.font.size = Pt(size); r.font.bold = bold; r.font.name = FONT; r.font.color.rgb = _rgb(color)
-    return sp
+    return _name(sp, name)
 
 
-def _textbox(slide, x, y, w, h, lines, anchor=MSO_ANCHOR.TOP, wrap=True):
+def _textbox(slide, x, y, w, h, lines, anchor=MSO_ANCHOR.TOP, wrap=True, name=None):
     """lines : liste de (texte, taille, gras, couleur_hex, alignement)."""
     tb = slide.shapes.add_textbox(Pt(x), Pt(y), Pt(w), Pt(h))
     tf = tb.text_frame; tf.word_wrap = wrap
@@ -107,22 +117,22 @@ def _textbox(slide, x, y, w, h, lines, anchor=MSO_ANCHOR.TOP, wrap=True):
         r.font.size = Pt(size); r.font.bold = bool(bold); r.font.name = FONT
         if color:
             r.font.color.rgb = _rgb(color)
-    return tb
+    return _name(tb, name)
 
 
-def _pic(slide, path, x, y, w, h):
+def _pic(slide, path, x, y, w, h, name=None):
     """Image au cadre exact (peut légèrement déformer) ; cadre gris « image » si absente."""
     if path and os.path.exists(path):
-        slide.shapes.add_picture(path, Pt(x), Pt(y), Pt(w), Pt(h))
+        _name(slide.shapes.add_picture(path, Pt(x), Pt(y), Pt(w), Pt(h)), name)
     else:
-        _rect(slide, x, y, w, h, fill=PLACEHOLDER, text="image", size=8, color="5A5A5A")
+        _rect(slide, x, y, w, h, fill=PLACEHOLDER, text="image", size=8, color="5A5A5A", name=name)
 
 
-def _pic_fit(slide, path, x, y, w=None, h=None):
+def _pic_fit(slide, path, x, y, w=None, h=None, name=None):
     """Image en préservant l'aspect (largeur OU hauteur imposée), ancrée en (x, y)."""
     if path and os.path.exists(path):
-        slide.shapes.add_picture(path, Pt(x), Pt(y),
-                                 width=Pt(w) if w else None, height=Pt(h) if h else None)
+        _name(slide.shapes.add_picture(path, Pt(x), Pt(y),
+                                       width=Pt(w) if w else None, height=Pt(h) if h else None), name)
 
 
 def _qr_stream(url, dark="E2231A"):
@@ -160,70 +170,76 @@ def slide1(prs, d, th):
         title = title.upper()
 
     L = LAYOUT
-    _rect(s, *L["banner"], fill=th["banner"])  # bannière
+    _rect(s, *L["banner"], fill=th["banner"], name=NM["banner"])  # bannière
     if th["luxe"]:
         ltx, lty, ltw, lth = L["luxe_title"]
         _textbox(s, ltx, lty + 1.5, ltw, lth - 1.5, [
             (title, 20, True, th["title_fg"], PP_ALIGN.LEFT),
             (d.get("city", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT),
-            (d.get("summary_line", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT)])
+            (d.get("summary_line", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT)], name=NM["luxe_title"])
         lkx, lky, lkw, lkh = L["luxe_lock"]
-        _pic_fit(s, img.get("logo") or th.get("logo"), lkx, lky, w=lkw)
+        _pic_fit(s, img.get("logo") or th.get("logo"), lkx, lky, w=lkw, name=NM["luxe_lock"])
     else:
         lx, ly, lw, lh = L["logo"]
-        _pic_fit(s, img.get("logo") or th.get("logo"), lx, ly, h=lh)
+        _pic_fit(s, img.get("logo") or th.get("logo"), lx, ly, h=lh, name=NM["logo"])
         _textbox(s, *L["title"], lines=[
             (title, 20, True, th["title_fg"], PP_ALIGN.LEFT),
             (d.get("city", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT),
-            (d.get("summary_line", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT)])
+            (d.get("summary_line", ""), 12, False, th["sub_fg"], PP_ALIGN.LEFT)], name=NM["title"])
 
-    _pic(s, img.get("hero"), *L["hero"])   # photo
-    _pic(s, img.get("map"), *L["map"])     # carte
+    _pic(s, img.get("hero"), *L["hero"], name=NM["hero"])   # photo
+    _pic(s, img.get("map"), *L["map"], name=NM["map"])      # carte
     if th.get("medal"):  # médaille (déborde le haut de la bannière)
         mx, my, mw, mh = L["medal"]
-        _pic_fit(s, img.get("medal") or th["medal"], mx, my, w=mw)
+        _pic_fit(s, img.get("medal") or th["medal"], mx, my, w=mw, name=NM["medal"])
 
     abx, aby, abw, abh = L["address"]
     _textbox(s, abx, aby + 12, abw, 40, [   # adresse + MLS
         (d.get("address", ""), 16, True, "1A1A1A", PP_ALIGN.LEFT),
-        ("MLS : %s" % d["mls"] if d.get("mls") else "", 11, False, "5A5A5A", PP_ALIGN.LEFT)])
+        ("MLS : %s" % d["mls"] if d.get("mls") else "", 11, False, "5A5A5A", PP_ALIGN.LEFT)], name=NM["address"])
     rlx, rly, rlw, rlh = L["rule"]
-    _rect(s, rlx, rly - 0.8, rlw, 1.6, fill=th["rule"])      # filet
+    _rect(s, rlx, rly - 0.8, rlw, 1.6, fill=th["rule"], name=NM["rule"])      # filet
 
-    # Grille de spécifications
+    # Grille de spécifications (les 5 cellules-repères sont nommées pour le round-trip).
     g = L["grid"]; ch = g["h"]
     rows_y = [g["row0_y"] + i * g["pitch"] for i in range(5)]
     cols = g["cols"]
     left = d.get("specs_left", []); right = d.get("specs_right", [])
+    GRID_NAMES = {(0, 0, 0): NM["grid_c1_label"], (0, 0, 1): NM["grid_c1_value"],
+                  (0, 1, 0): NM["grid_c2_label"], (0, 1, 1): NM["grid_c2_value"],
+                  (1, 1, 0): NM["grid_c2_label_r1"]}
     for i, ry in enumerate(rows_y):
-        for col, specs in zip(cols, (left, right)):
+        for ci, (col, specs) in enumerate(zip(cols, (left, right))):
             if i < len(specs):
                 lab = specs[i][0]; val = "" if specs[i][1] is None else str(specs[i][1])
                 _rect(s, col[0], ry, col[1], ch, fill=th["label_bg"], text=lab, size=12,
-                      color=th["label_fg"], align=PP_ALIGN.LEFT, padx=8)
+                      color=th["label_fg"], align=PP_ALIGN.LEFT, padx=8, name=GRID_NAMES.get((i, ci, 0)))
                 _rect(s, col[2], ry, col[3], ch, fill=th["value_bg"], text=val, size=12,
-                      color=th["value_fg"], align=PP_ALIGN.LEFT, padx=8)
+                      color=th["value_fg"], align=PP_ALIGN.LEFT, padx=8, name=GRID_NAMES.get((i, ci, 1)))
 
     price = d.get("price")  # bloc prix
     ptxt = ("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande"
     _rect(s, *L["price"], fill=th["price_bg"], text=ptxt, size=28, bold=True,
-          color=th["price_fg"], align=PP_ALIGN.CENTER)
+          color=th["price_fg"], align=PP_ALIGN.CENTER, name=NM["price"])
 
-    _pic(s, broker.get("photo") or asset("broker", "portrait.png"), *L["broker_photo"])
+    _pic(s, broker.get("photo") or asset("broker", "portrait.png"), *L["broker_photo"], name=NM["broker_photo"])
     _textbox(s, *L["broker_text"], lines=[
         (broker.get("name", ""), 15, True, "1A1A1A", PP_ALIGN.LEFT),
         (broker.get("title", ""), 9.5, False, "5A5A5A", PP_ALIGN.LEFT),
         (broker.get("subtitle", ""), 9.5, False, "5A5A5A", PP_ALIGN.LEFT),
         (broker.get("agency", ""), 9.5, False, "5A5A5A", PP_ALIGN.LEFT),
-        ("T : %s" % broker["phone"] if broker.get("phone") else "", 9.5, True, "1A1A1A", PP_ALIGN.LEFT)])
-    _rect(s, *L["bottom_bar"], fill=th["bar"])  # barre rouge
+        ("T : %s" % broker["phone"] if broker.get("phone") else "", 9.5, True, "1A1A1A", PP_ALIGN.LEFT)],
+        name=NM["broker_text"])
+    _rect(s, *L["bottom_bar"], fill=th["bar"], name=NM["bottom_bar"])  # barre rouge
 
 
 # ───────────────────────────── Page 2 ─────────────────────────────
-def _room_table(s, rooms, th, y, hhp=24.0, rhp=24.0, start_index=0, tx0=20.07, tw0=500.31):
+def _room_table(s, rooms, th, y, hhp=24.0, rhp=24.0, start_index=0, tx0=20.07, tw0=500.31, name=None):
     rows = len(rooms) + 1
     total_h = hhp + rhp * len(rooms)
-    gt = s.shapes.add_table(rows, 3, Pt(tx0), Pt(y), Pt(tw0), Pt(total_h)).table
+    gf = s.shapes.add_table(rows, 3, Pt(tx0), Pt(y), Pt(tw0), Pt(total_h))
+    _name(gf, name)
+    gt = gf.table
     gt.first_row = False; gt.horz_banding = False
     gt.rows[0].height = Pt(hhp)
     for i in range(1, rows):
@@ -253,7 +269,7 @@ def _footer(s, d, th):
     L = LAYOUT
     broker = d.get("broker", {}); img = d.get("images", {}) or {}
     h2x, h2y, h2w, h2h = L["hero2"]
-    _pic_fit(s, img.get("brand_hero") or th.get("hero"), h2x, h2y, h=h2h)  # héros
+    _pic_fit(s, img.get("brand_hero") or th.get("hero"), h2x, h2y, h=h2h, name=NM["hero2"])  # héros
     lines = [(broker.get("name", ""), 13, True, "1A1A1A", PP_ALIGN.LEFT)]
     tl = " ".join([x for x in [broker.get("title"), broker.get("subtitle")] if x])
     if tl:
@@ -270,11 +286,11 @@ def _footer(s, d, th):
     web = broker.get("web") or broker.get("website")
     if web:
         lines.append(("W : %s" % web, 9, False, "5A5A5A", PP_ALIGN.LEFT))
-    _textbox(s, *L["broker2_text"], lines=lines)
+    _textbox(s, *L["broker2_text"], lines=lines, name=NM["broker2_text"])
     qbuf = _qr_stream(_broker_url(d, broker), th["qr"])  # QR
     if qbuf:
         qx, qy, qw, qh = L["qr"]
-        s.shapes.add_picture(qbuf, Pt(qx), Pt(qy), Pt(qw), Pt(qw))
+        _name(s.shapes.add_picture(qbuf, Pt(qx), Pt(qy), Pt(qw), Pt(qw)), NM["qr"])
         ref = d.get("brochure_ref") or (("MLS %s" % d["mls"]) if d.get("mls") else "")
         if ref:
             _textbox(s, qx - 10, qy + qw + 1, qw + 20, 12, [(ref, 7, False, "5A5A5A", PP_ALIGN.CENTER)])
@@ -291,13 +307,14 @@ def slide2(prs, d, th):
     rooms = d.get("rooms", [])
     _rect(s, *L["p2_title"], fill=th["p2_banner"],
           text=d.get("headline", d.get("title", "")), size=16, bold=True, color=th["p2_title_fg"],
-          align=PP_ALIGN.LEFT, padx=12)
+          align=PP_ALIGN.LEFT, padx=12, name=NM["p2_title"])
     if d.get("description"):
         _rect(s, *L["desc"], fill=th["desc_bg"], text=d["description"], size=12,
-              color="1A1A1A", align=PP_ALIGN.JUSTIFY, anchor=MSO_ANCHOR.TOP, padx=12)
+              color="1A1A1A", align=PP_ALIGN.JUSTIFY, anchor=MSO_ANCHOR.TOP, padx=12, name=NM["desc"])
     interior = (d.get("interior", []) + [None, None, None])
-    for box, p in zip(L["photos"], interior):
-        _pic(s, p, *box)
+    photo_names = [NM["photo1"], NM["photo2"], NM["photo3"]]
+    for box, p, pn in zip(L["photos"], interior, photo_names):
+        _pic(s, p, *box, name=pn)
 
     if not rooms:
         _footer(s, d, th); return
@@ -307,7 +324,7 @@ def slide2(prs, d, th):
     n = len(rooms); avail = (TBL_BOT - TBL_TOP) - HHP
     if n * 15 <= avail:                       # tableau + pied sur la page 2 (rangées comprimées)
         rhp = min(26.0, avail / n)
-        _room_table(s, rooms, th, TBL_TOP, HHP, rhp, 0, tbx, tbw)
+        _room_table(s, rooms, th, TBL_TOP, HHP, rhp, 0, tbx, tbw, name=NM["table"])
         _footer(s, d, th); return
     # Débordement : page 2 remplie sans pied ; suite + pied en page(s) suivante(s).
     rhp = 24.0
