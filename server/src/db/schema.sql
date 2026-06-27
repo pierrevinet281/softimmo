@@ -282,6 +282,7 @@ CREATE TABLE IF NOT EXISTS properties (
   lot_number    TEXT,                  -- numéro de lot / cadastre
   area_unit     TEXT DEFAULT 'pi2',    -- pi2|m2 (unité d'affichage des superficies)
   mls_number    TEXT,                  -- numéro Centris/MLS si applicable
+  brochure_qr_url TEXT,                 -- lien encodé par le QR de la brochure (fiche Centris, site, courriel…)
   municipal_assessment REAL,           -- évaluation foncière municipale (corroboration ACM)
   assessment_year INTEGER,             -- année du rôle d'évaluation
   status        TEXT NOT NULL DEFAULT 'prospect', -- prospect|actif|inscrit|vendu|expire|archive

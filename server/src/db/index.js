@@ -51,7 +51,7 @@ const COLUMN_ADDITIONS = {
   ],
   // Softimmo Module 2 (Évaluation / ACM) — Phase 3
   properties: [
-    ['municipal_assessment', 'REAL'], ['assessment_year', 'INTEGER'],
+    ['municipal_assessment', 'REAL'], ['assessment_year', 'INTEGER'], ['brochure_qr_url', 'TEXT'],
   ],
   comparables: [
     ['centris_no', 'TEXT'], ['sale_date', 'TEXT'], ['list_price', 'REAL'], ['sold_price', 'REAL'],

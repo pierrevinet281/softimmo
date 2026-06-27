@@ -181,7 +181,7 @@ export default function mountBusiness(parent = Router()) {
     return {
       images: { hero, map },
       interior,
-      listing_url: p.centris_url || p.listing_url || null,
+      listing_url: p.brochure_qr_url || null,
       title: GENRE_LABEL[p.genre] || GENRE_LABEL.autre,
       city: cityProv,
       summary_line: summary,
