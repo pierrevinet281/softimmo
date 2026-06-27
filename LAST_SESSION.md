@@ -11,7 +11,7 @@
 > « Nouvelle session Softimmo. Lis `CLAUDE.md` puis `LAST_SESSION.md` (et `docs/00`), puis
 > enchaîne sur les *Prochaines tâches*. Mode continu. »
 
-**Où on en est (après 26 sessions, tout sur `main`) :**
+**Où on en est (après 28 sessions, tout sur `main`) :**
 - **Framework complet** : `CLAUDE.md` + docs `00`→`12` (vision, archi, catalogue, plan,
   dev-process, conformité, specs marketing `09`, évaluation `10`, Local Logic `11`, ACM `12`).
 - **Phase 1 livrée** : socle d'enrichissement re-brandé Softimmo + modèle de données métier
@@ -44,6 +44,35 @@ import assisté + moteur `render/` partagé.)
 **Rappels** : seul `SoftImmoDev` est modifiable ; conformité non négociable ; déterministe
 d'abord (IA pour bâtir, pas au runtime) ; closeout à chaque fin (commit→PR→squash→ff main→
 backup). Remote `https://github.com/pierrevinet281/softimmo`. Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.
+
+---
+
+## Session 28 — Brochure alignée sur les gabarits PowerPoint + jumeau PPTX éditable (2026-06-27)
+
+**Tournant : les positions des brochures proviennent désormais des gabarits PowerPoint du
+courtier** (round-trip, docs/09). PR #30→#33, tout sur `main`.
+
+- **Contour noir** sur toutes les photos ; **pied page 2 complet** (héros + coordonnées + QR)
+  (PR #30). Héros identique entre modèles (PR #31).
+- **Mise en page PPTX-driven** (PR #32) : `server/python/extract_pptx_layout.py` extrait les
+  positions des gabarits (résout les groupes) ; `render_brochure.py` réécrit avec helpers
+  `PX/PY/pbox` projetant l'espace **540×720 (7,5×10 po)** sur **Lettre 8,5×11** par échelle
+  **uniforme ajustée à la hauteur** (×1,1 ; carrés préservés ; marges latérales ~9 pt ; NE PAS
+  étirer en largeur → rognerait le pied). Couleurs explicites conservées (#314897). Médaille
+  débordant le haut de la bannière ; grille/prix/courtier aux coords PPTX. Pièces **dynamiques**
+  (rangées comprimées dans la zone fixe ; **3e page auto** si trop nombreuses).
+- **Jumeau PPTX éditable** (PR #33) : `server/python/render_brochure_pptx.py` (python-pptx) —
+  formes/textes/images + **vrai tableau éditable** + QR rasterisé (matrice ReportLab → PIL).
+  Endpoint `GET /properties/:id/brochure.pptx?template=` ; UI : sélecteur propose **PDF** et
+  **PowerPoint (éditable)**. Round-trip bouclé (ré-extraction = coords identiques).
+- Gabarits PPTX source (lecture seule) : `..\Brochure unifamiliales\Brochure Inscription.pptx`,
+  `..\Brochure Luxury\modele_brochure.pptx`. Décision : **PDF final en 8,5×11** (PPTX en 7,5×10).
+- Dép. ajoutée : **python-pptx==1.0.2**.
+
+**Reste à faire brochure** : valider le rendu PPTX dans PowerPoint (l'utilisateur peut bouger
+des éléments → je ré-extrais) ; option héros page 2 plus grand (à régler dans le PPTX) ;
+logique multi-pages aussi dans le jumeau PPTX ; lien QR configurable par propriété ; téléversement
+des photos de propriété depuis l'UI ; modèles RPA / Commercial / Entreprise.
 
 ---
 
