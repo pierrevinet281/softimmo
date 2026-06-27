@@ -72,15 +72,18 @@ def main():
     try:
         payload = json.loads(sys.stdin.buffer.read().decode("utf-8") or "{}")
         pptx = payload.get("pptx"); out = payload.get("out")
-        if not pptx or not out:
-            print(json.dumps({"error": "pptx et out requis"})); return
+        if not pptx:
+            print(json.dumps({"error": "pptx requis"})); return
         layout = build_layout(pptx)
         if not layout:
             print(json.dumps({"error": "Aucune forme reconnue dans le gabarit (noms inattendus)."})); return
-        os.makedirs(os.path.dirname(out), exist_ok=True)
-        with open(out, "w", encoding="utf-8") as f:
-            json.dump(layout, f, ensure_ascii=False, indent=2)
-        print(json.dumps({"path": out, "roles": sorted(layout.keys())}))
+        if out:  # niveau MODÈLE : écriture dans layouts/<template>.json
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            with open(out, "w", encoding="utf-8") as f:
+                json.dump(layout, f, ensure_ascii=False, indent=2)
+            print(json.dumps({"path": out, "roles": sorted(layout.keys())}))
+        else:  # niveau PROPRIÉTÉ : renvoi en ligne (stocké en DB par l'appelant)
+            print(json.dumps({"layout": layout, "roles": sorted(layout.keys())}))
     except Exception as e:  # noqa: BLE001
         import traceback
         print(json.dumps({"error": str(e), "trace": traceback.format_exc()[-600:]}))
