@@ -209,10 +209,14 @@ def slide1(prs, d, th):
 
 
 # ───────────────────────────── Page 2 ─────────────────────────────
-def _room_table(s, rooms, th, y, max_h):
+def _room_table(s, rooms, th, y, hhp=24.0, rhp=24.0, start_index=0):
     rows = len(rooms) + 1
-    gt = s.shapes.add_table(rows, 3, Pt(20.07), Pt(y), Pt(500.31), Pt(max_h)).table
+    total_h = hhp + rhp * len(rooms)
+    gt = s.shapes.add_table(rows, 3, Pt(20.07), Pt(y), Pt(500.31), Pt(total_h)).table
     gt.first_row = False; gt.horz_banding = False
+    gt.rows[0].height = Pt(hhp)
+    for i in range(1, rows):
+        gt.rows[i].height = Pt(rhp)
     gt.columns[0].width = Pt(500.31 * 0.46)
     gt.columns[1].width = Pt(500.31 * 0.27)
     gt.columns[2].width = Pt(500.31 * 0.27)
@@ -228,9 +232,10 @@ def _room_table(s, rooms, th, y, max_h):
     for ci, htext in enumerate(["Pièce", "Étage", "Dimension"]):
         fill_cell(gt.cell(0, ci), htext, 11, True, th["th_fg"], th["th_bg"])
     for ri, room in enumerate(rooms):
+        bg = th["row_alt"] if (start_index + ri) % 2 else th["row"]
         for ci in range(3):
             v = str(room[ci]) if ci < len(room) and room[ci] is not None else ""
-            fill_cell(gt.cell(ri + 1, ci), v, 10, False, th["row_fg"], th["row_alt"] if ri % 2 else th["row"])
+            fill_cell(gt.cell(ri + 1, ci), v, 10, False, th["row_fg"], bg)
 
 
 def _footer(s, d, th):
@@ -261,8 +266,13 @@ def _footer(s, d, th):
             _textbox(s, 412, 706, 120, 12, [(ref, 7, False, "5A5A5A", PP_ALIGN.CENTER)])
 
 
+def _blank(prs):
+    return prs.slides.add_slide(prs.slide_layouts[6])
+
+
 def slide2(prs, d, th):
-    s = prs.slides.add_slide(prs.slide_layouts[6])
+    """Page 2 (+ page(s) de suite si trop de pièces) — même pagination que le moteur PDF."""
+    s = _blank(prs)
     rooms = d.get("rooms", [])
     _rect(s, 19.84, 20.82, 500.31, 24.72, fill=th["p2_banner"],
           text=d.get("headline", d.get("title", "")), size=16, bold=True, color=th["p2_title_fg"],
@@ -274,11 +284,31 @@ def slide2(prs, d, th):
     interior = (d.get("interior", []) + [None, None, None])
     for (px, pw), p in zip(photos, interior):
         _pic(s, p, px, 228.58, pw, 131.9)
-    # Tableau (zone fixe 368.48→585 ; hauteur ajustée au nombre de pièces)
-    if rooms:
-        max_h = min(216.0, max(48.0, (len(rooms) + 1) * 18.0))
-        _room_table(s, rooms, th, 368.48, max_h)
-    _footer(s, d, th)
+
+    if not rooms:
+        _footer(s, d, th); return
+
+    TBL_TOP, TBL_BOT, HHP, PAGE_BOT = 368.48, 585.0, 24.0, 700.0
+    n = len(rooms); avail = (TBL_BOT - TBL_TOP) - HHP
+    if n * 15 <= avail:                       # tableau + pied sur la page 2 (rangées comprimées)
+        rhp = min(26.0, avail / n)
+        _room_table(s, rooms, th, TBL_TOP, HHP, rhp, 0)
+        _footer(s, d, th); return
+    # Débordement : page 2 remplie sans pied ; suite + pied en page(s) suivante(s).
+    rhp = 24.0
+    cap2 = max(1, int((PAGE_BOT - (TBL_TOP + HHP)) / rhp))
+    _room_table(s, rooms[:cap2], th, TBL_TOP, HHP, rhp, 0); idx = cap2
+    footer_done = False
+    while idx < n:
+        s2 = _blank(prs); top = 40.0; remaining = n - idx
+        if remaining <= int((TBL_BOT - (top + HHP)) / rhp):
+            _room_table(s2, rooms[idx:], th, top, HHP, rhp, idx); idx = n
+            _footer(s2, d, th); footer_done = True
+        else:
+            k = max(1, int((PAGE_BOT - (top + HHP)) / rhp))
+            _room_table(s2, rooms[idx:idx + k], th, top, HHP, rhp, idx); idx += k
+    if not footer_done:
+        _footer(_blank(prs), d, th)
 
 
 def render(data, out):
