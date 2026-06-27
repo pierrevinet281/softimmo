@@ -236,7 +236,7 @@ def slide1(prs, d, th):
                       color=th["value_fg"], align=PP_ALIGN.LEFT, padx=8, name=GRID_NAMES.get((i, ci, 1)))
 
     price = d.get("price")  # bloc prix
-    ptxt = ("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande"
+    ptxt = d.get("price_text") or (("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande")
     _rect(s, *L["price"], fill=th["price_bg"], text=ptxt, size=28, bold=True,
           color=th["price_fg"], align=PP_ALIGN.CENTER, name=NM["price"])
 
