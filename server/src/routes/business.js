@@ -222,8 +222,13 @@ export default function mountBusiness(parent = Router()) {
     const data = { ...buildBrochureData(bundle), template };
     const pres = getPresentation(bundle.property.id, template);
     if (pres && pres.data) {
-      const c = pres.data.content;  // surcharge CONTENU (texte édité dans le PPTX)
-      if (c) for (const k of CONTENT_FIELDS) if (c[k] !== undefined && c[k] !== null && c[k] !== '') data[k] = c[k];
+      const c = pres.data.content;  // surcharge CONTENU (texte + images édités dans le PPTX)
+      if (c) {
+        for (const k of CONTENT_FIELDS) if (c[k] !== undefined && c[k] !== null && c[k] !== '') data[k] = c[k];
+        if (c.images) data.images = { ...(data.images || {}), ...c.images };           // photo + carte remplacées
+        if (c.interior) data.interior = c.interior;                                     // intérieurs (positionnel)
+        if (c.broker_photo) data.broker = { ...(data.broker || {}), photo: c.broker_photo };
+      }
       if (pres.data.layout) data.layout = pres.data.layout;  // surcharge DISPOSITION
     }
     return data;
@@ -353,8 +358,9 @@ export default function mountBusiness(parent = Router()) {
     fs.mkdirSync(dir, { recursive: true });
     const tmp = path.join(dir, `pres-${property.id}-${tpl}-${Date.now()}.pptx`);
     fs.writeFileSync(tmp, req.file.buffer);
+    const imagesDir = path.join(config.root, 'data', 'uploads', 'properties', property.id, `synced-${tpl}`);
     try {
-      const out = await runWorker('ingest_pptx', { pptx: tmp }, { timeoutMs: 60000 }); // layout + contenu
+      const out = await runWorker('ingest_pptx', { pptx: tmp, images_dir: imagesDir }, { timeoutMs: 60000 }); // layout + contenu + images
       const existing = getPresentation(property.id, tpl);
       const data = { ...((existing && existing.data) || {}), layout: out.layout || {}, content: out.content || {} };
       if (existing) Documents.update(existing.id, { data });
@@ -367,8 +373,10 @@ export default function mountBusiness(parent = Router()) {
 
   parent.delete('/properties/:id/brochure/:template/presentation', wrap(async (req, res) => {
     if (!Properties.get(req.params.id)) throw notFound('property introuvable');
-    const pres = getPresentation(req.params.id, String(req.params.template));
+    const tpl = String(req.params.template);
+    const pres = getPresentation(req.params.id, tpl);
     if (pres) Documents.delete(pres.id);
+    try { fs.rmSync(path.join(config.root, 'data', 'uploads', 'properties', req.params.id, `synced-${tpl}`), { recursive: true, force: true }); } catch { /* ignore */ }
     res.status(204).end();
   }));
 

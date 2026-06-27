@@ -17,6 +17,16 @@ from pptx import Presentation  # noqa: E402
 from brochure_layout import NAME_MAP  # noqa: E402
 from pptx_to_layout import build_layout  # noqa: E402
 
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+try:
+    with open(os.path.join(ASSETS, "_placeholder.png"), "rb") as _f:
+        PLACEHOLDER_BYTES = _f.read()
+except Exception:  # noqa: BLE001
+    PLACEHOLDER_BYTES = b""
+
+# Rôles d'images « contenu » (photos de la propriété) extraites du PPTX si remplacées.
+PIC_ROLES = ["hero", "map", "broker_photo", "photo1", "photo2", "photo3"]
+
 
 def _index(prs):
     idx = {}
@@ -49,7 +59,25 @@ def _text(sh):
     return "\n".join(ps).strip()
 
 
-def build_content(prs):
+def _save_pic(sh, role, images_dir):
+    """Si la forme nommée est une image RÉELLEMENT remplacée (≠ réserve), l'enregistre."""
+    if sh is None or not images_dir:
+        return None
+    try:
+        img = sh.image  # lève si la forme n'est pas une image
+    except Exception:  # noqa: BLE001
+        return None
+    if not img.blob or img.blob == PLACEHOLDER_BYTES:
+        return None  # emplacement resté vide (réserve) → pas de surcharge
+    ext = (img.ext or "png").lstrip(".")
+    os.makedirs(images_dir, exist_ok=True)
+    dest = os.path.join(images_dir, "%s.%s" % (role, ext))
+    with open(dest, "wb") as f:
+        f.write(img.blob)
+    return dest
+
+
+def build_content(prs, images_dir=None):
     idx = _index(prs)
     g = lambda role: idx.get(NAME_MAP.get(role))  # noqa: E731
     content = {}
@@ -99,6 +127,22 @@ def build_content(prs):
     except Exception:  # noqa: BLE001
         pass
 
+    # Images remplacées dans le PPTX (photo principale, carte, intérieurs, photo courtier).
+    if images_dir:
+        saved = {r: _save_pic(g(r), r, images_dir) for r in PIC_ROLES}
+        imgs = {}
+        if saved.get("hero"):
+            imgs["hero"] = saved["hero"]
+        if saved.get("map"):
+            imgs["map"] = saved["map"]
+        if imgs:
+            content["images"] = imgs
+        if saved.get("broker_photo"):
+            content["broker_photo"] = saved["broker_photo"]
+        interior = [saved.get("photo1"), saved.get("photo2"), saved.get("photo3")]
+        if any(interior):
+            content["interior"] = interior  # positionnel : [chemin|null, …]
+
     return content
 
 
@@ -107,10 +151,10 @@ def main():
         payload = json.loads(sys.stdin.buffer.read().decode("utf-8") or "{}")
         pptx = payload.get("pptx")
         if not pptx:
-            print(json.dumps({"error": "pptx requis"})); return
+            _emit({"error": "pptx requis"}); return
         layout = build_layout(pptx)
         prs = Presentation(pptx)
-        content = build_content(prs)
+        content = build_content(prs, images_dir=payload.get("images_dir"))
         roles = sorted(set(list(layout.keys()) + list(content.keys())))
         _emit({"layout": layout, "content": content, "roles": roles})
     except Exception as e:  # noqa: BLE001
