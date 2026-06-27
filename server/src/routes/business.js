@@ -217,10 +217,15 @@ export default function mountBusiness(parent = Router()) {
   // sans incidence sur le modèle). Stockée dans `documents` (doc_type='brochure').
   const getPresentation = (pid, tpl) =>
     (Documents.listBy('property_id', pid) || []).find((doc) => doc.doc_type === 'brochure' && doc.template === tpl) || null;
+  const CONTENT_FIELDS = ['title', 'city', 'summary_line', 'address', 'mls', 'headline', 'description', 'price_text', 'rooms'];
   function brochureRenderData(bundle, template) {
     const data = { ...buildBrochureData(bundle), template };
     const pres = getPresentation(bundle.property.id, template);
-    if (pres && pres.data && pres.data.layout) data.layout = pres.data.layout;  // surcharge propriété
+    if (pres && pres.data) {
+      const c = pres.data.content;  // surcharge CONTENU (texte édité dans le PPTX)
+      if (c) for (const k of CONTENT_FIELDS) if (c[k] !== undefined && c[k] !== null && c[k] !== '') data[k] = c[k];
+      if (pres.data.layout) data.layout = pres.data.layout;  // surcharge DISPOSITION
+    }
     return data;
   }
   parent.get('/properties/:id/brochure.pdf', wrap(async (req, res) => {
@@ -332,8 +337,9 @@ export default function mountBusiness(parent = Router()) {
   parent.get('/properties/:id/brochure/:template/presentation', wrap(async (req, res) => {
     if (!Properties.get(req.params.id)) throw notFound('property introuvable');
     const pres = getPresentation(req.params.id, String(req.params.template));
-    const layout = pres && pres.data && pres.data.layout;
-    res.json({ customized: !!layout, roles: layout ? Object.keys(layout) : [] });
+    const d = (pres && pres.data) || {};
+    const roles = [...Object.keys(d.layout || {}), ...Object.keys(d.content || {})];
+    res.json({ customized: !!(d.layout || d.content), roles: [...new Set(roles)] });
   }));
 
   parent.post('/properties/:id/brochure/:template/sync', upload.single('file'), wrap(async (req, res) => {
@@ -348,10 +354,9 @@ export default function mountBusiness(parent = Router()) {
     const tmp = path.join(dir, `pres-${property.id}-${tpl}-${Date.now()}.pptx`);
     fs.writeFileSync(tmp, req.file.buffer);
     try {
-      const out = await runWorker('pptx_to_layout', { pptx: tmp }, { timeoutMs: 60000 }); // sans out → layout en ligne
-      const layout = out.layout || {};
+      const out = await runWorker('ingest_pptx', { pptx: tmp }, { timeoutMs: 60000 }); // layout + contenu
       const existing = getPresentation(property.id, tpl);
-      const data = { ...((existing && existing.data) || {}), layout };
+      const data = { ...((existing && existing.data) || {}), layout: out.layout || {}, content: out.content || {} };
       if (existing) Documents.update(existing.id, { data });
       else Documents.create({ property_id: property.id, template: tpl, doc_type: 'brochure', title: `Présentation ${tpl}`, format: 'pptx', status: 'final', data });
       res.status(201).json({ customized: true, roles: out.roles || [] });

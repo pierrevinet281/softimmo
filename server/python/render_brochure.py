@@ -386,7 +386,7 @@ def page1(c, d, th):
     px_, py_, pw_, ph_ = pbox(*L["price"])  # bloc prix
     c.setFillColor(th["price_bg"]); c.rect(px_, py_, pw_, ph_, fill=1, stroke=0)
     price = d.get("price")
-    ptxt = ("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande"
+    ptxt = d.get("price_text") or (("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande")
     draw_fit(c, ptxt, px_ + pw_ / 2, py_ + ph_ / 2 - pfont(28) * 0.34, pw_ - 20, F_BOLD, pfont(28),
              th["price_fg"], align="c", min_size=14)
 
