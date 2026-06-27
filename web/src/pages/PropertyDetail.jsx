@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
-  History, Scale, FileText, AlertTriangle, Info, Plus, Upload,
+  History, Scale, FileText, AlertTriangle, Info, Plus, Upload, FileDown, Presentation,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
@@ -291,17 +291,19 @@ const BROCHURE_TEMPLATES = [
 
 function BrochureChooser({ propertyId, onClose }) {
   const { t } = useI18n();
+  const gen = (tplId, fmt) => {
+    window.open(api.url(`/properties/${propertyId}/brochure.${fmt}?template=${tplId}`), '_blank');
+    onClose();
+  };
   return (
     <Modal title={t('d.bro.title')} onClose={onClose} size="lg">
       <div className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t('d.bro.hint')}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {BROCHURE_TEMPLATES.map((tpl) => (
-          <button
+          <div
             key={tpl.id}
             className="card"
-            disabled={tpl.soon}
-            style={{ textAlign: 'left', cursor: tpl.soon ? 'not-allowed' : 'pointer', opacity: tpl.soon ? 0.55 : 1, padding: 16, border: '1px solid var(--color-border)' }}
-            onClick={() => { if (!tpl.soon) { window.open(api.url(`/properties/${propertyId}/brochure.pdf?template=${tpl.id}`), '_blank'); onClose(); } }}
+            style={{ opacity: tpl.soon ? 0.55 : 1, padding: 16, border: '1px solid var(--color-border)' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <FileText size={18} />
@@ -309,7 +311,13 @@ function BrochureChooser({ propertyId, onClose }) {
               {tpl.soon && <Badge tone="neutral">{t('common.soon')}</Badge>}
             </div>
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t(tpl.descKey)}</div>
-          </button>
+            {!tpl.soon && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <Button size="sm" icon={FileDown} onClick={() => gen(tpl.id, 'pdf')}>{t('d.bro.pdf')}</Button>
+                <Button size="sm" variant="outline" icon={Presentation} onClick={() => gen(tpl.id, 'pptx')}>{t('d.bro.pptx')}</Button>
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </Modal>

@@ -222,6 +222,29 @@ export default function mountBusiness(parent = Router()) {
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
   }));
 
+  // Jumeau PowerPoint éditable (mêmes coordonnées que le PDF — round-trip, docs/09).
+  parent.get('/properties/:id/brochure.pptx', wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const template = String(req.query.template || 'unifamilial');
+    if (template === 'rpa') throw badRequest('Le modèle « Résidence pour aînés » arrive bientôt.');
+    if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
+    const pid = property.id;
+    const bundle = {
+      property,
+      buildings: Buildings.listBy('property_id', pid),
+      units: Units.listBy('property_id', pid),
+      transactions: Transactions.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
+    };
+    const dir = path.join(config.root, 'data', 'uploads');
+    fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `brochure-${pid}-${Date.now()}.pptx`);
+    await runWorker('render_brochure_pptx', { data: { ...buildBrochureData(bundle), template }, out }, { timeoutMs: 60000 });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="brochure-${pid}.pptx"`);
+    res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
   // ── Stats APCIQ (ratios vente/inscrit & vente/éval) ──
   // Le PDF « STATS_MUNGENRE » couvre toutes les régions pour une période : il est conservé
   // et réutilisable pour plusieurs propriétés. Le courtier peut : utiliser le fichier en
