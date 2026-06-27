@@ -291,12 +291,22 @@ const PHOTO_ROLES = [
   { id: 'gallery', key: 'd.ph.gallery' },
 ];
 
-function PhotosTab({ propertyId }) {
+function PhotosTab({ property, refetch }) {
+  const propertyId = property.id;
   const { t } = useI18n();
   const qc = useQueryClient();
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [qrUrl, setQrUrl] = useState(property.brochure_qr_url || '');
+  const [qrSaved, setQrSaved] = useState(false);
+  const saveQr = async () => {
+    const v = qrUrl.trim();
+    if (v === (property.brochure_qr_url || '')) return;
+    await api.patch(`/properties/${propertyId}`, { brochure_qr_url: v || null });
+    setQrSaved(true); setTimeout(() => setQrSaved(false), 1500);
+    refetch?.();
+  };
   const { data: photos = [], isLoading } = useQuery({
     queryKey: ['photos', propertyId],
     queryFn: () => api.get(`/properties/${propertyId}/photos`),
@@ -325,6 +335,21 @@ function PhotosTab({ propertyId }) {
         {busy ? t('d.ph.uploading') : t('d.ph.add')}
       </Button>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onUpload} />
+      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{t('d.ph.qr')}</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 560 }}>
+          <input
+            type="text"
+            value={qrUrl}
+            onChange={(e) => setQrUrl(e.target.value)}
+            onBlur={saveQr}
+            placeholder={t('d.ph.qr.ph')}
+            style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13 }}
+          />
+          {qrSaved && <span style={{ color: 'var(--color-success, #07D581)', fontSize: 12 }}>✓</span>}
+        </div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t('d.ph.qr.help')}</div>
+      </div>
       {err && <div style={{ color: 'var(--color-danger)', fontSize: 12, marginTop: 8 }}>{err}</div>}
       {isLoading ? (
         <div className="muted" style={{ marginTop: 16 }}>…</div>
@@ -475,7 +500,7 @@ export default function PropertyDetail() {
           ]}
         />
       )}
-      {tab === 'photos' && <PhotosTab propertyId={p.id} />}
+      {tab === 'photos' && <PhotosTab property={p} refetch={refetch} />}
       {tab === 'reports' && (
         <ReadOnlyList
           icon={FileText}
