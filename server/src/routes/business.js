@@ -221,21 +221,28 @@ export default function mountBusiness(parent = Router()) {
   const getPresentation = (pid, tpl) =>
     (Documents.listBy('property_id', pid) || []).find((doc) => doc.doc_type === 'brochure' && doc.template === tpl) || null;
   const CONTENT_FIELDS = ['title', 'city', 'summary_line', 'address', 'mls', 'headline', 'description', 'price_text', 'rooms'];
-  function brochureRenderData(bundle, template) {
+  // Lit la source de surcharge d'une présentation : le brouillon non approuvé (draft=true) sinon
+  // la version live. Garde-fou du round-trip PPTX→code (voir POST …/sync, …/approve, …/draft).
+  function presSource(pres, draft) {
+    if (!pres || !pres.data) return null;
+    return draft && pres.data.draft ? pres.data.draft : pres.data;
+  }
+  function brochureRenderData(bundle, template, { draft = false } = {}) {
     const data = { ...buildBrochureData(bundle), template };
-    const pres = getPresentation(bundle.property.id, template);
-    if (pres && pres.data) {
-      const c = pres.data.content;  // surcharge CONTENU (texte + images édités dans le PPTX)
+    const src = presSource(getPresentation(bundle.property.id, template), draft);
+    if (src) {
+      const c = src.content;  // surcharge CONTENU (texte + images édités dans le PPTX)
       if (c) {
         for (const k of CONTENT_FIELDS) if (c[k] !== undefined && c[k] !== null && c[k] !== '') data[k] = c[k];
         if (c.images) data.images = { ...(data.images || {}), ...c.images };           // photo + carte remplacées
         if (c.interior) data.interior = c.interior;                                     // intérieurs (positionnel)
         if (c.broker_photo) data.broker = { ...(data.broker || {}), photo: c.broker_photo };
       }
-      if (pres.data.layout) data.layout = pres.data.layout;  // surcharge DISPOSITION
+      if (src.layout) data.layout = src.layout;  // surcharge DISPOSITION
     }
     return data;
   }
+  const wantDraft = (req) => req.query.draft === '1' || req.query.draft === 'true';
   parent.get('/properties/:id/brochure.pdf', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
@@ -252,17 +259,18 @@ export default function mountBusiness(parent = Router()) {
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pdf`);
+    const draft = wantDraft(req);
     if (template === 'rpa') {
       // RPA : format éditorial distinct (render_rpa_brochure) — défauts + surcharge propriété + photos.
-      const pres = getPresentation(pid, 'rpa');
+      const src = presSource(getPresentation(pid, 'rpa'), draft);
       const data = buildRpaData({
         broker: defaultBroker(),
-        contentOverride: pres?.data?.content || null,
+        contentOverride: src?.content || null,
         images: imagesFromMedia(bundle.media),
       });
       await runWorker('render_rpa_brochure', { data, out }, { timeoutMs: 60000 });
     } else {
-      await runWorker('render_brochure', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
+      await runWorker('render_brochure', { data: brochureRenderData(bundle, template, { draft }), out }, { timeoutMs: 60000 });
     }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="brochure-${pid}.pdf"`);
@@ -358,9 +366,12 @@ export default function mountBusiness(parent = Router()) {
     const pres = getPresentation(req.params.id, String(req.params.template));
     const d = (pres && pres.data) || {};
     const roles = [...Object.keys(d.layout || {}), ...Object.keys(d.content || {})];
-    res.json({ customized: !!(d.layout || d.content), roles: [...new Set(roles)] });
+    res.json({ customized: !!(d.layout || d.content), hasDraft: !!d.draft, roles: [...new Set(roles)] });
   }));
 
+  // Sync = ingestion du PPTX édité → enregistré en BROUILLON (data.draft), n'écrase PAS la version
+  // live. L'utilisateur prévisualise (?draft=1) puis Approuve ou Rejette. Garde-fou : un round-trip
+  // PPTX→code peut produire un résultat inattendu ; la version courante reste intacte d'ici l'approbation.
   parent.post('/properties/:id/brochure/:template/sync', upload.single('file'), wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
@@ -376,15 +387,40 @@ export default function mountBusiness(parent = Router()) {
     try {
       const out = await runWorker('ingest_pptx', { pptx: tmp, images_dir: imagesDir }, { timeoutMs: 60000 }); // layout + contenu + images
       const existing = getPresentation(property.id, tpl);
-      const data = { ...((existing && existing.data) || {}), layout: out.layout || {}, content: out.content || {} };
+      const data = { ...((existing && existing.data) || {}) };
+      data.draft = { layout: out.layout || {}, content: out.content || {}, synced_at: new Date().toISOString() };
       if (existing) Documents.update(existing.id, { data });
       else Documents.create({ property_id: property.id, template: tpl, doc_type: 'brochure', title: `Présentation ${tpl}`, format: 'pptx', status: 'final', data });
-      res.status(201).json({ customized: true, roles: out.roles || [] });
+      res.status(201).json({ draft: true, roles: out.roles || [] });
     } finally {
       try { fs.unlinkSync(tmp); } catch { /* ignore */ }
     }
   }));
 
+  // Approuver le brouillon : il remplace la version live, puis est effacé.
+  parent.post('/properties/:id/brochure/:template/approve', wrap(async (req, res) => {
+    if (!Properties.get(req.params.id)) throw notFound('property introuvable');
+    const pres = getPresentation(req.params.id, String(req.params.template));
+    if (!pres || !pres.data || !pres.data.draft) throw badRequest('Aucun brouillon à approuver');
+    const data = { ...pres.data, layout: pres.data.draft.layout || {}, content: pres.data.draft.content || {} };
+    delete data.draft;
+    Documents.update(pres.id, { data });
+    res.json({ approved: true });
+  }));
+
+  // Rejeter le brouillon (la version live reste inchangée).
+  parent.delete('/properties/:id/brochure/:template/draft', wrap(async (req, res) => {
+    if (!Properties.get(req.params.id)) throw notFound('property introuvable');
+    const pres = getPresentation(req.params.id, String(req.params.template));
+    if (pres && pres.data && pres.data.draft) {
+      const data = { ...pres.data }; delete data.draft;
+      if (data.layout || data.content) Documents.update(pres.id, { data });
+      else Documents.delete(pres.id);  // rien de live → supprimer le doc vide
+    }
+    res.status(204).end();
+  }));
+
+  // Reset to default : efface toute personnalisation (live + brouillon) → retour au gabarit par défaut.
   parent.delete('/properties/:id/brochure/:template/presentation', wrap(async (req, res) => {
     if (!Properties.get(req.params.id)) throw notFound('property introuvable');
     const tpl = String(req.params.template);

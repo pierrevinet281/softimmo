@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
   History, Scale, FileText, AlertTriangle, Info, Plus, Upload, FileDown, Presentation,
-  Image as ImageIcon, Trash2, Megaphone, Copy, Check, Save, Pencil,
+  Image as ImageIcon, Trash2, Megaphone, Copy, Check, Save, Pencil, Eye,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
@@ -463,7 +463,9 @@ const BROCHURE_TEMPLATES = [
   { id: 'industriel', labelKey: 'd.bro.industriel', descKey: 'd.bro.industriel.d' },
 ];
 
-function PptxSync({ statusUrl, postUrl, queryKey, labelKey, hintKey }) {
+// Round-trip PPTX d'UNE propriété avec garde-fou draft → approve/discard + reset to default.
+// Le sync enregistre un BROUILLON ; la version live n'est remplacée qu'à l'approbation.
+function PptxSync({ statusUrl, postUrl, approveUrl, discardUrl, draftPreviewUrl, queryKey, labelKey, hintKey }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const ref = useRef(null);
@@ -471,18 +473,21 @@ function PptxSync({ statusUrl, postUrl, queryKey, labelKey, hintKey }) {
   const [msg, setMsg] = useState(null);
   const { data } = useQuery({ queryKey, queryFn: () => api.get(statusUrl) });
   const inv = () => qc.invalidateQueries({ queryKey });
+  const run = async (fn, okKey) => {
+    setBusy(true); setMsg(null);
+    try { const r = await fn(); setMsg(okKey ? t(okKey) : null); inv(); return r; }
+    catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+  };
   const onFile = async (e) => {
     const f = e.target.files?.[0]; e.target.value = '';
     if (!f) return;
-    setBusy(true); setMsg(null);
-    try {
+    await run(async () => {
       const fd = new FormData(); fd.append('file', f);
       const r = await api.upload(postUrl, fd);
-      setMsg(t('d.bro.synced').replace('{n}', (r.roles || []).length));
-      inv();
-    } catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+      setMsg(t('d.bro.draft.ready').replace('{n}', (r.roles || []).length));
+      return r;
+    });
   };
-  const reset = async () => { await api.del(statusUrl); inv(); };
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -491,8 +496,16 @@ function PptxSync({ statusUrl, postUrl, queryKey, labelKey, hintKey }) {
         </Button>
         <input ref={ref} type="file" accept=".pptx" hidden onChange={onFile} />
         {data?.customized && <Badge tone="info">{t('d.bro.tpl.custom')}</Badge>}
-        {data?.customized && <Button size="sm" variant="ghost" onClick={reset}>{t('d.bro.tpl.reset')}</Button>}
+        {data?.customized && <Button size="sm" variant="ghost" onClick={() => run(() => api.del(statusUrl))} disabled={busy}>{t('d.bro.tpl.reset')}</Button>}
       </div>
+      {data?.hasDraft && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, padding: 8, borderRadius: 6, background: 'var(--color-bg-secondary)' }}>
+          <Badge tone="warning">{t('d.bro.draft.badge')}</Badge>
+          <Button size="sm" variant="outline" icon={Eye} onClick={() => window.open(draftPreviewUrl, '_blank')}>{t('d.bro.draft.preview')}</Button>
+          <Button size="sm" icon={Check} onClick={() => run(() => api.post(approveUrl), 'd.bro.draft.approved')} disabled={busy}>{t('d.bro.draft.approve')}</Button>
+          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => run(() => api.del(discardUrl))} disabled={busy}>{t('d.bro.draft.discard')}</Button>
+        </div>
+      )}
       {msg && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{msg}</div>}
       <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t(hintKey)}</div>
     </div>
@@ -727,6 +740,9 @@ function BrochureChooser({ propertyId, onClose }) {
                     <PptxSync
                       statusUrl={`/properties/${propertyId}/brochure/${tpl.id}/presentation`}
                       postUrl={`/properties/${propertyId}/brochure/${tpl.id}/sync`}
+                      approveUrl={`/properties/${propertyId}/brochure/${tpl.id}/approve`}
+                      discardUrl={`/properties/${propertyId}/brochure/${tpl.id}/draft`}
+                      draftPreviewUrl={api.url(`/properties/${propertyId}/brochure.pdf?template=${tpl.id}&draft=1`)}
                       queryKey={['pres', propertyId, tpl.id]}
                       labelKey="d.bro.pres.update"
                       hintKey="d.bro.pres.hint"
