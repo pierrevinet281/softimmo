@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { RotateCcw, Eye } from 'lucide-react';
+import { RotateCcw, Eye, Filter } from 'lucide-react';
 import api from '../api/client.js';
-import { Card, Button, Modal, EmptyState } from '../components/ui.jsx';
+import { Card, Button, Modal, Select, EmptyState } from '../components/ui.jsx';
 import { useI18n } from '../i18n/index.jsx';
 
 const QK = ['sales-attributes'];
+const FILTERS = ['all', 'selected', 'unselected'];
 
 export default function SalesAttributes() {
   const { t, lang } = useI18n();
   const qc = useQueryClient();
-  const [preview, setPreview] = useState(null); // type clé pour l'aperçu du formulaire
+  const [preview, setPreview] = useState(null);        // type clé pour l'aperçu du formulaire
+  const [selectedType, setSelectedType] = useState('all'); // colonne(s) affichée(s)
+  const [colFilter, setColFilter] = useState({});      // { type: 'all'|'selected'|'unselected' }
+  const [menuFor, setMenuFor] = useState(null);        // type dont l'entonnoir est ouvert
 
   const { data, isLoading } = useQuery({ queryKey: QK, queryFn: () => api.get('/sales-attributes') });
   const lab = (o) => (lang === 'en' ? o.label_en : o.label_fr) || o.label_fr;
@@ -37,7 +41,14 @@ export default function SalesAttributes() {
   const types = data?.types || [];
   const categories = data?.categories || [];
   const attributes = data?.attributes || [];
-  const byCat = (catKey) => attributes.filter((a) => a.category === catKey);
+
+  const visibleTypes = selectedType === 'all' ? types : types.filter((ty) => ty.key === selectedType);
+  const passes = (a) => visibleTypes.every((ty) => {
+    const f = colFilter[ty.key] || 'all';
+    if (f === 'all') return true;
+    return f === 'selected' ? !!a.enabled[ty.key] : !a.enabled[ty.key];
+  });
+  const byCat = (catKey) => attributes.filter((a) => a.category === catKey && passes(a));
 
   return (
     <div className="page">
@@ -47,6 +58,13 @@ export default function SalesAttributes() {
           <div className="page-subtitle">{t('sa.subtitle')}</div>
         </div>
         <div className="spacer" />
+        <div className="field" style={{ margin: 0, minWidth: 200 }}>
+          <label>{t('sa.typeFilter')}</label>
+          <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
+            <option value="all">{t('sa.allTypes')}</option>
+            {types.map((ty) => <option key={ty.key} value={ty.key}>{lab(ty)}</option>)}
+          </Select>
+        </div>
         <Button
           variant="outline"
           icon={RotateCcw}
@@ -57,6 +75,8 @@ export default function SalesAttributes() {
         </Button>
       </div>
 
+      {menuFor && <div className="sa-menu-backdrop" onClick={() => setMenuFor(null)} />}
+
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         {isLoading ? (
           <div className="muted" style={{ padding: 24 }}>…</div>
@@ -65,13 +85,38 @@ export default function SalesAttributes() {
             <thead>
               <tr>
                 <th style={{ minWidth: 280 }}>{t('sa.attribute')}</th>
-                {types.map((ty) => (
-                  <th key={ty.key} style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                    <button className="sa-typehead" onClick={() => setPreview(ty.key)} title={t('sa.preview')}>
-                      {lab(ty)} <Eye size={13} />
-                    </button>
-                  </th>
-                ))}
+                {visibleTypes.map((ty) => {
+                  const f = colFilter[ty.key] || 'all';
+                  return (
+                    <th key={ty.key} style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <div className="sa-colhead">
+                        <button className="sa-typehead" onClick={() => setPreview(ty.key)} title={t('sa.preview')}>
+                          {lab(ty)} <Eye size={13} />
+                        </button>
+                        <button
+                          className={`sa-funnel ${f !== 'all' ? 'active' : ''}`}
+                          title={t('sa.filter')}
+                          onClick={() => setMenuFor(menuFor === ty.key ? null : ty.key)}
+                        >
+                          <Filter size={13} />
+                        </button>
+                      </div>
+                      {menuFor === ty.key && (
+                        <div className="sa-menu">
+                          {FILTERS.map((opt) => (
+                            <button
+                              key={opt}
+                              className={f === opt ? 'active' : ''}
+                              onClick={() => { setColFilter({ ...colFilter, [ty.key]: opt }); setMenuFor(null); }}
+                            >
+                              {t(`sa.f.${opt}`)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -81,7 +126,7 @@ export default function SalesAttributes() {
                 return (
                   <React.Fragment key={c.key}>
                     <tr className="sa-catrow">
-                      <td colSpan={types.length + 1}>{lab(c)}</td>
+                      <td colSpan={visibleTypes.length + 1}>{lab(c)}</td>
                     </tr>
                     {rows.map((a) => (
                       <tr key={a.key}>
@@ -89,7 +134,7 @@ export default function SalesAttributes() {
                           {lab(a)}
                           {a.unit ? <span className="muted" style={{ fontSize: 12 }}> ({a.unit})</span> : null}
                         </td>
-                        {types.map((ty) => {
+                        {visibleTypes.map((ty) => {
                           const on = !!a.enabled[ty.key];
                           return (
                             <td key={ty.key} style={{ textAlign: 'center' }}>
