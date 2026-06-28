@@ -118,6 +118,26 @@ def ov(slot, x, y, w, h):
     return x, y, w, h
 
 
+# Facteurs d'ascendante (alignés sur le jumeau PPTX) pour reconvertir une boîte → ligne de base.
+ASC = {"osw": 0.78, "sg": 0.74, "sgb": 0.74}
+
+
+def tov_text(slot, x, ybase, size, grp="sg"):
+    """Texte une ligne : boîte override → (x gauche, ligne de base). y_base = y_bas + h - asc*size."""
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return float(b[0]), float(b[1]) + float(b[3]) - ASC.get(grp, 0.75) * size
+    return x, ybase
+
+
+def tov_para(slot, x, ytop, w):
+    """Paragraphe : boîte override → (x gauche, haut, largeur). y_top = y_bas + h."""
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return float(b[0]), float(b[1]) + float(b[3]), float(b[2])
+    return x, ytop, w
+
+
 def _exists(p):
     return bool(p) and os.path.exists(p) and Image is not None
 
@@ -314,13 +334,16 @@ def _esc(s):
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;") if s is not None else ""
 
 
-def title_block(c, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule=True, rule_w=46):
+def title_block(c, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule=True, rule_w=46, kbase=None):
     kicker(c, x, y_top, kick, color=GOLD)
     yy = y_top - 20
     c.setFont(F_TB, title_size); c.setFillColor(tcolor)
     lead = title_size * 1.02
-    for ln in (title_lines or []):
-        c.drawString(x, yy - title_size * 0.80, ln); yy -= lead
+    for i, ln in enumerate(title_lines or []):
+        dx, dy = x, yy - title_size * 0.80
+        if kbase:
+            dx, dy = tov_text("%s.title.%d" % (kbase, i), dx, dy, title_size, "osw")
+        c.drawString(dx, dy, ln); yy -= lead
     if rule:
         c.setStrokeColor(GOLD); c.setLineWidth(2.4); c.line(x, yy - 2, x + rule_w, yy - 2); yy -= 8
     return yy
@@ -375,28 +398,33 @@ def page_cover(c, d):
         fa_icon(c, "check", px + 15, py + 11, 11, WHITE)
         tracked(c, px + 27, py + 7, str(cov["pill"]).upper(), F_TSB, 9, WHITE, 1.4)
     if cov.get("hero_tag"):
-        c.setFillColor(WHITE); c.setFont(F_TSB, 12); c.drawString(M, hero_y + 24, cov["hero_tag"])
+        c.setFillColor(WHITE); c.setFont(F_TSB, 12)
+        hx, hy = tov_text("cover.hero_tag", M, hero_y + 24, 12, "osw")
+        c.drawString(hx, hy, cov["hero_tag"])
     ly = hero_y; x = M
     kicker(c, x, ly - 36, cov.get("eyebrow", ""), color=GOLD_D, size=11)
     tl = cov.get("title", [])
     c.setFont(F_TB, 46); c.setFillColor(DEEP)
     yy = ly - 78
-    for ln in tl[:2]:
-        c.drawString(x, yy, ln); yy -= 42
+    for i, ln in enumerate(tl[:2]):
+        dx, dy = tov_text("cover.title.%d" % i, x, yy, 46, "osw")
+        c.drawString(dx, dy, ln); yy -= 42
     c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(x, yy + 8, x + 54, yy + 8)
     sub_top = yy - 4; sub_h = 0
     if cov.get("subtitle"):
-        sub_h = draw_para(c, cov["subtitle"], st(F_L, 13, INK, leading=17), x, sub_top, CW * 0.90)
+        sx, sy, sw = tov_para("cover.subtitle", x, sub_top, CW * 0.90)
+        sub_h = draw_para(c, cov["subtitle"], st(F_L, 13, INK, leading=17), sx, sy, sw)
     chips = cov.get("chips", [])
     # Pastilles ancrées SOUS le sous-titre (hauteur 30 + marge), quel que soit le nombre de
-    # lignes du sous-titre — anti-chevauchement. Plancher = au-dessus du bloc de contact.
+    # lignes du sous-titre — anti-chevauchement. Chaque pastille = unité déplaçable (slot).
     cy = max(96, (sub_top - sub_h) - 14 - 30); cx = x
-    for chip in chips[:3]:
+    for i, chip in enumerate(chips[:3]):
         txt = chip.get("text", "")
         c.setFont(F_SB, 10); tw = c.stringWidth(txt, F_SB, 10); cw = tw + 42
-        c.setFillColor(MIST); c.setStrokeColor(MIST_B); c.setLineWidth(1); c.roundRect(cx, cy, cw, 30, 15, stroke=1, fill=1)
-        fa_icon(c, chip.get("icon"), cx + 17, cy + 15, 12, GOLD_D)
-        c.setFillColor(DEEP); c.setFont(F_SB, 10); c.drawString(cx + 31, cy + 10.5, txt)
+        bx, by, bw, bh = ov("cover.chips.%d" % i, cx, cy, cw, 30)
+        c.setFillColor(MIST); c.setStrokeColor(MIST_B); c.setLineWidth(1); c.roundRect(bx, by, bw, bh, 15, stroke=1, fill=1)
+        fa_icon(c, chip.get("icon"), bx + 17, by + 15, 12, GOLD_D)
+        c.setFillColor(DEEP); c.setFont(F_SB, 10); c.drawString(bx + 31, by + 10.5, txt)
         cx += cw + 11
     by = 46
     c.setStrokeColor(LINE); c.setLineWidth(1); c.line(M, by + 34, PW - M, by + 34)
@@ -409,17 +437,18 @@ def page_cover(c, d):
     c.showPage()
 
 
-def _intro(c, sec, rt, num):
+def _intro(c, sec, rt, num, kbase=None):
     running_head(c, sec.get("running", num or ""), rt)
-    yb = title_block(c, M, PH - 70, sec.get("kicker", ""), sec.get("title", []), title_size=30)
-    lh = draw_para(c, sec.get("lead"), st(F_R, 11.5, INK, leading=17), M, yb - 8, CW)
+    yb = title_block(c, M, PH - 70, sec.get("kicker", ""), sec.get("title", []), title_size=30, kbase=kbase)
+    lx, ly, lw = tov_para("%s.lead" % kbase, M, yb - 8, CW) if kbase else (M, yb - 8, CW)
+    lh = draw_para(c, sec.get("lead"), st(F_R, 11.5, INK, leading=17), lx, ly, lw)
     return yb - 8 - lh - 16
 
 
 def page_comfort(c, d, page_no):
     sec = d["content"].get("comfort", {}); rt = d["content"].get("running_title")
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
-    top = _intro(c, sec, rt, "01 · " + sec.get("running", ""))
+    top = _intro(c, sec, rt, "01 · " + sec.get("running", ""), "comfort")
     if sec.get("wide_image") is not None or True:
         ih = 178
         draw_image(c, sec.get("wide_image"), *ov("comfort.wide_image", M, top - ih, CW, ih), radius=12)
@@ -451,7 +480,7 @@ def page_comfort(c, d, page_no):
 def page_security(c, d, page_no):
     sec = d["content"].get("security", {}); rt = d["content"].get("running_title")
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
-    top = _intro(c, sec, rt, "02 · " + sec.get("running", ""))
+    top = _intro(c, sec, rt, "02 · " + sec.get("running", ""), "security")
     panel_w = CW * 0.605; img_w = CW - panel_w - 16; panel_h = 236
     px, py, pw, ph = ov("security.panel", M, top - panel_h, panel_w, panel_h)
     draw_gradient(c, px, py, pw, ph, DEEP, DEEP_D, radius=14, vertical=True)
@@ -486,7 +515,7 @@ def page_security(c, d, page_no):
 def page_amenities(c, d, page_no):
     sec = d["content"].get("amenities", {}); rt = d["content"].get("running_title")
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
-    top = _intro(c, sec, rt, "03 · " + sec.get("running", ""))
+    top = _intro(c, sec, rt, "03 · " + sec.get("running", ""), "amenities")
     gallery = sec.get("gallery", [])
 
     def cap(x, y, w, item):
@@ -518,7 +547,7 @@ def page_amenities(c, d, page_no):
 def page_life(c, d, page_no):
     sec = d["content"].get("life", {}); rt = d["content"].get("running_title")
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
-    top = _intro(c, sec, rt, "04 · " + sec.get("running", ""))
+    top = _intro(c, sec, rt, "04 · " + sec.get("running", ""), "life")
     gap = 14; cw = (CW - 2 * gap) / 3; ch_img = 82; chh = 150
     for i, ev in enumerate(sec.get("events", [])[:3]):
         x = M + i * (cw + gap); y = top - chh
@@ -562,10 +591,12 @@ def page_contact(c, d, page_no):
     tl = sec.get("title", [])
     c.setFont(F_TB, 38); c.setFillColor(WHITE)
     yy = txt_ref + 108
-    for ln in tl[:2]:
-        c.drawString(M, yy, ln); yy -= 38
+    for i, ln in enumerate(tl[:2]):
+        dx, dy = tov_text("contact.title.%d" % i, M, yy, 38, "osw")
+        c.drawString(dx, dy, ln); yy -= 38
     c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(M, yy + 6, M + 54, yy + 6)
-    draw_para(c, sec.get("cta"), st(F_L, 13, WHITE, leading=18), M, yy - 6, CW * 0.74)
+    cx2, cy2, cw2 = tov_para("contact.cta", M, yy - 6, CW * 0.74)
+    draw_para(c, sec.get("cta"), st(F_L, 13, WHITE, leading=18), cx2, cy2, cw2)
     # carte contact (tous les enfants sont relatifs à cardx/cardy/cardw/cardh → 1 override déplace tout)
     cardx = M; cardw = CW * 0.57; cardy = 148; cardh = band_bottom - 148 - 26
     cardx, cardy, cardw, cardh = ov("contact.card", cardx, cardy, cardw, cardh)

@@ -238,9 +238,10 @@ def page_cover(prs, d):
     for i, chip in enumerate(chips[:3]):
         txt = chip.get("text", "")
         tw = _measure(os.path.join(WF, "seguisb.ttf"), 10, txt); cw = tw + 42
-        rect(s, cx, cy, cw, 30, fill=MIST, line=MIST_B, line_w=1, radius=15)
-        fa(s, chip.get("icon"), cx + 17, cy + 15, 12, GOLD_D)
-        text_line(s, cx + 31, cy + 10.5, txt, "Sg-SB", 10, DEEP, name="RPA::cover.chips.%d.text" % i)
+        bx, by, bw, bh = ov("cover.chips.%d" % i, cx, cy, cw, 30)
+        rect(s, bx, by, bw, bh, fill=MIST, line=MIST_B, line_w=1, radius=15).name = "RPA::cover.chips.%d" % i
+        fa(s, chip.get("icon"), bx + 17, by + 15, 12, GOLD_D)
+        text_line(s, bx + 31, by + 10.5, txt, "Sg-SB", 10, DEEP, name="RPA::cover.chips.%d.text" % i)
         cx += cw + 11
     by = 46.0
     line(s, M, by + 34, PW - M, by + 34, LINE, 1)
@@ -465,6 +466,13 @@ def render(data, out):
     data.setdefault("content", {})
     global LAYOUT_OV
     LAYOUT_OV = data.get("layout") or {}
+    # Override de position des TEXTES AUTONOMES seulement (les textes de carte/panneau suivent
+    # leur conteneur — exclus pour éviter un double override).
+    standalone = {"cover.title.0", "cover.title.1", "cover.subtitle", "cover.hero_tag",
+                  "contact.title.0", "contact.title.1", "contact.cta"}
+    for sec in ("comfort", "security", "amenities", "life"):
+        standalone.update((sec + ".title.0", sec + ".title.1", sec + ".lead"))
+    H.set_pos({k: v for k, v in LAYOUT_OV.items() if k in standalone})
 
     cache = os.path.join(tempfile.gettempdir(), "softimmo_rpa_pptx")
     set_asset_dir(cache)

@@ -54,6 +54,16 @@ FONTS = {
 }
 
 
+# Override de position pour les textes AUTONOMES (titres/accroches/pastilles) : nom → boîte
+# [x, y_bas, w, h] (pt, bas-gauche). Renseigné par le renderer (set_pos) ; placer = relire (round-trip).
+POS = {}
+
+
+def set_pos(d):
+    global POS
+    POS = d or {}
+
+
 # ------------------------------------------------------------------ bas niveau
 def _no_autofit(tf):
     tf.word_wrap = False
@@ -96,13 +106,17 @@ def text_line(slide, x, y_base, s, code, size, color, align="l", tracking=0.0, n
     asc = ASC.get(grp, 0.75)
     top = (PH - y_base) - asc * size
     W = 460.0
+    H = size * 1.7
     if align == "l":
         left = x; al = PP_ALIGN.LEFT
     elif align == "c":
         left = x - W / 2; al = PP_ALIGN.CENTER
     else:
         left = x - W; al = PP_ALIGN.RIGHT
-    tb = slide.shapes.add_textbox(E(left), E(top), E(W), E(size * 1.7))
+    b = POS.get(name) if name else None
+    if b and len(b) == 4:  # override : placer à la boîte exacte (round-trip stable)
+        left = b[0]; top = PH - b[1] - b[3]; W = b[2]; H = b[3]
+    tb = slide.shapes.add_textbox(E(left), E(top), E(W), E(H))
     tf = tb.text_frame; _no_autofit(tf)
     p = tf.paragraphs[0]; p.alignment = al
     try:
@@ -167,8 +181,12 @@ def icon(slide, glyph_char, cx, cy, size, color, font="FA"):
 # ------------------------------------------------------------------ paragraphes (avec retour à la ligne)
 def para(slide, x, y_top, w, text, code, size, color, leading, align="l", name=None):
     top = (PH - y_top) + PARA_DY
+    left = x; width = w; height = 200.0
+    b = POS.get(name) if name else None
+    if b and len(b) == 4:  # override : placer à la boîte exacte
+        left = b[0]; top = PH - b[1] - b[3]; width = b[2]; height = b[3]
     al = {"l": PP_ALIGN.LEFT, "c": PP_ALIGN.CENTER, "r": PP_ALIGN.RIGHT, "j": PP_ALIGN.JUSTIFY}[align]
-    tb = slide.shapes.add_textbox(E(x), E(top), E(w), E(200))
+    tb = slide.shapes.add_textbox(E(left), E(top), E(width), E(height))
     tf = tb.text_frame; tf.word_wrap = True; tf.auto_size = MSO_AUTO_SIZE.NONE
     for m in ("margin_left", "margin_right", "margin_top", "margin_bottom"):
         setattr(tf, m, 0)
