@@ -21,11 +21,13 @@ DEFAULT_LAYOUT = {
     # ----- Page 1 -----
     "banner": [19.84, 16.76, 500.31, 82.49],
     "logo": [33.75, 30.38, 84.39, 53.79],
-    "title": [132.04, 24.56, 282.0, 65.43],
+    # title_block / address_block = CONTENEURS (décomposés en lignes par brochure_slots) ; nommés
+    # « _block » pour ne pas entrer en collision avec les slots-lignes « title » et « address ».
+    "title_block": [132.04, 24.56, 282.0, 65.43],
     "hero": [19.84, 110.54, 299.94, 224.96],
     "map": [328.0, 110.54, 192.16, 224.96],
     "medal": [387.34, 12.14, 146.72, 144.13],
-    "address": [26.72, 328.76, 486.41, 71.18],
+    "address_block": [26.72, 328.76, 486.41, 71.18],
     "rule": [19.58, 392.9, 500.69, 0.0],
     "grid": {
         "row0_y": 413.43, "pitch": 29.7, "h": 24.13,

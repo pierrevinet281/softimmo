@@ -28,8 +28,13 @@ from reportlab.graphics.shapes import Drawing
 from reportlab.graphics import renderPDF
 
 from brochure_layout import load_layout
+from brochure_slots import (
+    ovr, title_lines, address_lines, broker_lines, broker2_lines, grid_cell, grid_slot,
+)
 
 # Mise en page courante (positions PPTX), peuplée par render() — voir brochure_layout.py.
+# Contient les boîtes de RÉGIONS (DEFAULT_LAYOUT) + tout override de POSITION par slot capté à
+# l'aller-retour (brochure_slots.extract_slots) ; lu identiquement par le jumeau PPTX.
 LAYOUT = {}
 
 try:
@@ -260,6 +265,30 @@ def para_fit(c, text, x, y_top, w, h, font, size, color, leading_ratio=1.32, ali
     return h
 
 
+# ── Dessin par SLOT (override de position appliqué — miroir du jumeau PPTX) ──
+def _line(c, slot, box, text, font, size_pt, color, align="l", padx=0.0, min_size=6):
+    """Ligne de texte centrée verticalement dans la boîte PPTX `box` (override `LAYOUT[slot]`)."""
+    text = "" if text is None else str(text)
+    if not text:
+        return
+    rx, ry, rw, rh = pbox(*ovr(LAYOUT, slot, *box))
+    base = ry + rh / 2 - pfont(size_pt) * 0.34
+    pad = PSc(padx)
+    if align == "c":
+        draw_fit(c, text, rx + rw / 2, base, rw - 2 * pad, font, pfont(size_pt), color, align="c", min_size=min_size)
+    elif align == "r":
+        draw_fit(c, text, rx + rw - pad, base, rw - 2 * pad, font, pfont(size_pt), color, align="r", min_size=min_size)
+    else:
+        draw_fit(c, text, rx + pad, base, rw - 2 * pad, font, pfont(size_pt), color, align="l", min_size=min_size)
+
+
+def _cell(c, slot, box, text, fill, fg, size=12):
+    """Cellule de grille : rectangle plein + texte aligné à gauche (override `LAYOUT[slot]`)."""
+    rx, ry, rw, rh = pbox(*ovr(LAYOUT, slot, *box))
+    c.setFillColor(fill); c.rect(rx, ry, rw, rh, fill=1, stroke=0)
+    draw_fit(c, text, rx + 10, ry + rh / 2 - pfont(size) * 0.34, rw - 18, F_REG, pfont(size), fg, min_size=7.5)
+
+
 # ───────────────────────────── Thèmes (par modèle de brochure) ─────────────────────────────
 THEMES = {
     "unifamilial": {
@@ -311,13 +340,12 @@ THEMES["industriel"] = _theme("#37474F", "#E07B2C", desc="#E0E4E6", value="#E0E4
 def _luxe_header(c, d, th, title):
     """Bannière luxe : titre or à gauche + verrou logo « eXp · COLLECTION DE LUXE » à droite."""
     img = d.get("images", {})
-    tbx, tby, tbw, tbh = LAYOUT["luxe_title"]
-    tx = PX(tbx); tw = PSc(tbw)
-    draw_fit(c, title, tx, PY(tby + 19.5), tw, F_BOLD, pfont(20), th["title_fg"], min_size=12)
-    draw_fit(c, d.get("city", ""), tx, PY(tby + 37.5), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
-    draw_fit(c, d.get("summary_line", ""), tx, PY(tby + 54.5), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
+    tl = title_lines(LAYOUT, key="luxe_title")
+    _line(c, "title", tl["title"], title, F_BOLD, 20, th["title_fg"], min_size=12)
+    _line(c, "city", tl["city"], d.get("city", ""), F_REG, 12, th["sub_fg"], min_size=8)
+    _line(c, "summary_line", tl["summary_line"], d.get("summary_line", ""), F_REG, 12, th["sub_fg"], min_size=8)
     logo = img.get("logo") or th.get("logo_default")
-    lkx, lky, lkw, lkh = LAYOUT["luxe_lock"]
+    lkx, lky, lkw, lkh = ovr(LAYOUT, "luxe_lock", *LAYOUT["luxe_lock"])
     if logo and os.path.exists(logo):
         # Verrou aligné à droite de sa boîte (marge intérieure incluse dans la boîte).
         lim = _load(logo, rgb=False); dw = PSc(lkw); dh = dw * (lim.size[1] / lim.size[0])
@@ -334,74 +362,67 @@ def page1(c, d, th):
     if th["title_upper"]:
         title = title.upper()
 
-    c.setFillColor(th["banner_bg"]); c.rect(*pbox(*L["banner"]), fill=1, stroke=0)  # bannière
+    bx, by, bw, bh = pbox(*ovr(L, "banner", *L["banner"]))  # bannière
+    c.setFillColor(th["banner_bg"]); c.rect(bx, by, bw, bh, fill=1, stroke=0)
 
     if th["banner"] == "luxe":
         _luxe_header(c, d, th, title)
     else:
         logo = img.get("logo") or th.get("logo_default")  # logo eXp (ajusté par hauteur)
-        lx, ly, lw0, lh = pbox(*L["logo"])
+        lx, ly, lw0, lh = pbox(*ovr(L, "logo", *L["logo"]))
         if logo and os.path.exists(logo):
             lim = _trim_alpha(_load(logo, rgb=False))
             c.drawImage(ImageReader(lim), lx, ly, lh * (lim.size[0] / lim.size[1]), lh, mask="auto")
-        tbx, tby, tbw, tbh = L["title"]  # titre / ville / résumé
-        tx = PX(tbx); tw = PSc(tbw)
-        draw_fit(c, title, tx, PY(tby + 17.5), tw, F_BOLD, pfont(20), th["title_fg"], min_size=12)
-        draw_fit(c, d.get("city", ""), tx, PY(tby + 36.5), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
-        draw_fit(c, d.get("summary_line", ""), tx, PY(tby + 53.5), tw, F_REG, pfont(12), th["sub_fg"], min_size=8)
+        tl = title_lines(L)  # titre / ville / résumé (lignes individuelles, déplaçables)
+        _line(c, "title", tl["title"], title, F_BOLD, 20, th["title_fg"], min_size=12)
+        _line(c, "city", tl["city"], d.get("city", ""), F_REG, 12, th["sub_fg"], min_size=8)
+        _line(c, "summary_line", tl["summary_line"], d.get("summary_line", ""), F_REG, 12, th["sub_fg"], min_size=8)
 
-    draw_image(c, img.get("hero"), *pbox(*L["hero"]), border=0.8)  # photo + carte
-    draw_image(c, img.get("map"), *pbox(*L["map"]), border=0.8)
+    draw_image(c, img.get("hero"), *pbox(*ovr(L, "hero", *L["hero"])), border=0.8)  # photo + carte
+    draw_image(c, img.get("map"), *pbox(*ovr(L, "map", *L["map"])), border=0.8)
 
     if th["banner"] == "medal":  # médaille (sommet débordant la bannière)
         medal = img.get("medal") or th.get("medal_default")
-        mbx, mby, mbw, mbh = L["medal"]; mx = PX(mbx); mw = PSc(mbw)
+        mbx, mby, mbw, mbh = ovr(L, "medal", *L["medal"]); mx = PX(mbx); mw = PSc(mbw)
         if medal and os.path.exists(medal):
             mim = _load(medal, rgb=False); dh = mw * (mim.size[1] / mim.size[0])
             c.drawImage(ImageReader(mim), mx, PY(mby) - dh, mw, dh, mask="auto")
 
-    abx, aby, abw, abh = L["address"]  # adresse + MLS + filet
-    draw_fit(c, d.get("address", ""), PX(abx), PY(aby + 27.2), PSc(abw), F_BOLD, pfont(16), INK, min_size=11)
+    al = address_lines(L)  # adresse + MLS (lignes individuelles) + filet
+    _line(c, "address", al["address"], d.get("address", ""), F_BOLD, 16, INK, min_size=11)
     if d.get("mls"):
-        draw_fit(c, "MLS : %s" % d["mls"], PX(abx), PY(aby + 45.2), PSc(abw), F_REG, pfont(11), INK2, min_size=8)
-    rlx, rly, rlw, rlh = L["rule"]
+        _line(c, "mls", al["mls"], "MLS : %s" % d["mls"], F_REG, 11, INK2, min_size=8)
+    rlx, rly, rlw, rlh = ovr(L, "rule", *L["rule"])
     c.setStrokeColor(th["rule"]); c.setLineWidth(2.2); c.line(PX(rlx), PY(rly), PX(rlx + rlw), PY(rly))
 
-    g = L["grid"]; ch = g["h"]  # grille de spécifications
-    rows_y = [g["row0_y"] + i * g["pitch"] for i in range(5)]
-    cols = g["cols"]; left = d.get("specs_left", []); right = d.get("specs_right", [])
-
-    def cell(px, pw, ry, text, fill, fg):
-        x, y, w, h = pbox(px, ry, pw, ch)
-        c.setFillColor(fill); c.rect(x, y, w, h, fill=1, stroke=0)
-        draw_fit(c, text, x + 10, y + h / 2 - pfont(12) * 0.34, w - 18, F_REG, pfont(12), fg, min_size=7.5)
-
-    for i, ry in enumerate(rows_y):
-        for col, specs in zip(cols, (left, right)):
+    left = d.get("specs_left", []); right = d.get("specs_right", [])  # grille (chaque cellule = slot)
+    for i in range(5):
+        for ci, specs in enumerate((left, right)):
             if i < len(specs):
                 lab = specs[i][0]; val = "" if specs[i][1] is None else str(specs[i][1])
-                cell(col[0], col[1], ry, lab, th["label_bg"], th["label_fg"])
-                cell(col[2], col[3], ry, val, th["value_bg"], th["value_fg"])
+                _cell(c, grid_slot(i, ci, "label"), grid_cell(L, i, ci, "label"), lab, th["label_bg"], th["label_fg"])
+                _cell(c, grid_slot(i, ci, "value"), grid_cell(L, i, ci, "value"), val, th["value_bg"], th["value_fg"])
 
-    px_, py_, pw_, ph_ = pbox(*L["price"])  # bloc prix
+    px_, py_, pw_, ph_ = pbox(*ovr(L, "price_text", *L["price"]))  # bloc prix (texte éditable)
     c.setFillColor(th["price_bg"]); c.rect(px_, py_, pw_, ph_, fill=1, stroke=0)
     price = d.get("price")
     ptxt = d.get("price_text") or (("Prix : %s $" % format(int(price), ",d").replace(",", " ")) if price else "Prix sur demande")
     draw_fit(c, ptxt, px_ + pw_ / 2, py_ + ph_ / 2 - pfont(28) * 0.34, pw_ - 20, F_BOLD, pfont(28),
              th["price_fg"], align="c", min_size=14)
 
-    bphoto = broker.get("photo") or asset("broker", "portrait.png")  # courtier
-    draw_image(c, bphoto, *pbox(*L["broker_photo"]))
-    bbx, bby, bbw, bbh = L["broker_text"]; btx = PX(bbx); btw = PSc(bbw)
-    draw_fit(c, broker.get("name", ""), btx, PY(bby + 15), btw, F_BOLD, pfont(15), INK, min_size=10)
-    yb = bby + 29
-    for ln in [broker.get("title", ""), broker.get("subtitle", ""), broker.get("agency", "")]:
-        if ln:
-            draw_fit(c, ln, btx, PY(yb), btw, F_REG, pfont(9.5), INK2, min_size=7); yb += 11.5
-    if broker.get("phone"):
-        draw_fit(c, "T : %s" % broker["phone"], btx, PY(yb), btw, F_BOLD, pfont(9.5), INK, min_size=7)
+    bphoto = broker.get("photo") or asset("broker", "portrait.png")  # courtier (photo + 5 lignes)
+    draw_image(c, bphoto, *pbox(*ovr(L, "broker_photo", *L["broker_photo"])))
+    bl = broker_lines(L)
+    _line(c, "broker.name", bl["broker.name"], broker.get("name", ""), F_BOLD, 15, INK, min_size=10)
+    for key, txt, fnt, col in [
+        ("broker.title", broker.get("title", ""), F_REG, INK2),
+        ("broker.subtitle", broker.get("subtitle", ""), F_REG, INK2),
+        ("broker.agency", broker.get("agency", ""), F_REG, INK2),
+        ("broker.phone", ("T : %s" % broker["phone"]) if broker.get("phone") else "", F_BOLD, INK),
+    ]:
+        _line(c, key, bl[key], txt, fnt, 9.5, col, min_size=7)
 
-    c.setFillColor(th["bar"]); c.rect(*pbox(*L["bottom_bar"]), fill=1, stroke=0)  # barre rouge
+    c.setFillColor(th["bar"]); c.rect(*pbox(*ovr(L, "bottom_bar", *L["bottom_bar"])), fill=1, stroke=0)  # barre
     _compliance_footer(c, d)
 
 
@@ -442,24 +463,25 @@ def page2(c, d, th):
     L = LAYOUT
     rooms = d.get("rooms", [])
 
-    bx, by, bw, bhh = pbox(*L["p2_title"])  # bandeau titre
+    bx, by, bw, bhh = pbox(*ovr(L, "headline", *L["p2_title"]))  # bandeau titre (texte éditable)
     c.setFillColor(th["p2_banner_bg"]); c.rect(bx, by, bw, bhh, fill=1, stroke=0)
     draw_fit(c, d.get("headline", d.get("title", "")), bx + PSc(13), by + bhh / 2 - pfont(16) * 0.34,
              bw - PSc(26), F_BOLD, pfont(16), th["p2_title_fg"], min_size=11)
 
     if d.get("description"):  # description (boîte + texte cadré avec retrait)
-        dbx, dby, dbw, dbh = L["desc"]
+        dbx, dby, dbw, dbh = ovr(L, "description", *L["desc"])
         c.setFillColor(th["desc_bg"]); c.rect(*pbox(dbx, dby, dbw, dbh), fill=1, stroke=0)
         tx, ty, tw, thh = pbox(dbx + 12.8, dby + 0.5, dbw - 25, dbh - 0.5)
         para_fit(c, d["description"], tx, ty + thh, tw, thh, F_REG, pfont(12), INK,
                  leading_ratio=1.34, align=TA_JUSTIFY, min_size=8)
 
     interior = (d.get("interior", []) + [None, None, None])  # 3 photos (contour noir fin)
-    for box, p in zip(L["photos"], interior):
-        draw_image(c, p, *pbox(*box), border=0.8)
+    for idx2 in range(3):
+        box = ovr(L, "photo.%d" % idx2, *L["photos"][idx2])
+        draw_image(c, interior[idx2], *pbox(*box), border=0.8)
 
     # Tableau des pièces (zone fixe) — rangées comprimées ; page de suite si trop nombreuses.
-    tbx, tby, tbw, tbh = L["table"]
+    tbx, tby, tbw, tbh = ovr(L, "table", *L["table"])
     cwp = [c0 * tbw for c0 in ROOM_COLS]
     TBL_TOP, TBL_BOT, HHP, PAGE_BOT = tby, tby + tbh, 24.0, PPTX_H - 20.0
     if not rooms:
@@ -504,45 +526,46 @@ def _page2_footer(c, d, th):
     # Héros « SuperPierre » : ajusté par hauteur (aspect préservé), ancré au coin bas-gauche de
     # la boîte PPTX — même hauteur et même position pour tous les modèles (unifamilial, luxe…).
     hero = img.get("brand_hero") or th.get("hero_default")
-    hx, hy, hw, hh = pbox(*LAYOUT["hero2"])
+    hx, hy, hw, hh = pbox(*ovr(LAYOUT, "hero2", *LAYOUT["hero2"]))
     if hero and os.path.exists(hero) and Image is not None:
         him = _trim_alpha(_load(hero, rgb=False))
         dw = hh * (him.size[0] / him.size[1])
         c.drawImage(ImageReader(him), hx, hy, dw, hh, mask="auto")
 
-    # Bloc coordonnées du courtier (ZoneTexte 1)
-    bbx, bby, bbw, bbh = LAYOUT["broker2_text"]; btx = PX(bbx); btw = PSc(bbw)
-    draw_fit(c, broker.get("name", ""), btx, PY(bby + 11), btw, F_BOLD, pfont(13), INK, min_size=9)
+    # Bloc coordonnées du courtier (5 lignes individuelles, déplaçables ; texte issu du profil)
+    bl = broker2_lines(LAYOUT)
+    _line(c, "broker2.name", bl["broker2.name"], broker.get("name", ""), F_BOLD, 13, INK, min_size=9)
     title_line = " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s])
     if title_line:
-        draw_fit(c, title_line, btx, PY(bby + 23), btw, F_BOLD, pfont(9), INK, min_size=6.5)
+        _line(c, "broker2.titles", bl["broker2.titles"], title_line, F_BOLD, 9, INK, min_size=6.5)
     agency = broker.get("agency", "")
     if broker.get("company"):
         agency = (agency + " | " + broker["company"]) if agency else broker["company"]
     if agency:
-        draw_fit(c, agency, btx, PY(bby + 34), btw, F_REG, pfont(9), INK2, min_size=6.5)
+        _line(c, "broker2.agency", bl["broker2.agency"], agency, F_REG, 9, INK2, min_size=6.5)
     contact = []
     if broker.get("phone"):
         contact.append("T : %s" % broker["phone"])
     if broker.get("email"):
         contact.append("E : %s" % broker["email"])
     if contact:
-        draw_fit(c, "  |  ".join(contact), btx, PY(bby + 45), btw, F_REG, pfont(9), INK2, min_size=6.5)
+        _line(c, "broker2.contact", bl["broker2.contact"], "  |  ".join(contact), F_REG, 9, INK2, min_size=6.5)
     web = broker.get("web") or broker.get("website")
     if web:
-        draw_fit(c, "W : %s" % web, btx, PY(bby + 56), btw, F_REG, pfont(9), INK2, min_size=6.5)
+        _line(c, "broker2.web", bl["broker2.web"], "W : %s" % web, F_REG, 9, INK2, min_size=6.5)
 
-    # QR code (Image 45) — encode l'URL de la fiche / du site du courtier.
+    # QR code — encode l'URL de la fiche / du site du courtier.
     qr_url = d.get("listing_url") or broker.get("web") or broker.get("website")
     if qr_url and not str(qr_url).startswith(("http://", "https://")):
         qr_url = "https://" + str(qr_url)
     if qr_url:
-        qbx, qby, qbw, qbh = LAYOUT["qr"]
+        qbx, qby, qbw, qbh = ovr(LAYOUT, "qr", *LAYOUT["qr"])
         qx, qy, qw, qh = pbox(qbx, qby, qbw, qbw)
         draw_qr(c, qr_url, qx, qy, qw, dark=th.get("qr_color", RED))
         ref = d.get("brochure_ref") or (("MLS %s" % d["mls"]) if d.get("mls") else "")
         if ref:
-            draw_fit(c, ref, qx + qw / 2, PY(qby + qbw + 8), qw + 24, F_REG, 7, INK2, align="c", min_size=5)
+            rfx, rfy, rfw, rfh = pbox(*ovr(LAYOUT, "brochure_ref", qbx - 10, qby + qbw + 1, qbw + 20, 12))
+            draw_fit(c, ref, rfx + rfw / 2, rfy + rfh / 2 - 7 * 0.34, rfw, F_REG, 7, INK2, align="c", min_size=5)
 
 
 def render(data, out):
