@@ -13,6 +13,9 @@ import sys
 import json
 import copy
 
+PH = 792.0       # hauteur lettre (pt)
+EMU_PT = 12700   # 1 pt = 12700 EMU
+
 
 def _text(shape):
     """Texte d'une forme (paragraphes non vides joints par des sauts de ligne)."""
@@ -60,8 +63,19 @@ def _set_path(root, dotted, value):
                 return
 
 
+def _box_pt(sh):
+    """Boîte de la forme en pt, origine BAS-gauche (comme ReportLab) : [x, y_bas, w, h]."""
+    try:
+        x = float(sh.left) / EMU_PT; top = float(sh.top) / EMU_PT
+        w = float(sh.width) / EMU_PT; h = float(sh.height) / EMU_PT
+    except Exception:  # noqa: BLE001
+        return None
+    return [round(x, 2), round(PH - top - h, 2), round(w, 2), round(h, 2)]
+
+
 def build_content(prs, base):
     content = copy.deepcopy(base) if isinstance(base, dict) else {}
+    layout = {}
     for slide in prs.slides:
         for sh in slide.shapes:
             name = getattr(sh, "name", "") or ""
@@ -70,10 +84,15 @@ def build_content(prs, base):
             path = name[len("RPA::"):]
             if not path:
                 continue
+            # Texte édité → superposé sur le contenu (les formes image n'ont pas de texte).
             val = _text(sh)
-            if val is not None:
+            if val is not None and val != "":
                 _set_path(content, path, val)
-    return content
+            # Position de la forme → override de layout (aller-retour des positions, Phase C).
+            box = _box_pt(sh)
+            if box:
+                layout[path] = box
+    return content, layout
 
 
 def _emit(obj):
@@ -89,8 +108,8 @@ def main():
         if not pptx:
             _emit({"error": "pptx requis"}); return
         prs = Presentation(pptx)
-        content = build_content(prs, payload.get("base") or {})
-        _emit({"content": content})
+        content, layout = build_content(prs, payload.get("base") or {})
+        _emit({"content": content, "layout": layout})
     except Exception as e:  # noqa: BLE001
         import traceback
         _emit({"error": str(e), "trace": traceback.format_exc()[-700:]})

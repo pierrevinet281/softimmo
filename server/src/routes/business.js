@@ -278,8 +278,10 @@ export default function mountBusiness(parent = Router()) {
       // RPA : contenu propre à la propriété (snapshot indépendant) ; à défaut, repli sur le
       // défaut du gabarit (une propriété non personnalisée suit le gabarit courant).
       const src = presSource(getPresentation(pid, 'rpa'), draft);
-      const content = src?.content || getTemplateDoc('rpa')?.data?.content || null;
-      const data = buildRpaData({ broker: defaultBroker(), contentOverride: content, images: imagesFromMedia(bundle.media) });
+      const tpl = getTemplateDoc('rpa');
+      const content = src?.content || tpl?.data?.content || null;
+      const layout = src?.layout || tpl?.data?.layout || null;
+      const data = buildRpaData({ broker: defaultBroker(), contentOverride: content, layout, images: imagesFromMedia(bundle.media) });
       await runWorker('render_rpa_brochure', { data, out }, { timeoutMs: 60000 });
     } else {
       await runWorker('render_brochure', { data: brochureRenderData(bundle, template, { draft }), out }, { timeoutMs: 60000 });
@@ -309,8 +311,10 @@ export default function mountBusiness(parent = Router()) {
     if (template === 'rpa') {
       // Jumeau PPTX éditable du format éditorial RPA (contenu propre, sinon défaut du gabarit).
       const src = presSource(getPresentation(pid, 'rpa'), false);
-      const content = src?.content || getTemplateDoc('rpa')?.data?.content || null;
-      const data = buildRpaData({ broker: defaultBroker(), contentOverride: content, images: imagesFromMedia(bundle.media) });
+      const tpl = getTemplateDoc('rpa');
+      const content = src?.content || tpl?.data?.content || null;
+      const layout = src?.layout || tpl?.data?.layout || null;
+      const data = buildRpaData({ broker: defaultBroker(), contentOverride: content, layout, images: imagesFromMedia(bundle.media) });
       await runWorker('render_rpa_brochure_pptx', { data, out }, { timeoutMs: 60000 });
     } else {
       await runWorker('render_brochure_pptx', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
@@ -433,7 +437,7 @@ export default function mountBusiness(parent = Router()) {
         // base (défauts + live) → icônes et structure préservées. Pas de layout pour ce format.
         const base = rpaContent({ contentOverride: existing?.data?.content || null });
         const out = await runWorker('ingest_rpa_brochure_pptx', { pptx: tmp, base }, { timeoutMs: 60000 });
-        draft = { content: out.content || {}, synced_at: new Date().toISOString() };
+        draft = { content: out.content || {}, layout: out.layout || {}, synced_at: new Date().toISOString() };
       } else {
         const out = await runWorker('ingest_pptx', { pptx: tmp, images_dir: imagesDir }, { timeoutMs: 60000 }); // layout + contenu + images
         draft = { layout: out.layout || {}, content: out.content || {}, synced_at: new Date().toISOString() };
@@ -519,7 +523,7 @@ export default function mountBusiness(parent = Router()) {
       const base = rpaContent({ contentOverride: tdoc?.data?.content || null });
       const out = await runWorker('ingest_rpa_brochure_pptx', { pptx: tmp, base }, { timeoutMs: 60000 });
       const data = { ...((tdoc && tdoc.data) || {}) };
-      data.draft = { content: out.content || {}, synced_at: new Date().toISOString() };
+      data.draft = { content: out.content || {}, layout: out.layout || {}, synced_at: new Date().toISOString() };
       if (tdoc) Documents.update(tdoc.id, { data });
       else Documents.create({ property_id: null, template: 'rpa', doc_type: 'brochure', title: 'Gabarit RPA', format: 'pdf', status: 'final', data });
       res.status(201).json({ draft: true });
@@ -532,7 +536,7 @@ export default function mountBusiness(parent = Router()) {
     const tdoc = getTemplateDoc('rpa');
     if (tdoc?.data?.locked) throw badRequest(LOCKED_MSG);
     if (!tdoc || !tdoc.data || !tdoc.data.draft) throw badRequest('Aucun brouillon à approuver');
-    const data = { ...tdoc.data, content: tdoc.data.draft.content || {} };
+    const data = { ...tdoc.data, content: tdoc.data.draft.content || {}, layout: tdoc.data.draft.layout || {} };
     delete data.draft;
     Documents.update(tdoc.id, { data });
     res.json({ approved: true });
@@ -1072,8 +1076,9 @@ export default function mountBusiness(parent = Router()) {
       const tdoc = getTemplateDoc('rpa');
       const td = (tdoc && tdoc.data) || {};
       const content = (draft && td.draft) ? td.draft.content : (td.content || null);
+      const layout = (draft && td.draft) ? td.draft.layout : (td.layout || null);
       const worker = fmt === 'pptx' ? 'render_rpa_brochure_pptx' : 'render_rpa_brochure';
-      await runWorker(worker, { data: buildRpaData({ broker: defaultBroker(), contentOverride: content }), out }, { timeoutMs: 60000 });
+      await runWorker(worker, { data: buildRpaData({ broker: defaultBroker(), contentOverride: content, layout }), out }, { timeoutMs: 60000 });
     } else {
       const worker = fmt === 'pptx' ? 'render_brochure_pptx' : 'render_brochure';
       const data = sampleBrochureData(template);

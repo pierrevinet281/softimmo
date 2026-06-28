@@ -105,6 +105,18 @@ CW = PW - 2 * M
 
 _cache = {}
 
+# ── Override de positions (Phase C — aller-retour PPTX → positions) ──
+# data["layout"][slot] = [x, y, w, h] (pt, origine bas-gauche, comme ReportLab). Si présent, il
+# remplace la position CALCULÉE de l'élément ; sinon, mise en page adaptative par défaut.
+LAYOUT_OV = {}
+
+
+def ov(slot, x, y, w, h):
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return float(b[0]), float(b[1]), float(b[2]), float(b[3])
+    return x, y, w, h
+
 
 def _exists(p):
     return bool(p) and os.path.exists(p) and Image is not None
@@ -349,7 +361,7 @@ def page_cover(c, d):
     A = d["assets"]; broker = d["broker"]; cov = d["content"].get("cover", {})
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
     hero_h = 440; hero_y = PH - hero_h
-    draw_image(c, cov.get("hero"), 0, hero_y, PW, hero_h, radius=0, dpi=200)
+    draw_image(c, cov.get("hero"), *ov("cover.hero", 0, hero_y, PW, hero_h), radius=0, dpi=200)
     draw_scrim(c, 0, hero_y, PW, 180, bot_alpha=200)
     draw_scrim(c, 0, PH - 90, PW, 90, top_alpha=150, bot_alpha=0)
     draw_logo(c, A.get("agency_logo_white"), M, PH - 34, h=30, anchor="tl")
@@ -408,7 +420,7 @@ def page_comfort(c, d, page_no):
     top = _intro(c, sec, rt, "01 · " + sec.get("running", ""))
     if sec.get("wide_image") is not None or True:
         ih = 178
-        draw_image(c, sec.get("wide_image"), M, top - ih, CW, ih, radius=12)
+        draw_image(c, sec.get("wide_image"), *ov("comfort.wide_image", M, top - ih, CW, ih), radius=12)
         cap = sec.get("wide_caption") or {}
         if cap.get("text"):
             draw_scrim(c, M, top - ih, CW, 48, bot_alpha=150)
@@ -446,7 +458,7 @@ def page_security(c, d, page_no):
         fa_icon(c, it.get("icon"), M + 30, iy - 2, 14, GOLD)
         draw_para(c, it.get("text"), st(F_R, 10, WHITE, leading=13.0), M + 50, iy + 6, panel_w - 50 - 18)
         iy -= 37
-    draw_image(c, sec.get("panel_image"), M + panel_w + 16, top - panel_h, img_w, panel_h, radius=14)
+    draw_image(c, sec.get("panel_image"), *ov("security.panel_image", M + panel_w + 16, top - panel_h, img_w, panel_h), radius=14)
     if sec.get("panel_caption"):
         draw_scrim(c, M + panel_w + 16, top - panel_h, img_w, 70, bot_alpha=150)
         c.setFont(F_SB, 9); c.setFillColor(WHITE); c.drawString(M + panel_w + 16 + 12, top - panel_h + 12, sec["panel_caption"])
@@ -481,15 +493,15 @@ def page_amenities(c, d, page_no):
     gap = 12; big_w = CW * 0.60; big_h = 196; sm_w = CW - big_w - gap; sm_h = (196 - gap) / 2
     g = (gallery + [{}] * 6)[:6]
     bx, by = M, top - big_h
-    draw_image(c, g[0].get("image"), bx, by, big_w, big_h, radius=12); cap(bx, by, big_w, g[0])
+    b = ov("amenities.gallery.0.image", bx, by, big_w, big_h); draw_image(c, g[0].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[0])
     rx = M + big_w + gap
-    draw_image(c, g[1].get("image"), rx, top - sm_h, sm_w, sm_h, radius=12); cap(rx, top - sm_h, sm_w, g[1])
-    draw_image(c, g[2].get("image"), rx, top - big_h, sm_w, sm_h, radius=12); cap(rx, top - big_h, sm_w, g[2])
+    b = ov("amenities.gallery.1.image", rx, top - sm_h, sm_w, sm_h); draw_image(c, g[1].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[1])
+    b = ov("amenities.gallery.2.image", rx, top - big_h, sm_w, sm_h); draw_image(c, g[2].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[2])
     r2y = by - gap; cw3 = (CW - 2 * gap) / 3; h3 = 150
     for i in range(3):
         item = g[3 + i]
         x = M + i * (cw3 + gap); y = r2y - h3
-        draw_image(c, item.get("image"), x, y, cw3, h3, radius=12); cap(x, y, cw3, item)
+        b = ov("amenities.gallery.%d.image" % (3 + i), x, y, cw3, h3); draw_image(c, item.get("image"), *b, radius=12); cap(b[0], b[1], b[2], item)
     pillars = sec.get("pillars", [])
     sy = r2y - h3 - 22; gap = 14; cw = (CW - 2 * gap) / 3; chh = 66
     for i, p in enumerate(pillars[:3]):
@@ -536,7 +548,7 @@ def page_contact(c, d, page_no):
     A = d["assets"]; broker = d["broker"]; sec = d["content"].get("contact", {})
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
     txt_ref = PH - 250; band_bottom = PH - 308; band_h = PH - band_bottom
-    draw_image(c, sec.get("hero"), 0, band_bottom, PW, band_h, radius=0, dpi=200)
+    draw_image(c, sec.get("hero"), *ov("contact.hero", 0, band_bottom, PW, band_h), radius=0, dpi=200)
     draw_scrim(c, 0, band_bottom, PW, band_h, top_alpha=120, bot_alpha=225)
     draw_logo(c, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl")
     kicker(c, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11)
@@ -598,6 +610,8 @@ def render(data, out):
     broker.setdefault("title_line", " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s]))
     data.setdefault("assets", {})
     data.setdefault("content", {})
+    global LAYOUT_OV
+    LAYOUT_OV = data.get("layout") or {}
     c = canvas.Canvas(out, pagesize=letter)
     c.setTitle((data["content"].get("cover", {}) or {}).get("title", ["Brochure RPA"])[0] if data["content"].get("cover", {}).get("title") else "Brochure RPA")
     c.setAuthor(broker.get("name", "Softimmo"))

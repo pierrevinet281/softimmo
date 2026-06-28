@@ -78,7 +78,7 @@ function setPath(obj, dotted, value) {
  * @param {object} [opts.contentOverride]  surcharge texte (documents.data.content)
  * @param {object} [opts.images] map { slot: chemin } (ou via media par rôle, voir buildFromMedia)
  */
-export function buildRpaData({ broker = {}, lang = 'fr', contentOverride = null, images = null } = {}) {
+export function buildRpaData({ broker = {}, lang = 'fr', contentOverride = null, images = null, layout = null } = {}) {
   const L = RPA_LANGS.includes(lang) ? lang : 'fr';
   const content = deepMerge(DEFAULTS[L] || {}, contentOverride || {});
   if (images) {
@@ -99,6 +99,7 @@ export function buildRpaData({ broker = {}, lang = 'fr', contentOverride = null,
       qr: broker.qr_path || null,
     },
     content,
+    layout: layout || {},   // override de positions (aller-retour PPTX → positions, Phase C)
   };
 }
 

@@ -53,6 +53,17 @@ IC = {
 }
 ICB = {"linkedin": 0xF0E1}
 
+# Override de positions (Phase C). data["layout"][slot] = [x, y, w, h] (pt, origine bas-gauche).
+LAYOUT_OV = {}
+
+
+def ov(slot, x, y, w, h):
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return float(b[0]), float(b[1]), float(b[2]), float(b[3])
+    return x, y, w, h
+
+
 _mfont = {}
 
 
@@ -78,12 +89,18 @@ def fa(s, key, cx, cy, size, color, brand=False):
     icon(s, chr(cp), cx, cy, size, color, font="FAB" if brand else "FA")
 
 
-def draw_image(s, path, x, y, w, h, radius=10, dpi=240):
-    """Image cover-crop arrondie ; réserve élégante (gris MIST) si l'image est absente."""
+def draw_image(s, path, x, y, w, h, radius=10, dpi=240, slot=None):
+    """Image cover-crop arrondie ; réserve élégante (gris MIST) si l'image est absente.
+    `slot` : nomme la forme RPA::<slot> et applique l'override de position (aller-retour)."""
+    if slot:
+        x, y, w, h = ov(slot, x, y, w, h)
     if path and os.path.exists(path):
-        picture(s, path, x, y, w, h, radius=radius, dpi=dpi)
+        shp = picture(s, path, x, y, w, h, radius=radius, dpi=dpi)
     else:
-        rect(s, x, y, w, h, fill=MIST, line=MIST_B, line_w=1, radius=radius)
+        shp = rect(s, x, y, w, h, fill=MIST, line=MIST_B, line_w=1, radius=radius)
+    if slot:
+        shp.name = "RPA::" + slot
+    return shp
 
 
 def draw_logo(s, path, x, y, w=None, h=None, anchor="bl"):
@@ -189,7 +206,7 @@ def page_cover(prs, d):
     A = d["assets"]; broker = d["broker"]; cov = d["content"].get("cover", {})
     s = new_slide(prs)
     hero_h = 440.0; hero_y = PH - hero_h
-    draw_image(s, cov.get("hero"), 0, hero_y, PW, hero_h, radius=0, dpi=200)
+    draw_image(s, cov.get("hero"), 0, hero_y, PW, hero_h, radius=0, dpi=200, slot="cover.hero")
     scrim(s, 0, hero_y, PW, 180, bot_alpha=200)
     scrim(s, 0, PH - 90, PW, 90, top_alpha=150, bot_alpha=0)
     draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=30, anchor="tl")
@@ -235,7 +252,7 @@ def page_comfort(prs, d, page_no):
     s = new_slide(prs)
     top = _intro(s, sec, rt, "01 · " + sec.get("running", ""), "comfort")
     ih = 178.0
-    draw_image(s, sec.get("wide_image"), M, top - ih, CW, ih, radius=12)
+    draw_image(s, sec.get("wide_image"), M, top - ih, CW, ih, radius=12, slot="comfort.wide_image")
     capn = sec.get("wide_caption") or {}
     if capn.get("text"):
         scrim(s, M, top - ih, CW, 48, bot_alpha=150)
@@ -275,7 +292,7 @@ def page_security(prs, d, page_no):
         para(s, M + 50, iy + 6, panel_w - 50 - 18, it.get("text"), "Sg", 10, WHITE, 13.0,
              name="RPA::security.panel_items.%d.text" % i)
         iy -= 37
-    draw_image(s, sec.get("panel_image"), M + panel_w + 16, top - panel_h, img_w, panel_h, radius=14)
+    draw_image(s, sec.get("panel_image"), M + panel_w + 16, top - panel_h, img_w, panel_h, radius=14, slot="security.panel_image")
     if sec.get("panel_caption"):
         scrim(s, M + panel_w + 16, top - panel_h, img_w, 70, bot_alpha=150)
         text_line(s, M + panel_w + 16 + 12, top - panel_h + 12, sec["panel_caption"], "Sg-SB", 9, WHITE,
@@ -313,15 +330,19 @@ def page_amenities(prs, d, page_no):
     gap = 12.0; big_w = CW * 0.60; big_h = 196.0; sm_w = CW - big_w - gap; sm_h = (196.0 - gap) / 2
     g = (gallery + [{}] * 6)[:6]
     bx, by = M, top - big_h
-    draw_image(s, g[0].get("image"), bx, by, big_w, big_h, radius=12); cap(bx, by, big_w, g[0], 0)
+    b = ov("amenities.gallery.0.image", bx, by, big_w, big_h)
+    draw_image(s, g[0].get("image"), bx, by, big_w, big_h, radius=12, slot="amenities.gallery.0.image"); cap(b[0], b[1], b[2], g[0], 0)
     rx = M + big_w + gap
-    draw_image(s, g[1].get("image"), rx, top - sm_h, sm_w, sm_h, radius=12); cap(rx, top - sm_h, sm_w, g[1], 1)
-    draw_image(s, g[2].get("image"), rx, top - big_h, sm_w, sm_h, radius=12); cap(rx, top - big_h, sm_w, g[2], 2)
+    b = ov("amenities.gallery.1.image", rx, top - sm_h, sm_w, sm_h)
+    draw_image(s, g[1].get("image"), rx, top - sm_h, sm_w, sm_h, radius=12, slot="amenities.gallery.1.image"); cap(b[0], b[1], b[2], g[1], 1)
+    b = ov("amenities.gallery.2.image", rx, top - big_h, sm_w, sm_h)
+    draw_image(s, g[2].get("image"), rx, top - big_h, sm_w, sm_h, radius=12, slot="amenities.gallery.2.image"); cap(b[0], b[1], b[2], g[2], 2)
     r2y = by - gap; cw3 = (CW - 2 * gap) / 3; h3 = 150.0
     for i in range(3):
         item = g[3 + i]
         x = M + i * (cw3 + gap); y = r2y - h3
-        draw_image(s, item.get("image"), x, y, cw3, h3, radius=12); cap(x, y, cw3, item, 3 + i)
+        sl = "amenities.gallery.%d.image" % (3 + i); b = ov(sl, x, y, cw3, h3)
+        draw_image(s, item.get("image"), x, y, cw3, h3, radius=12, slot=sl); cap(b[0], b[1], b[2], item, 3 + i)
     pillars = sec.get("pillars", [])
     sy = r2y - h3 - 22; gap = 14.0; cw = (CW - 2 * gap) / 3; chh = 66.0
     for i, p in enumerate(pillars[:3]):
@@ -372,7 +393,7 @@ def page_contact(prs, d, page_no):
     A = d["assets"]; broker = d["broker"]; sec = d["content"].get("contact", {})
     s = new_slide(prs)
     txt_ref = PH - 250; band_bottom = PH - 308; band_h = PH - band_bottom
-    draw_image(s, sec.get("hero"), 0, band_bottom, PW, band_h, radius=0, dpi=200)
+    draw_image(s, sec.get("hero"), 0, band_bottom, PW, band_h, radius=0, dpi=200, slot="contact.hero")
     scrim(s, 0, band_bottom, PW, band_h, top_alpha=120, bot_alpha=225)
     draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl")
     kicker(s, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11)
@@ -432,6 +453,8 @@ def render(data, out):
     broker.setdefault("title_line", " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s]))
     data.setdefault("assets", {})
     data.setdefault("content", {})
+    global LAYOUT_OV
+    LAYOUT_OV = data.get("layout") or {}
 
     cache = os.path.join(tempfile.gettempdir(), "softimmo_rpa_pptx")
     set_asset_dir(cache)
