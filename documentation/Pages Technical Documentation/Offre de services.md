@@ -36,11 +36,13 @@ case **Convertir en gabarit**. Rangée de boutons **en haut ET en bas** : **Enre
 Le backend (`offre.js applyOfferDiff` + route `offerRenderData`) transforme le diff en contenu
 prêt au rendu (ordre, items filtrés/réordonnés, sections asset avec chemins résolus).
 
-## Aller-retour PPTX
+## Aller-retour PPTX (+ garde-fou draft, Session 38)
 « Enregistrer et personnaliser en PPTX » → sauvegarde + télécharge `/offres/:id/pptx`
-(1 diapo/section, formes nommées). Éditer dans PowerPoint, puis **Synchroniser** (téléverser)
-→ `pptx_content` devient prioritaire pour le PDF. Réenregistrer via le customizer rend la main
-à l'app (le dernier édité gagne). Le PPTX porte une seule langue (bi → FR).
+(1 diapo/section, formes nommées). Éditer dans PowerPoint, puis **Synchroniser** (téléverser).
+Le sync écrit désormais un **brouillon** `data.draft_pptx_content[lang]` (n'écrase pas la version
+courante). UI : **Aperçu du brouillon** (`/pdf?draft=1`) → **Approuver** (`POST /offres/:id/pptx/
+approve` → `pptx_content`) ou **Rejeter** (`DELETE …/pptx/draft`) ; **Réinitialiser au défaut**
+(`DELETE …/pptx`). Réenregistrer via le customizer rend la main à l'app. Le PPTX = une langue (bi → FR).
 
 ## Gabarits
 `OffreTemplates` liste les offres `is_template` ; **Utiliser ce gabarit** clone une offre.

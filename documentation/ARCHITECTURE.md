@@ -28,11 +28,15 @@
 ## 3. Modèle de données (tables clés)
 - Métier : `clients`, `properties`, `buildings`, `units`, `expenses`, `transactions`,
   `comparables`, `reports`, `documents`, `property_media`.
-- **`documents`** (doc_type='analyse|evaluation|offre|brochure|…') sert de **store polyvalent** :
-  - `doc_type='brochure'` + `template` + `data.{layout,content}` = surcharge de présentation
-    par propriété (round-trip brochure).
+- **`documents`** (doc_type='analyse|evaluation|offre|brochure|brochure_variant|…') = **store polyvalent** :
+  - `doc_type='brochure'` + `template` + `property_id` + `data.{layout,content,draft}` = surcharge
+    de présentation **par propriété** (round-trip brochure). `property_id` NULL = défaut du gabarit
+    (modèle unifié). `data.draft` = sync PPTX non approuvé (garde-fou).
+  - `doc_type='brochure_variant'` + `template`(=famille) + `data.{name,description,property_types,
+    lang,locked,is_base,content,layout,draft}` = **entité de la bibliothèque de brochures**
+    (Session 38) : 5 familles seedées comme **originaux verrouillés** ; **Clone** → copie éditable.
   - `doc_type='offre'` + `title`(=nom) + `data.{variant,lang,client_id,property_id,is_template,
-    overrides,customization,pptx_content}` = **offre sauvegardée** (Module 3).
+    overrides,customization,pptx_content,draft_pptx_content}` = **offre sauvegardée** (Module 3).
 - **`broker_assets`** : bibliothèque marketing du courtier (logo, portrait, buste, carte, bio,
   signature, accroche, certificat, hero, autre ; fichier image/PDF + texte). Voir docs/01.
 - **`broker_profile`** (clé Settings) : identité + image de marque (`logo`,`banner`,`photo`,
@@ -44,9 +48,23 @@
   **à position fixe** projeté d'un gabarit PowerPoint (`brochure_layout.py`, 540×720→Lettre).
   5 modèles (unifamilial, luxe, rpa*, commercial, industriel). Round-trip : `ingest_pptx.py`.
 - **Brochure RPA** (`render_rpa_brochure.py`) : format **éditorial 6 pages** (différent),
-  data-driven depuis `rpa-brochure-content.json` (+ surcharge propriété), photos par rôle
-  `rpa_*` → emplacements (`rpaBrochure.js`). Le routage `business.js` envoie `template='rpa'`
-  vers ce moteur (PDF + aperçu gabarit). *Polices Oswald + Font Awesome dans `assets/fonts/`.*
+  data-driven depuis `rpa-brochure-content.json` (+ surcharge propriété/gabarit), photos par rôle
+  `rpa_*` → emplacements (`rpaBrochure.js`). *Polices Oswald + Font Awesome dans `assets/fonts/`.*
+  - **Jumeau PPTX fidèle** (`render_rpa_brochure_pptx.py` + primitives `rpa_pptx_helpers.py`) :
+    **miroir au point près du PDF** (mêmes coordonnées y-bas→EMU, icônes FA en PNG). Méthode de
+    l'app ancêtre `rpa_mlt` ; voir mémoire `pptx-twin-mirrors-pdf`.
+  - **Round-trip layout-driven** (`ingest_rpa_brochure_pptx.py`) : l'utilisateur déplace/édite des
+    éléments dans le PPTX → l'ingest capture **texte + positions** de ≈180 formes nommées ; **les
+    deux moteurs** (PDF + PPTX) consultent l'override `data.layout`. Modèle **granulaire** : chaque
+    élément suit sa propre boîte. Nommage : `RPA::<slot>` (texte éditable + position) vs
+    `RPAp::<slot>` (position seule : logos/formes/textes MAJUSCULES). Helpers `ov/ovc/iov/tov_text/
+    tov_para/ovline` (PDF) ; `set_pos`/`POS` (PPTX). Conversion boîte↔ligne-de-base calibrée (`ASC`).
+- **Garde-fou de synchronisation** (brochure propriété, gabarit, offre) : un sync PPTX écrit un
+  **brouillon** (`data.draft`) ; aperçu (`?draft=1`) → **Approuver** (remplace le live) ou **Rejeter**
+  ; **Réinitialiser** au défaut. Le PPTX n'est jamais persisté (temporaire, supprimé après approbation).
+- **Bibliothèque de brochures** (Session 38, `BrokerTemplates.jsx` + routes `/brochure/library`,
+  `/clone`, `/variants/:id/*`) : cloner pour éditer ; **original verrouillé** non éditable ;
+  rendu d'une variante = moteur de sa famille + son snapshot (`data.content/layout`).
 - **Offre de services** (`render_offre.py`, **Platypus à flux**) : sections ordonnables,
   thème éditable (couleurs bannière/titres), bannière image optionnelle, contraste auto.
   Jumeau **PPTX** (`render_offre_pptx.py`, 1 diapo/section, formes nommées `OFF::clé::type::partie`)

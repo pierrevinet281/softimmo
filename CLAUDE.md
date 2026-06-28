@@ -137,6 +137,16 @@ npm run build && npm start  # build web puis sert API+UI sur :8787
   fichiers seed JSON sous `server/src/db/seeds/`.
 - Garder le moteur **pur** (retourne des données) séparé de la **persistance**
   (repositories) et de l'**orchestration** (file de jobs).
+- **Rendu PDF/PPTX = déterministe** (ReportLab / python-pptx), jamais d'HTML imprimé. Le **jumeau
+  PPTX miroite le PDF** aux mêmes coordonnées (voir `documentation/ARCHITECTURE.md` §4 et la mémoire
+  `pptx-twin-mirrors-pdf`), **pas** un formulaire structuré.
+- **Aller-retour PPTX (brochure RPA)** : modèle **layout-driven granulaire** — chaque forme nommée
+  `RPA::<slot>` (texte éditable + position) ou `RPAp::<slot>` (position seule : logos/formes/MAJUSCULES)
+  est capturée par l'ingest dans `data.layout` et appliquée par **les deux** moteurs. **Toute nouvelle
+  primitive de dessin doit accepter un slot** pour rester round-trippable. Garde-fou `data.draft`
+  (sync → Approve/Reject/Reset) sur tous les sync PPTX. **Bibliothèque de brochures** = documents
+  `brochure_variant` (cloner pour éditer, original verrouillé). Détails : *Brochure RPA.md*, *Assets
+  courtier.md*.
 
 ---
 
