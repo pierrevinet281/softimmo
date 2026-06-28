@@ -744,24 +744,20 @@ function BrochureChooser({ propertyId, onClose }) {
               <>
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   <Button size="sm" icon={FileDown} onClick={() => gen(tpl.id, 'pdf')}>{t('d.bro.pdf')}</Button>
-                  {tpl.id !== 'rpa' && <Button size="sm" variant="outline" icon={Presentation} onClick={() => gen(tpl.id, 'pptx')}>{t('d.bro.pptx')}</Button>}
+                  <Button size="sm" variant="outline" icon={Presentation} onClick={() => gen(tpl.id, 'pptx')}>{t('d.bro.pptx')}</Button>
                   {tpl.id === 'rpa' && <Button size="sm" variant="outline" icon={Pencil} onClick={() => setRpaEdit(true)}>{t('d.bro.rpa.edit')}</Button>}
                 </div>
-                {tpl.id !== 'rpa' && (
-                  <>
-                    <PptxSync
-                      statusUrl={`/properties/${propertyId}/brochure/${tpl.id}/presentation`}
-                      postUrl={`/properties/${propertyId}/brochure/${tpl.id}/sync`}
-                      approveUrl={`/properties/${propertyId}/brochure/${tpl.id}/approve`}
-                      discardUrl={`/properties/${propertyId}/brochure/${tpl.id}/draft`}
-                      draftPreviewUrl={api.url(`/properties/${propertyId}/brochure.pdf?template=${tpl.id}&draft=1`)}
-                      queryKey={['pres', propertyId, tpl.id]}
-                      labelKey="d.bro.pres.update"
-                      hintKey="d.bro.pres.hint"
-                    />
-                    <TemplateLayout template={tpl.id} />
-                  </>
-                )}
+                <PptxSync
+                  statusUrl={`/properties/${propertyId}/brochure/${tpl.id}/presentation`}
+                  postUrl={`/properties/${propertyId}/brochure/${tpl.id}/sync`}
+                  approveUrl={`/properties/${propertyId}/brochure/${tpl.id}/approve`}
+                  discardUrl={`/properties/${propertyId}/brochure/${tpl.id}/draft`}
+                  draftPreviewUrl={api.url(`/properties/${propertyId}/brochure.pdf?template=${tpl.id}&draft=1`)}
+                  queryKey={['pres', propertyId, tpl.id]}
+                  labelKey="d.bro.pres.update"
+                  hintKey={tpl.id === 'rpa' ? 'd.bro.pres.hintRpa' : 'd.bro.pres.hint'}
+                />
+                {tpl.id !== 'rpa' && <TemplateLayout template={tpl.id} />}
               </>
             )}
           </div>

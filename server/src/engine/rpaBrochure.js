@@ -17,6 +17,12 @@ export function rpaDefaults(lang = 'fr') {
   return DEFAULTS[L] || {};
 }
 
+// Contenu RPA résolu (défauts + surcharge texte), SANS images — base de l'aller-retour PPTX.
+export function rpaContent({ lang = 'fr', contentOverride = null } = {}) {
+  const L = RPA_LANGS.includes(lang) ? lang : 'fr';
+  return deepMerge(DEFAULTS[L] || {}, contentOverride || {});
+}
+
 // Emplacements d'images de la brochure RPA (rôles de property_media → slot du gabarit).
 // Le formulaire (phase 1b) permettra d'affecter chaque photo ; ici on mappe par rôle.
 export const RPA_IMAGE_SLOTS = [

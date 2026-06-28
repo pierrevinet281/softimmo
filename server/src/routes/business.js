@@ -18,7 +18,7 @@ import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js'
 import { computeAcm } from '../engine/acm.js';
 import { buildMarketingCopy } from '../engine/marketingCopy.js';
 import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS, resolveOffreContent, applyOfferDiff } from '../engine/offre.js';
-import { buildRpaData, imagesFromMedia, rpaDefaults, RPA_IMAGE_SLOTS, RPA_ROLES } from '../engine/rpaBrochure.js';
+import { buildRpaData, imagesFromMedia, rpaDefaults, rpaContent, RPA_IMAGE_SLOTS, RPA_ROLES } from '../engine/rpaBrochure.js';
 import { getAcmParams, setAcmParams, getAcmDefaults } from '../lib/acmParams.js';
 
 // Permissive schemas: every field optional + passthrough. Required-on-create is enforced
@@ -294,7 +294,14 @@ export default function mountBusiness(parent = Router()) {
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pptx`);
-    await runWorker('render_brochure_pptx', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
+    if (template === 'rpa') {
+      // Jumeau PPTX éditable du format éditorial RPA (sur le contenu live de la propriété).
+      const src = presSource(getPresentation(pid, 'rpa'), false);
+      const data = buildRpaData({ broker: defaultBroker(), contentOverride: src?.content || null, images: imagesFromMedia(bundle.media) });
+      await runWorker('render_rpa_brochure_pptx', { data, out }, { timeoutMs: 60000 });
+    } else {
+      await runWorker('render_brochure_pptx', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
+    }
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
     res.setHeader('Content-Disposition', `attachment; filename="brochure-${pid}.pptx"`);
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
@@ -406,13 +413,23 @@ export default function mountBusiness(parent = Router()) {
     fs.writeFileSync(tmp, req.file.buffer);
     const imagesDir = path.join(config.root, 'data', 'uploads', 'properties', property.id, `synced-${tpl}`);
     try {
-      const out = await runWorker('ingest_pptx', { pptx: tmp, images_dir: imagesDir }, { timeoutMs: 60000 }); // layout + contenu + images
       const existing = getPresentation(property.id, tpl);
+      let draft;
+      if (tpl === 'rpa') {
+        // RPA : ingest dédié (format éditorial). On superpose le texte édité sur le contenu de
+        // base (défauts + live) → icônes et structure préservées. Pas de layout pour ce format.
+        const base = rpaContent({ contentOverride: existing?.data?.content || null });
+        const out = await runWorker('ingest_rpa_brochure_pptx', { pptx: tmp, base }, { timeoutMs: 60000 });
+        draft = { content: out.content || {}, synced_at: new Date().toISOString() };
+      } else {
+        const out = await runWorker('ingest_pptx', { pptx: tmp, images_dir: imagesDir }, { timeoutMs: 60000 }); // layout + contenu + images
+        draft = { layout: out.layout || {}, content: out.content || {}, synced_at: new Date().toISOString() };
+      }
       const data = { ...((existing && existing.data) || {}) };
-      data.draft = { layout: out.layout || {}, content: out.content || {}, synced_at: new Date().toISOString() };
+      data.draft = draft;
       if (existing) Documents.update(existing.id, { data });
       else Documents.create({ property_id: property.id, template: tpl, doc_type: 'brochure', title: `Présentation ${tpl}`, format: 'pptx', status: 'final', data });
-      res.status(201).json({ draft: true, roles: out.roles || [] });
+      res.status(201).json({ draft: true });
     } finally {
       try { fs.unlinkSync(tmp); } catch { /* ignore */ }
     }
@@ -947,9 +964,10 @@ export default function mountBusiness(parent = Router()) {
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `gabarit-${template}-${Date.now()}.${fmt}`);
-    if (template === 'rpa' && fmt === 'pdf') {
-      // Aperçu du gabarit RPA (format éditorial) à partir des défauts (réserves d'images élégantes).
-      await runWorker('render_rpa_brochure', { data: buildRpaData({ broker: defaultBroker() }), out }, { timeoutMs: 60000 });
+    if (template === 'rpa') {
+      // Gabarit RPA (format éditorial) : PDF d'aperçu ou jumeau PPTX éditable, à partir des défauts.
+      const worker = fmt === 'pptx' ? 'render_rpa_brochure_pptx' : 'render_rpa_brochure';
+      await runWorker(worker, { data: buildRpaData({ broker: defaultBroker() }), out }, { timeoutMs: 60000 });
     } else {
       const worker = fmt === 'pptx' ? 'render_brochure_pptx' : 'render_brochure';
       const data = sampleBrochureData(template);

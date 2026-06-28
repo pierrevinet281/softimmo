@@ -8,7 +8,7 @@ import { useI18n } from '../i18n/index.jsx';
 const BROCHURE_TEMPLATES = [
   { key: 'unifamilial', label: 'Unifamiliale', pptx: true },
   { key: 'luxe', label: 'Luxury', pptx: true },
-  { key: 'rpa', label: 'RPA · Location', note: 'Format éditorial 6 pages', pptx: false },
+  { key: 'rpa', label: 'RPA · Location', note: 'Format éditorial 6 pages', pptx: true },
   { key: 'commercial', label: 'Commercial', pptx: true },
   { key: 'industriel', label: 'Industriel', pptx: true },
 ];
