@@ -590,6 +590,154 @@ export default function mountBusiness(parent = Router()) {
     res.status(204).end();
   }));
 
+  // ══════════════ Bibliothèque de brochures (variantes clonables, édition par copie) ══════════════
+  // Chaque carte = un document `brochure_variant` (famille = moteur de rendu). Les 5 familles sont
+  // seedées comme ORIGINAUX verrouillés ; on les CLONE en copies éditables (`_copy`, déverrouillées).
+  // Un verrou bloque sync/approve (il faut déverrouiller). Mono-utilisateur = admin.
+  const BROCHURE_FAMILIES = [
+    { key: 'unifamilial', label: 'Unifamiliale', mode: 'layout', types: ['Résidentiel'] },
+    { key: 'luxe', label: 'Luxury', mode: 'layout', types: ['Résidentiel haut de gamme'] },
+    { key: 'rpa', label: 'RPA · Location', mode: 'content', types: ['Location', 'RPA'] },
+    { key: 'commercial', label: 'Commercial', mode: 'layout', types: ['Commercial'] },
+    { key: 'industriel', label: 'Industriel', mode: 'layout', types: ['Industriel'] },
+  ];
+  const familyOf = (k) => BROCHURE_FAMILIES.find((f) => f.key === k) || null;
+  const listVariants = () => (Documents.list({ doc_type: 'brochure_variant', limit: 4000 }).rows || []);
+  function ensureBases() {
+    const rows = listVariants();
+    for (const f of BROCHURE_FAMILIES) {
+      if (rows.find((d) => d.data && d.data.is_base && d.template === f.key)) continue;
+      const content = f.mode === 'content' ? rpaContent({}) : {};
+      Documents.create({ doc_type: 'brochure_variant', template: f.key, property_id: null, title: f.label, status: 'final',
+        data: { name: f.label, description: 'Gabarit ' + f.label, property_types: f.types, property_name: null,
+                lang: 'fr', locked: true, is_base: true, content, layout: {} } });
+    }
+  }
+  const variantOut = (d) => ({
+    id: d.id, family: d.template, mode: (familyOf(d.template) || {}).mode || 'layout',
+    name: (d.data && d.data.name) || d.title, description: (d.data && d.data.description) || '',
+    property_types: (d.data && d.data.property_types) || (familyOf(d.template) || {}).types || [],
+    property_name: (d.data && d.data.property_name) || null, lang: (d.data && d.data.lang) || 'fr',
+    locked: !!(d.data && d.data.locked), is_base: !!(d.data && d.data.is_base),
+    customized: !!(d.data && (d.data.content || d.data.layout)), hasDraft: !!(d.data && d.data.draft),
+    created_at: d.created_at,
+  });
+  const getVariant = (id) => { const d = Documents.get(id); if (!d || d.doc_type !== 'brochure_variant') throw notFound('brochure introuvable'); return d; };
+
+  async function renderVariantFile(v, fmt, draft, out) {
+    const fam = v.template;
+    const src = (draft && v.data && v.data.draft) ? v.data.draft : (v.data || {});
+    if ((familyOf(fam) || {}).mode === 'content') {  // RPA (contenu + positions)
+      const data = buildRpaData({ broker: defaultBroker(), contentOverride: src.content || null, layout: src.layout || null });
+      await runWorker(fmt === 'pptx' ? 'render_rpa_brochure_pptx' : 'render_rpa_brochure', { data, out }, { timeoutMs: 60000 });
+    } else {                                          // standard (positions, contenu d'exemple)
+      const data = { ...sampleBrochureData(fam), template: fam };
+      const c = src.content || {};
+      for (const k of CONTENT_FIELDS) if (c[k] !== undefined && c[k] !== null && c[k] !== '') data[k] = c[k];
+      if (c.images) data.images = { ...(data.images || {}), ...c.images };
+      if (c.interior) data.interior = c.interior;
+      if (src.layout) data.layout = src.layout;
+      await runWorker(fmt === 'pptx' ? 'render_brochure_pptx' : 'render_brochure', { data, out }, { timeoutMs: 60000 });
+    }
+  }
+
+  parent.get('/brochure/library', wrap((req, res) => {
+    ensureBases();
+    const rows = listVariants().map(variantOut)
+      .sort((a, b) => (b.is_base - a.is_base) || String(a.name).localeCompare(String(b.name)));
+    res.json({ families: BROCHURE_FAMILIES, variants: rows });
+  }));
+
+  parent.post('/brochure/library/clone', wrap((req, res) => {
+    ensureBases();
+    const src = getVariant((req.body && req.body.source_id) || '');
+    const sd = src.data || {};
+    const name = (req.body && req.body.name) || ((sd.name || src.title || 'Brochure') + '_copy');
+    const v = Documents.create({ doc_type: 'brochure_variant', template: src.template, property_id: null, title: name, status: 'final',
+      data: { name, description: sd.description || '', property_types: sd.property_types || [], property_name: sd.property_name || null,
+              lang: sd.lang || 'fr', locked: false, is_base: false, content: sd.content || {}, layout: sd.layout || {} } });
+    res.status(201).json(variantOut(v));
+  }));
+
+  parent.get('/brochure/variants/:id', wrap((req, res) => res.json(variantOut(getVariant(req.params.id)))));
+
+  parent.put('/brochure/variants/:id', wrap((req, res) => {
+    const v = getVariant(req.params.id);
+    const b = req.body || {};
+    const data = { ...(v.data || {}) };
+    for (const k of ['name', 'description', 'property_name', 'lang']) if (b[k] !== undefined) data[k] = b[k];
+    if (Array.isArray(b.property_types)) data.property_types = b.property_types;
+    if (b.locked !== undefined) data.locked = !!b.locked;
+    Documents.update(v.id, { data });
+    res.json(variantOut(Documents.get(v.id)));
+  }));
+
+  parent.delete('/brochure/variants/:id', wrap((req, res) => {
+    const v = getVariant(req.params.id);
+    if (v.data && v.data.is_base) throw badRequest('Un gabarit original ne peut être supprimé (clonez-le).');
+    Documents.delete(v.id);
+    res.status(204).end();
+  }));
+
+  const VAR_LOCKED = 'Brochure verrouillée — déverrouillez-la pour la modifier.';
+  parent.post('/brochure/variants/:id/sync', upload.single('file'), wrap(async (req, res) => {
+    const v = getVariant(req.params.id);
+    if (v.data && v.data.locked) throw badRequest(VAR_LOCKED);
+    if (!req.file) throw badRequest('Aucun fichier PowerPoint téléversé');
+    if (!/\.pptx$/i.test(req.file.originalname || '')) throw badRequest('Le fichier doit être un .pptx');
+    const dir = path.join(config.root, 'data', 'uploads'); fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, `var-${v.id}-${Date.now()}.pptx`); fs.writeFileSync(tmp, req.file.buffer);
+    try {
+      let draft;
+      if ((familyOf(v.template) || {}).mode === 'content') {
+        const base = rpaContent({ contentOverride: (v.data && v.data.content) || null });
+        const out = await runWorker('ingest_rpa_brochure_pptx', { pptx: tmp, base }, { timeoutMs: 60000 });
+        draft = { content: out.content || {}, layout: out.layout || {}, synced_at: new Date().toISOString() };
+      } else {
+        const imagesDir = path.join(dir, `var-${v.id}-imgs`);
+        const out = await runWorker('ingest_pptx', { pptx: tmp, images_dir: imagesDir }, { timeoutMs: 60000 });
+        draft = { content: out.content || {}, layout: out.layout || {}, synced_at: new Date().toISOString() };
+      }
+      Documents.update(v.id, { data: { ...(v.data || {}), draft } });
+      res.status(201).json({ draft: true });
+    } finally { try { fs.unlinkSync(tmp); } catch { /* ignore */ } }
+  }));
+
+  parent.post('/brochure/variants/:id/approve', wrap((req, res) => {
+    const v = getVariant(req.params.id);
+    if (v.data && v.data.locked) throw badRequest(VAR_LOCKED);
+    if (!v.data || !v.data.draft) throw badRequest('Aucun brouillon à approuver');
+    const data = { ...v.data, content: v.data.draft.content || {}, layout: v.data.draft.layout || {} };
+    delete data.draft;
+    Documents.update(v.id, { data });
+    res.json(variantOut(Documents.get(v.id)));
+  }));
+
+  parent.delete('/brochure/variants/:id/draft', wrap((req, res) => {
+    const v = getVariant(req.params.id);
+    if (v.data && v.data.draft) { const data = { ...v.data }; delete data.draft; Documents.update(v.id, { data }); }
+    res.status(204).end();
+  }));
+
+  parent.get('/brochure/variants/:id/sample.pdf', wrap(async (req, res) => {
+    const v = getVariant(req.params.id);
+    const dir = path.join(config.root, 'data', 'uploads'); fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `var-${v.id}-${Date.now()}.pdf`);
+    await renderVariantFile(v, 'pdf', wantDraft(req), out);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="brochure-${v.id}.pdf"`);
+    res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }));
+  parent.get('/brochure/variants/:id/sample.pptx', wrap(async (req, res) => {
+    const v = getVariant(req.params.id);
+    const dir = path.join(config.root, 'data', 'uploads'); fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `var-${v.id}-${Date.now()}.pptx`);
+    await renderVariantFile(v, 'pptx', false, out);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="brochure-${(variantOut(v).name || 'brochure').replace(/[^\w.-]+/g, '_')}.pptx"`);
+    res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
   parent.put('/properties/:id/brochure/rpa/content', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
