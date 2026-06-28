@@ -225,6 +225,15 @@ export default function mountBusiness(parent = Router()) {
   // personnalisées d'une propriété sont des snapshots indépendants (priorité à leur contenu propre).
   const getTemplateDoc = (tpl) =>
     (Documents.list({ doc_type: 'brochure', limit: 2000 }).rows || []).find((d) => d.template === tpl && !d.property_id) || null;
+
+  // ── Verrou + copies (Clone/Restore) — anti-erreur irréversible (Phase B, modèle unifié) ──
+  // Une « copie » (doc_type='brochure_copy') est un instantané VERROUILLÉ du contenu/layout d'une
+  // brochure (gabarit ou propriété), repéré par `data.of`. Cloner = enregistrer une copie ;
+  // Restaurer = réécrire le live depuis une copie. Un live verrouillé bloque sync/approve/reset.
+  const copyOut = (c) => ({ id: c.id, name: (c.data && c.data.name) || c.title, locked: !!(c.data && c.data.locked), created_at: c.created_at });
+  const listCopies = (scope) => (Documents.list({ doc_type: 'brochure_copy', limit: 2000 }).rows || [])
+    .filter((c) => c.data && c.data.of === scope).map(copyOut);
+  const snapshotName = () => 'Copie ' + new Date().toISOString().slice(0, 16).replace('T', ' ');
   const CONTENT_FIELDS = ['title', 'city', 'summary_line', 'address', 'mls', 'headline', 'description', 'price_text', 'rooms'];
   // Lit la source de surcharge d'une présentation : le brouillon non approuvé (draft=true) sinon
   // la version live. Garde-fou du round-trip PPTX→code (voir POST …/sync, …/approve, …/draft).
@@ -495,10 +504,12 @@ export default function mountBusiness(parent = Router()) {
   parent.get('/brochure/templates/rpa/content', wrap(async (req, res) => {
     const lang = String(req.query.lang || 'fr');
     const d = (getTemplateDoc('rpa') || {}).data || {};
-    res.json({ lang, schema: rpaDefaults(lang), value: d.content || {}, hasDraft: !!d.draft, customized: !!d.content });
+    res.json({ lang, schema: rpaDefaults(lang), value: d.content || {}, hasDraft: !!d.draft, customized: !!d.content, locked: !!d.locked });
   }));
 
+  const LOCKED_MSG = 'Verrouillé — déverrouillez ou restaurez une copie pour modifier.';
   parent.post('/brochure/templates/rpa/content/sync', upload.single('file'), wrap(async (req, res) => {
+    if (getTemplateDoc('rpa')?.data?.locked) throw badRequest(LOCKED_MSG);
     if (!req.file) throw badRequest('Aucun fichier PowerPoint téléversé');
     if (!/\.pptx$/i.test(req.file.originalname || '')) throw badRequest('Le fichier doit être un .pptx');
     const dir = path.join(config.root, 'data', 'uploads'); fs.mkdirSync(dir, { recursive: true });
@@ -519,6 +530,7 @@ export default function mountBusiness(parent = Router()) {
 
   parent.post('/brochure/templates/rpa/content/approve', wrap(async (req, res) => {
     const tdoc = getTemplateDoc('rpa');
+    if (tdoc?.data?.locked) throw badRequest(LOCKED_MSG);
     if (!tdoc || !tdoc.data || !tdoc.data.draft) throw badRequest('Aucun brouillon à approuver');
     const data = { ...tdoc.data, content: tdoc.data.draft.content || {} };
     delete data.draft;
@@ -538,7 +550,39 @@ export default function mountBusiness(parent = Router()) {
 
   parent.delete('/brochure/templates/rpa/content', wrap(async (req, res) => {
     const tdoc = getTemplateDoc('rpa');
+    if (tdoc?.data?.locked) throw badRequest(LOCKED_MSG);
     if (tdoc) Documents.delete(tdoc.id);
+    res.status(204).end();
+  }));
+
+  // Verrou + copies du gabarit RPA (scope 'template:rpa').
+  parent.post('/brochure/templates/rpa/lock', wrap((req, res) => {
+    const locked = !!(req.body && req.body.locked);
+    let tdoc = getTemplateDoc('rpa');
+    if (!tdoc) tdoc = Documents.create({ property_id: null, template: 'rpa', doc_type: 'brochure', title: 'Gabarit RPA', format: 'pdf', status: 'final', data: {} });
+    Documents.update(tdoc.id, { data: { ...(tdoc.data || {}), locked } });
+    res.json({ locked });
+  }));
+  parent.get('/brochure/templates/rpa/copies', wrap((req, res) => res.json(listCopies('template:rpa'))));
+  parent.post('/brochure/templates/rpa/copies', wrap((req, res) => {
+    const content = getTemplateDoc('rpa')?.data?.content || rpaContent({});  // instantané de l'état courant (ou défaut)
+    const name = (req.body && req.body.name) || snapshotName();
+    const c = Documents.create({ property_id: null, template: 'rpa', doc_type: 'brochure_copy', title: name, status: 'final', data: { of: 'template:rpa', name, content, locked: true } });
+    res.status(201).json(copyOut(c));
+  }));
+  parent.post('/brochure/templates/rpa/copies/:cid/restore', wrap((req, res) => {
+    const c = Documents.get(req.params.cid);
+    if (!c || c.doc_type !== 'brochure_copy') throw notFound('copie introuvable');
+    let tdoc = getTemplateDoc('rpa');
+    const data = { ...((tdoc && tdoc.data) || {}), content: (c.data && c.data.content) || {} };
+    delete data.draft; data.locked = false;  // après restauration, le gabarit redevient éditable
+    if (tdoc) Documents.update(tdoc.id, { data });
+    else Documents.create({ property_id: null, template: 'rpa', doc_type: 'brochure', title: 'Gabarit RPA', format: 'pdf', status: 'final', data });
+    res.json({ restored: true });
+  }));
+  parent.delete('/brochure/templates/rpa/copies/:cid', wrap((req, res) => {
+    const c = Documents.get(req.params.cid);
+    if (c && c.doc_type === 'brochure_copy') Documents.delete(c.id);
     res.status(204).end();
   }));
 
