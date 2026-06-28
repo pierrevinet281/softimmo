@@ -61,7 +61,10 @@ export default function SalesAttributes() {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
           <div className="field" style={{ margin: 0, minWidth: 200 }}>
             <label>{t('sa.typeFilter')}</label>
-            <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
+            <Select
+              value={selectedType}
+              onChange={(e) => { setSelectedType(e.target.value); setColFilter({}); setMenuFor(null); }}
+            >
               <option value="all">{t('sa.allTypes')}</option>
               {types.map((ty) => <option key={ty.key} value={ty.key}>{lab(ty)}</option>)}
             </Select>
