@@ -348,7 +348,7 @@ def running_head(c, label, right_label):
 def page_cover(c, d):
     A = d["assets"]; broker = d["broker"]; cov = d["content"].get("cover", {})
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
-    hero_h = 470; hero_y = PH - hero_h
+    hero_h = 440; hero_y = PH - hero_h
     draw_image(c, cov.get("hero"), 0, hero_y, PW, hero_h, radius=0, dpi=200)
     draw_scrim(c, 0, hero_y, PW, 180, bot_alpha=200)
     draw_scrim(c, 0, PH - 90, PW, 90, top_alpha=150, bot_alpha=0)
@@ -363,17 +363,20 @@ def page_cover(c, d):
     if cov.get("hero_tag"):
         c.setFillColor(WHITE); c.setFont(F_TSB, 12); c.drawString(M, hero_y + 24, cov["hero_tag"])
     ly = hero_y; x = M
-    kicker(c, x, ly - 42, cov.get("eyebrow", ""), color=GOLD_D, size=11)
+    kicker(c, x, ly - 36, cov.get("eyebrow", ""), color=GOLD_D, size=11)
     tl = cov.get("title", [])
     c.setFont(F_TB, 46); c.setFillColor(DEEP)
-    yy = ly - 90
+    yy = ly - 78
     for ln in tl[:2]:
-        c.drawString(x, yy, ln); yy -= 44
+        c.drawString(x, yy, ln); yy -= 42
     c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(x, yy + 8, x + 54, yy + 8)
+    sub_top = yy - 4; sub_h = 0
     if cov.get("subtitle"):
-        draw_para(c, cov["subtitle"], st(F_L, 13.5, INK, leading=19), x, yy - 4, CW * 0.82)
+        sub_h = draw_para(c, cov["subtitle"], st(F_L, 13, INK, leading=17), x, sub_top, CW * 0.90)
     chips = cov.get("chips", [])
-    cy = ly - 238; cx = x
+    # Pastilles ancrées SOUS le sous-titre (hauteur 30 + marge), quel que soit le nombre de
+    # lignes du sous-titre — anti-chevauchement. Plancher = au-dessus du bloc de contact.
+    cy = max(96, (sub_top - sub_h) - 14 - 30); cx = x
     for chip in chips[:3]:
         txt = chip.get("text", "")
         c.setFont(F_SB, 10); tw = c.stringWidth(txt, F_SB, 10); cw = tw + 42
