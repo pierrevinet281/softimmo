@@ -116,7 +116,7 @@ def draw_image(s, path, x, y, w, h, radius=10, dpi=240, slot=None):
     return shp
 
 
-def draw_logo(s, path, x, y, w=None, h=None, anchor="bl"):
+def draw_logo(s, path, x, y, w=None, h=None, anchor="bl", slot=None):
     if not (path and os.path.exists(path)):
         return 0, 0
     iw, ih = img_size(path); ar = iw / ih
@@ -132,17 +132,21 @@ def draw_logo(s, path, x, y, w=None, h=None, anchor="bl"):
         x -= w; y -= h
     elif anchor == "center":
         x -= w / 2; y -= h / 2
-    picture_raw(s, path, x, y, w, h)
+    if slot:
+        x, y, w, h = ov(slot, x, y, w, h)
+    pic = picture_raw(s, path, x, y, w, h)
+    if slot:
+        pic.name = "RPAp::" + slot
     return w, h
 
 
-def kicker(s, x, y, text, color=GOLD, size=10.5, tracking=2.6):
+def kicker(s, x, y, text, color=GOLD, size=10.5, tracking=2.6, slot=None):
     if text:
-        text_line(s, x, y, str(text).upper(), "Osw-SB", size, color, tracking=tracking)
+        text_line(s, x, y, str(text).upper(), "Osw-SB", size, color, tracking=tracking, name=("RPAp::" + slot) if slot else None)
 
 
 def title_block(s, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule=True, rule_w=46, kbase=None):
-    kicker(s, x, y_top, kick, color=GOLD)
+    kicker(s, x, y_top, kick, color=GOLD, slot=("%s.kicker" % kbase) if kbase else None)
     yy = y_top - 20
     lead = title_size * 1.02
     for i, ln in enumerate(title_lines or []):
@@ -227,17 +231,18 @@ def page_cover(prs, d):
     draw_image(s, cov.get("hero"), 0, hero_y, PW, hero_h, radius=0, dpi=200, slot="cover.hero")
     scrim(s, 0, hero_y, PW, 180, bot_alpha=200)
     scrim(s, 0, PH - 90, PW, 90, top_alpha=150, bot_alpha=0)
-    draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=30, anchor="tl")
+    draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=30, anchor="tl", slot="cover.logo_white")
     if cov.get("pill"):
         pw = _measure(os.path.join(FN, "Oswald-600.ttf"), 9, str(cov["pill"]).upper()) + 1.4 * (len(str(cov["pill"])) - 1)
         pill_w = max(150.0, pw + 42); px = PW - M - pill_w; py = PH - 46
-        rect(s, px, py, pill_w, 22, fill=WHITE, fill_alpha=0.16, line=WHITE, line_w=1, radius=11)
-        fa(s, "check", px + 15, py + 11, 11, WHITE)
-        text_line(s, px + 27, py + 7, str(cov["pill"]).upper(), "Osw-SB", 9, WHITE, tracking=1.4)
+        pbx, pby, pbw, pbh = ov("cover.pill", px, py, pill_w, 22)
+        rect(s, pbx, pby, pbw, pbh, fill=WHITE, fill_alpha=0.16, line=WHITE, line_w=1, radius=11).name = "RPAp::cover.pill"
+        fa(s, "check", pbx + 15, pby + 11, 11, WHITE, slot="cover.pill_icon")
+        text_line(s, pbx + 27, pby + 7, str(cov["pill"]).upper(), "Osw-SB", 9, WHITE, tracking=1.4, name="RPAp::cover.pill_text")
     if cov.get("hero_tag"):
         text_line(s, M, hero_y + 24, cov["hero_tag"], "Osw-SB", 12, WHITE, name="RPA::cover.hero_tag")
     ly = hero_y; x = M
-    kicker(s, x, ly - 42, cov.get("eyebrow", ""), color=GOLD_D, size=11)
+    kicker(s, x, ly - 42, cov.get("eyebrow", ""), color=GOLD_D, size=11, slot="cover.eyebrow")
     tl = cov.get("title", [])
     yy = ly - 90
     for i, ln in enumerate(tl[:2]):
@@ -259,7 +264,7 @@ def page_cover(prs, d):
         cx += cw + 11
     by = 46.0
     line(s, M, by + 34, PW - M, by + 34, LINE, 1)
-    draw_logo(s, A.get("agency_logo_black"), M, by, h=26, anchor="bl")
+    draw_logo(s, A.get("agency_logo_black"), M, by, h=26, anchor="bl", slot="cover.logo_black")
     text_line(s, PW - M, by + 16, " · ".join([b for b in [broker.get("name"), broker.get("title_line")] if b]),
               "Sg", 9.5, INK2, align="r")
     contact = "   ·   ".join([b for b in [broker.get("phone"), broker.get("email")] if b])
@@ -307,7 +312,7 @@ def page_security(prs, d, page_no):
     px, py, pw, ph = ov("security.panel", M, top - panel_h, panel_w, panel_h)
     grad_rect(s, px, py, pw, ph, DEEP, DEEP_D, radius=14, vertical=True).name = "RPA::security.panel"
     if sec.get("panel_title"):
-        text_line(s, px + 22, py + ph - 26, str(sec["panel_title"]).upper(), "Osw-SB", 12, GOLD_LT, tracking=1.6)
+        text_line(s, px + 22, py + ph - 26, str(sec["panel_title"]).upper(), "Osw-SB", 12, GOLD_LT, tracking=1.6, name="RPAp::security.panel_title")
     iy = py + ph - 50
     for i, it in enumerate(sec.get("panel_items", [])[:5]):
         fa(s, it.get("icon"), px + 30, iy - 2, 14, GOLD, slot="security.panel_items.%d.icon" % i)
@@ -320,9 +325,9 @@ def page_security(prs, d, page_no):
         text_line(s, M + panel_w + 16 + 12, top - panel_h + 12, sec["panel_caption"], "Sg-SB", 9, WHITE,
                   name="RPA::security.panel_caption")
     sy = top - panel_h - 26
-    kicker(s, M, sy, sec.get("services_kicker", ""), color=GOLD_D, size=10.5)
+    kicker(s, M, sy, sec.get("services_kicker", ""), color=GOLD_D, size=10.5, slot="security.services_kicker")
     if sec.get("services_title"):
-        text_line(s, M, sy - 26, str(sec["services_title"]).upper(), "Osw-B", 21, DEEP)
+        text_line(s, M, sy - 26, str(sec["services_title"]).upper(), "Osw-B", 21, DEEP, name="RPAp::security.services_title")
     svcs = sec.get("services", [])
     gap = 14.0; cw = (CW - 2 * gap) / 3; chh = 92.0; sc_y = sy - 40
     for i, sv in enumerate(svcs[:3]):
@@ -392,9 +397,9 @@ def page_life(prs, d, page_no):
         para(s, bx + 14, by + bh - ch_img - 30, bw - 26, ev.get("desc"), "Sg", 9.0, INK2, 11.6,
              name="RPA::life.events.%d.desc" % i)
     qy = top - chh - 24
-    kicker(s, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5)
+    kicker(s, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5, slot="life.neighborhood_kicker")
     if sec.get("neighborhood_title"):
-        text_line(s, M, qy - 26, str(sec["neighborhood_title"]).upper(), "Osw-B", 21, DEEP)
+        text_line(s, M, qy - 26, str(sec["neighborhood_title"]).upper(), "Osw-B", 21, DEEP, name="RPAp::life.neighborhood_title")
     qcards = sec.get("neighborhood", [])
     gap = 14.0; cw2 = (CW - gap) / 2; chh2 = 58.0; gy = qy - 38
     for i, q in enumerate(qcards[:4]):
@@ -411,7 +416,7 @@ def page_life(prs, d, page_no):
         ficx, ficy = iov("life.finance.icon", fx + 34, fyy + fhh / 2)
         oval(s, ficx, ficy, 19, fill=WHITE, fill_alpha=0.92)
         fa(s, fin.get("icon", "coins"), ficx, ficy, 18, GOLD_D, slot="life.finance.icon")
-        text_line(s, fx + 66, fyy + fhh - 24, str(fin["title"]).upper(), "Osw-B", 16, WHITE)
+        text_line(s, fx + 66, fyy + fhh - 24, str(fin["title"]).upper(), "Osw-B", 16, WHITE, name="RPAp::life.finance.title")
         para(s, fx + 66, fyy + fhh - 30, fw - 150, fin.get("text"), "Sg-SB", 9.6, WHITE, 12, name="RPA::life.finance.text")
     footer(s, page_no, d["broker"])
 
@@ -423,7 +428,7 @@ def page_contact(prs, d, page_no):
     draw_image(s, sec.get("hero"), 0, band_bottom, PW, band_h, radius=0, dpi=200, slot="contact.hero")
     scrim(s, 0, band_bottom, PW, band_h, top_alpha=120, bot_alpha=225)
     draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl")
-    kicker(s, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11)
+    kicker(s, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11, slot="contact.kicker")
     tl = sec.get("title", [])
     yy = txt_ref + 108
     for i, ln in enumerate(tl[:2]):

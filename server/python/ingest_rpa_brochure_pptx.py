@@ -79,15 +79,19 @@ def build_content(prs, base):
     for slide in prs.slides:
         for sh in slide.shapes:
             name = getattr(sh, "name", "") or ""
-            if not name.startswith("RPA::") or name.startswith("RPA::__"):
+            # RPA:: = texte éditable (overlay contenu) + position. RPAp:: = POSITION seule
+            # (formes/logos/lignes, ou textes rendus en MAJUSCULES qu'on ne veut pas réécrire).
+            if name.startswith("RPA::") and not name.startswith("RPA::__"):
+                path = name[len("RPA::"):]
+                val = _text(sh)
+                if val is not None and val != "":
+                    _set_path(content, path, val)
+            elif name.startswith("RPAp::"):
+                path = name[len("RPAp::"):]
+            else:
                 continue
-            path = name[len("RPA::"):]
             if not path:
                 continue
-            # Texte édité → superposé sur le contenu (les formes image n'ont pas de texte).
-            val = _text(sh)
-            if val is not None and val != "":
-                _set_path(content, path, val)
             # Position de la forme → override de layout (aller-retour des positions, Phase C).
             box = _box_pt(sh)
             if box:

@@ -113,7 +113,7 @@ def text_line(slide, x, y_base, s, code, size, color, align="l", tracking=0.0, n
         left = x - W / 2; al = PP_ALIGN.CENTER
     else:
         left = x - W; al = PP_ALIGN.RIGHT
-    b = POS.get(name) if name else None
+    b = POS.get(name.split("::", 1)[-1]) if name else None
     if b and len(b) == 4:  # override : placer à la boîte exacte (round-trip stable)
         left = b[0]; top = PH - b[1] - b[3]; W = b[2]; H = b[3]
     tb = slide.shapes.add_textbox(E(left), E(top), E(W), E(H))
@@ -182,7 +182,7 @@ def icon(slide, glyph_char, cx, cy, size, color, font="FA"):
 def para(slide, x, y_top, w, text, code, size, color, leading, align="l", name=None):
     top = (PH - y_top) + PARA_DY
     left = x; width = w; height = 200.0
-    b = POS.get(name) if name else None
+    b = POS.get(name.split("::", 1)[-1]) if name else None
     if b and len(b) == 4:  # override : placer à la boîte exacte
         left = b[0]; top = PH - b[1] - b[3]; width = b[2]; height = b[3]
     al = {"l": PP_ALIGN.LEFT, "c": PP_ALIGN.CENTER, "r": PP_ALIGN.RIGHT, "j": PP_ALIGN.JUSTIFY}[align]

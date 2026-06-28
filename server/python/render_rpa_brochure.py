@@ -279,7 +279,7 @@ def logo_reader(path):
     return r
 
 
-def draw_logo(c, path, x, y, w=None, h=None, anchor="bl"):
+def draw_logo(c, path, x, y, w=None, h=None, anchor="bl", slot=None):
     if not _exists(path):
         return 0, 0
     iw, ih = img_size(path); ar = iw / ih
@@ -295,6 +295,8 @@ def draw_logo(c, path, x, y, w=None, h=None, anchor="bl"):
         x -= w; y -= h
     elif anchor == "center":
         x -= w / 2; y -= h / 2
+    if slot:
+        x, y, w, h = ov(slot, x, y, w, h)
     c.drawImage(logo_reader(path), x, y, w, h, mask="auto")
     return w, h
 
@@ -321,8 +323,10 @@ def tracked(c, x, y, text, font, size, color, tracking, align="l"):
     return w
 
 
-def kicker(c, x, y, text, color=GOLD, size=10.5, tracking=2.6):
+def kicker(c, x, y, text, color=GOLD, size=10.5, tracking=2.6, slot=None):
     if text:
+        if slot:
+            x, y = tov_text(slot, x, y, size, "osw")
         tracked(c, x, y, str(text).upper(), F_TSB, size, color, tracking)
 
 
@@ -343,7 +347,7 @@ def _esc(s):
 
 
 def title_block(c, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule=True, rule_w=46, kbase=None):
-    kicker(c, x, y_top, kick, color=GOLD)
+    kicker(c, x, y_top, kick, color=GOLD, slot=("%s.kicker" % kbase) if kbase else None)
     yy = y_top - 20
     c.setFont(F_TB, title_size); c.setFillColor(tcolor)
     lead = title_size * 1.02
@@ -399,20 +403,23 @@ def page_cover(c, d):
     draw_image(c, cov.get("hero"), *ov("cover.hero", 0, hero_y, PW, hero_h), radius=0, dpi=200)
     draw_scrim(c, 0, hero_y, PW, 180, bot_alpha=200)
     draw_scrim(c, 0, PH - 90, PW, 90, top_alpha=150, bot_alpha=0)
-    draw_logo(c, A.get("agency_logo_white"), M, PH - 34, h=30, anchor="tl")
+    draw_logo(c, A.get("agency_logo_white"), M, PH - 34, h=30, anchor="tl", slot="cover.logo_white")
     if cov.get("pill"):
         c.setFont(F_SB, 9); pw = c.stringWidth(str(cov["pill"]).upper(), F_TSB, 9) + 1.4 * (len(str(cov["pill"])) - 1)
         pill_w = max(150, pw + 42); px = PW - M - pill_w; py = PH - 46
+        pbx, pby, pbw, pbh = ov("cover.pill", px, py, pill_w, 22)
         c.setFillColor(Color(1, 1, 1, 0.16)); c.setStrokeColor(Color(1, 1, 1, 0.7)); c.setLineWidth(1)
-        c.roundRect(px, py, pill_w, 22, 11, stroke=1, fill=1)
-        fa_icon(c, "check", px + 15, py + 11, 11, WHITE)
-        tracked(c, px + 27, py + 7, str(cov["pill"]).upper(), F_TSB, 9, WHITE, 1.4)
+        c.roundRect(pbx, pby, pbw, pbh, 11, stroke=1, fill=1)
+        picx, picy = ovc("cover.pill_icon", pbx + 15, pby + 11)
+        fa_icon(c, "check", picx, picy, 11, WHITE)
+        ptx, pty = tov_text("cover.pill_text", pbx + 27, pby + 7, 9, "osw")
+        tracked(c, ptx, pty, str(cov["pill"]).upper(), F_TSB, 9, WHITE, 1.4)
     if cov.get("hero_tag"):
         c.setFillColor(WHITE); c.setFont(F_TSB, 12)
         hx, hy = tov_text("cover.hero_tag", M, hero_y + 24, 12, "osw")
         c.drawString(hx, hy, cov["hero_tag"])
     ly = hero_y; x = M
-    kicker(c, x, ly - 36, cov.get("eyebrow", ""), color=GOLD_D, size=11)
+    kicker(c, x, ly - 36, cov.get("eyebrow", ""), color=GOLD_D, size=11, slot="cover.eyebrow")
     tl = cov.get("title", [])
     c.setFont(F_TB, 46); c.setFillColor(DEEP)
     yy = ly - 78
@@ -438,7 +445,7 @@ def page_cover(c, d):
         cx += cw + 11
     by = 46
     c.setStrokeColor(LINE); c.setLineWidth(1); c.line(M, by + 34, PW - M, by + 34)
-    draw_logo(c, A.get("agency_logo_black"), M, by, h=26, anchor="bl")
+    draw_logo(c, A.get("agency_logo_black"), M, by, h=26, anchor="bl", slot="cover.logo_black")
     c.setFont(F_R, 9.5); c.setFillColor(INK2)
     c.drawRightString(PW - M, by + 16, " · ".join([b for b in [broker.get("name"), broker.get("title_line")] if b]))
     c.setFont(F_SB, 9.5); c.setFillColor(DEEP)
@@ -501,7 +508,8 @@ def page_security(c, d, page_no):
     px, py, pw, ph = ov("security.panel", M, top - panel_h, panel_w, panel_h)
     draw_gradient(c, px, py, pw, ph, DEEP, DEEP_D, radius=14, vertical=True)
     if sec.get("panel_title"):
-        tracked(c, px + 22, py + ph - 26, str(sec["panel_title"]).upper(), F_TSB, 12, GOLD_LT, 1.6)
+        ptx, pty = tov_text("security.panel_title", px + 22, py + ph - 26, 12, "osw")
+        tracked(c, ptx, pty, str(sec["panel_title"]).upper(), F_TSB, 12, GOLD_LT, 1.6)
     iy = py + ph - 50
     for i, it in enumerate(sec.get("panel_items", [])[:5]):
         icx, icy = ovc("security.panel_items.%d.icon" % i, px + 30, iy - 2)
@@ -516,9 +524,10 @@ def page_security(c, d, page_no):
         pcx, pcy = tov_text("security.panel_caption", pib[0] + 12, pib[1] + 12, 9, "sgb")
         c.setFont(F_SB, 9); c.setFillColor(WHITE); c.drawString(pcx, pcy, sec["panel_caption"])
     sy = top - panel_h - 26
-    kicker(c, M, sy, sec.get("services_kicker", ""), color=GOLD_D, size=10.5)
+    kicker(c, M, sy, sec.get("services_kicker", ""), color=GOLD_D, size=10.5, slot="security.services_kicker")
     if sec.get("services_title"):
-        c.setFont(F_TB, 21); c.setFillColor(DEEP); c.drawString(M, sy - 26, str(sec["services_title"]).upper())
+        stx, sty = tov_text("security.services_title", M, sy - 26, 21, "osw")
+        c.setFont(F_TB, 21); c.setFillColor(DEEP); c.drawString(stx, sty, str(sec["services_title"]).upper())
     svcs = sec.get("services", [])
     gap = 14; cw = (CW - 2 * gap) / 3; chh = 92; sc_y = sy - 40
     for i, s in enumerate(svcs[:3]):
@@ -586,9 +595,10 @@ def page_life(c, d, page_no):
         dx, dy, dw = tov_para("life.events.%d.desc" % i, bx + 14, by + bh - ch_img - 30, bw - 26)
         draw_para(c, ev.get("desc"), st(F_R, 9.0, INK2, leading=11.6), dx, dy, dw)
     qy = top - chh - 24
-    kicker(c, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5)
+    kicker(c, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5, slot="life.neighborhood_kicker")
     if sec.get("neighborhood_title"):
-        c.setFont(F_TB, 21); c.setFillColor(DEEP); c.drawString(M, qy - 26, str(sec["neighborhood_title"]).upper())
+        ntx, nty = tov_text("life.neighborhood_title", M, qy - 26, 21, "osw")
+        c.setFont(F_TB, 21); c.setFillColor(DEEP); c.drawString(ntx, nty, str(sec["neighborhood_title"]).upper())
     qcards = sec.get("neighborhood", [])
     gap = 14; cw2 = (CW - gap) / 2; chh2 = 58; gy = qy - 38
     for i, q in enumerate(qcards[:4]):
@@ -604,7 +614,8 @@ def page_life(c, d, page_no):
         icx, icy = ovc("life.finance.icon", fx + 34, fyy + fhh / 2)
         c.setFillColor(Color(1, 1, 1, 0.92)); c.circle(icx, icy, 19, fill=1, stroke=0)
         fa_icon(c, fin.get("icon", "coins"), icx, icy, 18, GOLD_D)
-        c.setFont(F_TB, 16); c.setFillColor(WHITE); c.drawString(fx + 66, fyy + fhh - 24, str(fin["title"]).upper())
+        fttx, ftty = tov_text("life.finance.title", fx + 66, fyy + fhh - 24, 16, "osw")
+        c.setFont(F_TB, 16); c.setFillColor(WHITE); c.drawString(fttx, ftty, str(fin["title"]).upper())
         ftx, fty, ftw = tov_para("life.finance.text", fx + 66, fyy + fhh - 30, fw - 150)
         draw_para(c, fin.get("text"), st(F_SB, 9.6, WHITE, leading=12), ftx, fty, ftw)
     footer(c, page_no, d["broker"]); c.showPage()
@@ -617,7 +628,7 @@ def page_contact(c, d, page_no):
     draw_image(c, sec.get("hero"), *ov("contact.hero", 0, band_bottom, PW, band_h), radius=0, dpi=200)
     draw_scrim(c, 0, band_bottom, PW, band_h, top_alpha=120, bot_alpha=225)
     draw_logo(c, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl")
-    kicker(c, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11)
+    kicker(c, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11, slot="contact.kicker")
     tl = sec.get("title", [])
     c.setFont(F_TB, 38); c.setFillColor(WHITE)
     yy = txt_ref + 108
