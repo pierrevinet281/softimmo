@@ -138,6 +138,14 @@ def tov_para(slot, x, ytop, w):
     return x, ytop, w
 
 
+def ovc(slot, cx, cy):
+    """Icône : boîte override → centre (cx, cy)."""
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return float(b[0]) + float(b[2]) / 2, float(b[1]) + float(b[3]) / 2
+    return cx, cy
+
+
 def _exists(p):
     return bool(p) and os.path.exists(p) and Image is not None
 
@@ -349,18 +357,20 @@ def title_block(c, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule
     return yy
 
 
-def feature_card(c, x, y, w, h, glyph, label, desc, bg=CREAM, bdr=CREAM_B, icon_color=GOLD_D, label_color=DEEP, slot=None):
+def feature_card(c, x, y, w, h, glyph, label, desc, bg=CREAM, bdr=CREAM_B, icon_color=GOLD_D, label_color=DEEP, slot=None, nbase=None):
     if not label and not desc:
         return
     if slot:
-        x, y, w, h = ov(slot, x, y, w, h)  # déplacer la carte → enfants relatifs suivent
+        x, y, w, h = ov(slot, x, y, w, h)  # carte déplacée → icône (relative) suit ; libellé/desc = position propre
     c.setFillColor(bg); c.setStrokeColor(bdr); c.setLineWidth(1); c.roundRect(x, y, w, h, 9, stroke=1, fill=1)
-    cxx = x + 26; cyy = y + h - 26
+    cxx, cyy = ovc("%s.icon" % nbase, x + 26, y + h - 26) if nbase else (x + 26, y + h - 26)
     c.setFillColor(WHITE); c.setStrokeColor(GOLD_LT); c.setLineWidth(1); c.circle(cxx, cyy, 16, stroke=1, fill=1)
     fa_icon(c, glyph, cxx, cyy, 15, icon_color)
     tx = x + 52
-    c.setFont(F_TSB, 12.5); c.setFillColor(label_color); c.drawString(tx, y + h - 22, label or "")
-    draw_para(c, desc, st(F_R, 9.0, INK2, leading=11.6), tx, y + h - 32, w - (tx - x) - 12)
+    lx, ly = tov_text("%s.label" % nbase, tx, y + h - 22, 12.5, "osw") if nbase else (tx, y + h - 22)
+    c.setFont(F_TSB, 12.5); c.setFillColor(label_color); c.drawString(lx, ly, label or "")
+    dx, dy, dw = tov_para("%s.desc" % nbase, tx, y + h - 32, w - (tx - x) - 12) if nbase else (tx, y + h - 32, w - (tx - x) - 12)
+    draw_para(c, desc, st(F_R, 9.0, INK2, leading=11.6), dx, dy, dw)
 
 
 # ── Chrome (pied / en-tête courant), paramétrés par le courtier ──
@@ -451,29 +461,35 @@ def page_comfort(c, d, page_no):
     top = _intro(c, sec, rt, "01 · " + sec.get("running", ""), "comfort")
     if sec.get("wide_image") is not None or True:
         ih = 178
-        draw_image(c, sec.get("wide_image"), *ov("comfort.wide_image", M, top - ih, CW, ih), radius=12)
+        ib = ov("comfort.wide_image", M, top - ih, CW, ih)
+        draw_image(c, sec.get("wide_image"), *ib, radius=12)
         cap = sec.get("wide_caption") or {}
         if cap.get("text"):
-            draw_scrim(c, M, top - ih, CW, 48, bot_alpha=150)
-            fa_icon(c, cap.get("icon"), M + 18, top - ih + 15, 11, GOLD_LT)
-            c.setFont(F_SB, 9.5); c.setFillColor(WHITE); c.drawString(M + 33, top - ih + 11, cap["text"])
+            draw_scrim(c, ib[0], ib[1], ib[2], 48, bot_alpha=150)
+            cix, ciy = ovc("comfort.wide_caption.icon", ib[0] + 18, ib[1] + 15)
+            fa_icon(c, cap.get("icon"), cix, ciy, 11, GOLD_LT)
+            wcx, wcy = tov_text("comfort.wide_caption.text", ib[0] + 33, ib[1] + 11, 9.5, "sgb")
+            c.setFont(F_SB, 9.5); c.setFillColor(WHITE); c.drawString(wcx, wcy, cap["text"])
         gy = top - ih - 22
     feats = sec.get("features", [])
     gap = 14; cardw = (CW - gap) / 2; cardh = 66
     for i, f in enumerate(feats[:6]):
         r = i // 2; col = i % 2
         x = M + col * (cardw + gap); y = gy - cardh - r * (cardh + gap)
-        feature_card(c, x, y, cardw, cardh, f.get("icon"), f.get("label"), f.get("desc"), slot="comfort.features.%d.card" % i)
+        feature_card(c, x, y, cardw, cardh, f.get("icon"), f.get("label"), f.get("desc"), slot="comfort.features.%d.card" % i, nbase="comfort.features.%d" % i)
     rows = (min(len(feats[:6]), 6) + 1) // 2
     note = sec.get("note") or {}
     if note.get("title"):
         ny = gy - rows * (cardh + gap) - 6
         nx, nyy, nw, nh = ov("comfort.note.card", M, ny - 46, CW, 46)
         draw_gradient(c, nx, nyy, nw, nh, DEEP, DEEP2, radius=12, vertical=False)
-        fa_icon(c, "check", nx + 26, nyy + nh - 23, 15, GOLD_LT)
-        c.setFont(F_TSB, 12.5); c.setFillColor(WHITE); c.drawString(nx + 48, nyy + nh - 19, note["title"])
+        icx, icy = ovc("comfort.note.icon", nx + 26, nyy + nh - 23)
+        fa_icon(c, "check", icx, icy, 15, GOLD_LT)
+        ntx, nty = tov_text("comfort.note.title", nx + 48, nyy + nh - 19, 12.5, "osw")
+        c.setFont(F_TSB, 12.5); c.setFillColor(WHITE); c.drawString(ntx, nty, note["title"])
         if note.get("sub"):
-            c.setFont(F_R, 9.5); c.setFillColor(GOLD_LT); c.drawString(nx + 48, nyy + nh - 32, note["sub"])
+            nsx, nsy = tov_text("comfort.note.sub", nx + 48, nyy + nh - 32, 9.5, "sg")
+            c.setFont(F_R, 9.5); c.setFillColor(GOLD_LT); c.drawString(nsx, nsy, note["sub"])
     footer(c, page_no, d["broker"]); c.showPage()
 
 
@@ -487,14 +503,18 @@ def page_security(c, d, page_no):
     if sec.get("panel_title"):
         tracked(c, px + 22, py + ph - 26, str(sec["panel_title"]).upper(), F_TSB, 12, GOLD_LT, 1.6)
     iy = py + ph - 50
-    for it in sec.get("panel_items", [])[:5]:
-        fa_icon(c, it.get("icon"), px + 30, iy - 2, 14, GOLD)
-        draw_para(c, it.get("text"), st(F_R, 10, WHITE, leading=13.0), px + 50, iy + 6, pw - 50 - 18)
+    for i, it in enumerate(sec.get("panel_items", [])[:5]):
+        icx, icy = ovc("security.panel_items.%d.icon" % i, px + 30, iy - 2)
+        fa_icon(c, it.get("icon"), icx, icy, 14, GOLD)
+        tx2, ty2, tw2 = tov_para("security.panel_items.%d.text" % i, px + 50, iy + 6, pw - 50 - 18)
+        draw_para(c, it.get("text"), st(F_R, 10, WHITE, leading=13.0), tx2, ty2, tw2)
         iy -= 37
-    draw_image(c, sec.get("panel_image"), *ov("security.panel_image", M + panel_w + 16, top - panel_h, img_w, panel_h), radius=14)
+    pib = ov("security.panel_image", M + panel_w + 16, top - panel_h, img_w, panel_h)
+    draw_image(c, sec.get("panel_image"), *pib, radius=14)
     if sec.get("panel_caption"):
-        draw_scrim(c, M + panel_w + 16, top - panel_h, img_w, 70, bot_alpha=150)
-        c.setFont(F_SB, 9); c.setFillColor(WHITE); c.drawString(M + panel_w + 16 + 12, top - panel_h + 12, sec["panel_caption"])
+        draw_scrim(c, pib[0], pib[1], pib[2], 70, bot_alpha=150)
+        pcx, pcy = tov_text("security.panel_caption", pib[0] + 12, pib[1] + 12, 9, "sgb")
+        c.setFont(F_SB, 9); c.setFillColor(WHITE); c.drawString(pcx, pcy, sec["panel_caption"])
     sy = top - panel_h - 26
     kicker(c, M, sy, sec.get("services_kicker", ""), color=GOLD_D, size=10.5)
     if sec.get("services_title"):
@@ -505,10 +525,13 @@ def page_security(c, d, page_no):
         x = M + i * (cw + gap); y = sc_y - chh
         bx, by, bw, bh = ov("security.services.%d.card" % i, x, y, cw, chh)
         c.setFillColor(CREAM); c.setStrokeColor(CREAM_B); c.setLineWidth(1); c.roundRect(bx, by, bw, bh, 10, stroke=1, fill=1)
-        c.setFillColor(WHITE); c.setStrokeColor(GOLD_LT); c.circle(bx + 26, by + bh - 26, 17, stroke=1, fill=1)
-        fa_icon(c, s.get("icon"), bx + 26, by + bh - 26, 16, GOLD_D)
-        c.setFont(F_TSB, 13); c.setFillColor(DEEP); c.drawString(bx + 52, by + bh - 30, s.get("label", ""))
-        draw_para(c, s.get("desc"), st(F_R, 9.2, INK2, leading=11.8), bx + 16, by + bh - 48, bw - 30)
+        icx, icy = ovc("security.services.%d.icon" % i, bx + 26, by + bh - 26)
+        c.setFillColor(WHITE); c.setStrokeColor(GOLD_LT); c.circle(icx, icy, 17, stroke=1, fill=1)
+        fa_icon(c, s.get("icon"), icx, icy, 16, GOLD_D)
+        lx, ly = tov_text("security.services.%d.label" % i, bx + 52, by + bh - 30, 13, "osw")
+        c.setFont(F_TSB, 13); c.setFillColor(DEEP); c.drawString(lx, ly, s.get("label", ""))
+        dx, dy, dw = tov_para("security.services.%d.desc" % i, bx + 16, by + bh - 48, bw - 30)
+        draw_para(c, s.get("desc"), st(F_R, 9.2, INK2, leading=11.8), dx, dy, dw)
     footer(c, page_no, d["broker"]); c.showPage()
 
 
@@ -518,29 +541,31 @@ def page_amenities(c, d, page_no):
     top = _intro(c, sec, rt, "03 · " + sec.get("running", ""), "amenities")
     gallery = sec.get("gallery", [])
 
-    def cap(x, y, w, item):
+    def cap(x, y, w, item, idx):
         if not item.get("caption"):
             return
         draw_scrim(c, x, y, w, 42, bot_alpha=165)
-        fa_icon(c, item.get("icon"), x + 15, y + 13, 11, GOLD_LT)
-        c.setFont(F_SB, 9.5); c.setFillColor(WHITE); c.drawString(x + 30, y + 9, item["caption"])
+        gix, giy = ovc("amenities.gallery.%d.icon" % idx, x + 15, y + 13)
+        fa_icon(c, item.get("icon"), gix, giy, 11, GOLD_LT)
+        gcx, gcy = tov_text("amenities.gallery.%d.caption" % idx, x + 30, y + 9, 9.5, "sgb")
+        c.setFont(F_SB, 9.5); c.setFillColor(WHITE); c.drawString(gcx, gcy, item["caption"])
     gap = 12; big_w = CW * 0.60; big_h = 196; sm_w = CW - big_w - gap; sm_h = (196 - gap) / 2
     g = (gallery + [{}] * 6)[:6]
     bx, by = M, top - big_h
-    b = ov("amenities.gallery.0.image", bx, by, big_w, big_h); draw_image(c, g[0].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[0])
+    b = ov("amenities.gallery.0.image", bx, by, big_w, big_h); draw_image(c, g[0].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[0], 0)
     rx = M + big_w + gap
-    b = ov("amenities.gallery.1.image", rx, top - sm_h, sm_w, sm_h); draw_image(c, g[1].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[1])
-    b = ov("amenities.gallery.2.image", rx, top - big_h, sm_w, sm_h); draw_image(c, g[2].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[2])
+    b = ov("amenities.gallery.1.image", rx, top - sm_h, sm_w, sm_h); draw_image(c, g[1].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[1], 1)
+    b = ov("amenities.gallery.2.image", rx, top - big_h, sm_w, sm_h); draw_image(c, g[2].get("image"), *b, radius=12); cap(b[0], b[1], b[2], g[2], 2)
     r2y = by - gap; cw3 = (CW - 2 * gap) / 3; h3 = 150
     for i in range(3):
         item = g[3 + i]
         x = M + i * (cw3 + gap); y = r2y - h3
-        b = ov("amenities.gallery.%d.image" % (3 + i), x, y, cw3, h3); draw_image(c, item.get("image"), *b, radius=12); cap(b[0], b[1], b[2], item)
+        b = ov("amenities.gallery.%d.image" % (3 + i), x, y, cw3, h3); draw_image(c, item.get("image"), *b, radius=12); cap(b[0], b[1], b[2], item, 3 + i)
     pillars = sec.get("pillars", [])
     sy = r2y - h3 - 22; gap = 14; cw = (CW - 2 * gap) / 3; chh = 66
     for i, p in enumerate(pillars[:3]):
         x = M + i * (cw + gap); y = sy - chh
-        feature_card(c, x, y, cw, chh, p.get("icon"), p.get("label"), p.get("desc"), bg=MIST, bdr=MIST_B, slot="amenities.pillars.%d.card" % i)
+        feature_card(c, x, y, cw, chh, p.get("icon"), p.get("label"), p.get("desc"), bg=MIST, bdr=MIST_B, slot="amenities.pillars.%d.card" % i, nbase="amenities.pillars.%d" % i)
     footer(c, page_no, d["broker"]); c.showPage()
 
 
@@ -554,9 +579,12 @@ def page_life(c, d, page_no):
         bx, by, bw, bh = ov("life.events.%d.card" % i, x, y, cw, chh)
         c.setFillColor(WHITE); c.setStrokeColor(CREAM_B); c.setLineWidth(1); c.roundRect(bx, by, bw, bh, 10, stroke=1, fill=1)
         draw_image(c, ev.get("image"), bx, by + bh - ch_img, bw, ch_img, radius=10)
-        fa_icon(c, ev.get("icon"), bx + 18, by + bh - ch_img - 14, 14, GOLD_D)
-        c.setFont(F_TSB, 12.5); c.setFillColor(DEEP); c.drawString(bx + 34, by + bh - ch_img - 18, ev.get("label", ""))
-        draw_para(c, ev.get("desc"), st(F_R, 9.0, INK2, leading=11.6), bx + 14, by + bh - ch_img - 30, bw - 26)
+        icx, icy = ovc("life.events.%d.icon" % i, bx + 18, by + bh - ch_img - 14)
+        fa_icon(c, ev.get("icon"), icx, icy, 14, GOLD_D)
+        lx, ly = tov_text("life.events.%d.label" % i, bx + 34, by + bh - ch_img - 18, 12.5, "osw")
+        c.setFont(F_TSB, 12.5); c.setFillColor(DEEP); c.drawString(lx, ly, ev.get("label", ""))
+        dx, dy, dw = tov_para("life.events.%d.desc" % i, bx + 14, by + bh - ch_img - 30, bw - 26)
+        draw_para(c, ev.get("desc"), st(F_R, 9.0, INK2, leading=11.6), dx, dy, dw)
     qy = top - chh - 24
     kicker(c, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5)
     if sec.get("neighborhood_title"):
@@ -566,17 +594,19 @@ def page_life(c, d, page_no):
     for i, q in enumerate(qcards[:4]):
         r = i // 2; col = i % 2
         x = M + col * (cw2 + gap); y = gy - chh2 - r * (chh2 + gap)
-        feature_card(c, x, y, cw2, chh2, q.get("icon"), q.get("label"), q.get("desc"), bg=MIST, bdr=MIST_B, slot="life.neighborhood.%d.card" % i)
+        feature_card(c, x, y, cw2, chh2, q.get("icon"), q.get("label"), q.get("desc"), bg=MIST, bdr=MIST_B, slot="life.neighborhood.%d.card" % i, nbase="life.neighborhood.%d" % i)
     fin = sec.get("finance") or {}
     if fin.get("title"):
         nrows = (min(len(qcards), 4) + 1) // 2
         fy = gy - nrows * (chh2 + gap) - 8; fh = 58
         fx, fyy, fw, fhh = ov("life.finance.card", M, fy - fh, CW, fh)
         draw_gradient(c, fx, fyy, fw, fhh, GOLD_D, GOLD, radius=14, vertical=False)
-        c.setFillColor(Color(1, 1, 1, 0.92)); c.circle(fx + 34, fyy + fhh / 2, 19, fill=1, stroke=0)
-        fa_icon(c, fin.get("icon", "coins"), fx + 34, fyy + fhh / 2, 18, GOLD_D)
+        icx, icy = ovc("life.finance.icon", fx + 34, fyy + fhh / 2)
+        c.setFillColor(Color(1, 1, 1, 0.92)); c.circle(icx, icy, 19, fill=1, stroke=0)
+        fa_icon(c, fin.get("icon", "coins"), icx, icy, 18, GOLD_D)
         c.setFont(F_TB, 16); c.setFillColor(WHITE); c.drawString(fx + 66, fyy + fhh - 24, str(fin["title"]).upper())
-        draw_para(c, fin.get("text"), st(F_SB, 9.6, WHITE, leading=12), fx + 66, fyy + fhh - 30, fw - 150)
+        ftx, fty, ftw = tov_para("life.finance.text", fx + 66, fyy + fhh - 30, fw - 150)
+        draw_para(c, fin.get("text"), st(F_SB, 9.6, WHITE, leading=12), ftx, fty, ftw)
     footer(c, page_no, d["broker"]); c.showPage()
 
 

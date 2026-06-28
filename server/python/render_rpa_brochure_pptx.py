@@ -82,11 +82,24 @@ def _measure(ttf, size, text):
     return f.getlength(text)
 
 
-def fa(s, key, cx, cy, size, color, brand=False):
+def iov(slot, cx, cy):
+    """Centre d'icône depuis sa boîte override (modèle granulaire)."""
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return b[0] + b[2] / 2, b[1] + b[3] / 2
+    return cx, cy
+
+
+def fa(s, key, cx, cy, size, color, brand=False, slot=None):
     cp = (ICB if brand else IC).get(key)
     if cp is None:
-        return
-    icon(s, chr(cp), cx, cy, size, color, font="FAB" if brand else "FA")
+        return None
+    if slot:
+        cx, cy = iov(slot, cx, cy)
+    pic = icon(s, chr(cp), cx, cy, size, color, font="FAB" if brand else "FA")
+    if slot and pic is not None:
+        pic.name = "RPA::" + slot
+    return pic
 
 
 def draw_image(s, path, x, y, w, h, radius=10, dpi=240, slot=None):
@@ -151,9 +164,10 @@ def feature_card(s, x, y, w, h, glyph, label, desc, bg=CREAM, bdr=CREAM_B, icon_
     card = rect(s, x, y, w, h, fill=bg, line=bdr, line_w=1, radius=9)
     if slot:
         card.name = "RPA::" + slot
-    cxx = x + 26; cyy = y + h - 26
+    isl = ("%s.icon" % nbase) if nbase else None
+    cxx, cyy = iov(isl, x + 26, y + h - 26) if isl else (x + 26, y + h - 26)
     oval(s, cxx, cyy, 16, fill=WHITE, line=GOLD_LT, line_w=1)
-    fa(s, glyph, cxx, cyy, 15, icon_color)
+    fa(s, glyph, cxx, cyy, 15, icon_color, slot=isl)
     tx = x + 52
     text_line(s, tx, y + h - 22, label or "", "Osw-SB", 12.5, label_color,
               name=("RPA::%s.label" % nbase) if nbase else None)
@@ -257,12 +271,13 @@ def page_comfort(prs, d, page_no):
     s = new_slide(prs)
     top = _intro(s, sec, rt, "01 · " + sec.get("running", ""), "comfort")
     ih = 178.0
+    ib = ov("comfort.wide_image", M, top - ih, CW, ih)
     draw_image(s, sec.get("wide_image"), M, top - ih, CW, ih, radius=12, slot="comfort.wide_image")
     capn = sec.get("wide_caption") or {}
     if capn.get("text"):
-        scrim(s, M, top - ih, CW, 48, bot_alpha=150)
-        fa(s, capn.get("icon"), M + 18, top - ih + 15, 11, GOLD_LT)
-        text_line(s, M + 33, top - ih + 11, capn["text"], "Sg-SB", 9.5, WHITE, name="RPA::comfort.wide_caption.text")
+        scrim(s, ib[0], ib[1], ib[2], 48, bot_alpha=150)
+        fa(s, capn.get("icon"), ib[0] + 18, ib[1] + 15, 11, GOLD_LT, slot="comfort.wide_caption.icon")
+        text_line(s, ib[0] + 33, ib[1] + 11, capn["text"], "Sg-SB", 9.5, WHITE, name="RPA::comfort.wide_caption.text")
     gy = top - ih - 22
     feats = sec.get("features", [])
     gap = 14.0; cardw = (CW - gap) / 2; cardh = 66.0
@@ -277,7 +292,7 @@ def page_comfort(prs, d, page_no):
         ny = gy - rows * (cardh + gap) - 6
         nx, nyy, nw, nh = ov("comfort.note.card", M, ny - 46, CW, 46)
         grad_rect(s, nx, nyy, nw, nh, DEEP, DEEP2, radius=12, vertical=False).name = "RPA::comfort.note.card"
-        fa(s, "check", nx + 26, nyy + nh - 23, 15, GOLD_LT)
+        fa(s, "check", nx + 26, nyy + nh - 23, 15, GOLD_LT, slot="comfort.note.icon")
         text_line(s, nx + 48, nyy + nh - 19, note["title"], "Osw-SB", 12.5, WHITE, name="RPA::comfort.note.title")
         if note.get("sub"):
             text_line(s, nx + 48, nyy + nh - 32, note["sub"], "Sg", 9.5, GOLD_LT, name="RPA::comfort.note.sub")
@@ -295,7 +310,7 @@ def page_security(prs, d, page_no):
         text_line(s, px + 22, py + ph - 26, str(sec["panel_title"]).upper(), "Osw-SB", 12, GOLD_LT, tracking=1.6)
     iy = py + ph - 50
     for i, it in enumerate(sec.get("panel_items", [])[:5]):
-        fa(s, it.get("icon"), px + 30, iy - 2, 14, GOLD)
+        fa(s, it.get("icon"), px + 30, iy - 2, 14, GOLD, slot="security.panel_items.%d.icon" % i)
         para(s, px + 50, iy + 6, pw - 50 - 18, it.get("text"), "Sg", 10, WHITE, 13.0,
              name="RPA::security.panel_items.%d.text" % i)
         iy -= 37
@@ -314,8 +329,9 @@ def page_security(prs, d, page_no):
         x = M + i * (cw + gap); y = sc_y - chh
         bx, by, bw, bh = ov("security.services.%d.card" % i, x, y, cw, chh)
         rect(s, bx, by, bw, bh, fill=CREAM, line=CREAM_B, line_w=1, radius=10).name = "RPA::security.services.%d.card" % i
-        oval(s, bx + 26, by + bh - 26, 17, fill=WHITE, line=GOLD_LT, line_w=1)
-        fa(s, sv.get("icon"), bx + 26, by + bh - 26, 16, GOLD_D)
+        scx, scy = iov("security.services.%d.icon" % i, bx + 26, by + bh - 26)
+        oval(s, scx, scy, 17, fill=WHITE, line=GOLD_LT, line_w=1)
+        fa(s, sv.get("icon"), scx, scy, 16, GOLD_D, slot="security.services.%d.icon" % i)
         text_line(s, bx + 52, by + bh - 30, sv.get("label", ""), "Osw-SB", 13, DEEP,
                   name="RPA::security.services.%d.label" % i)
         para(s, bx + 16, by + bh - 48, bw - 30, sv.get("desc"), "Sg", 9.2, INK2, 11.8,
@@ -333,7 +349,7 @@ def page_amenities(prs, d, page_no):
         if not item.get("caption"):
             return
         scrim(s, x, y, w, 42, bot_alpha=165)
-        fa(s, item.get("icon"), x + 15, y + 13, 11, GOLD_LT)
+        fa(s, item.get("icon"), x + 15, y + 13, 11, GOLD_LT, slot="amenities.gallery.%d.icon" % idx)
         text_line(s, x + 30, y + 9, item["caption"], "Sg-SB", 9.5, WHITE, name="RPA::amenities.gallery.%d.caption" % idx)
     gap = 12.0; big_w = CW * 0.60; big_h = 196.0; sm_w = CW - big_w - gap; sm_h = (196.0 - gap) / 2
     g = (gallery + [{}] * 6)[:6]
@@ -370,7 +386,7 @@ def page_life(prs, d, page_no):
         bx, by, bw, bh = ov("life.events.%d.card" % i, x, y, cw, chh)
         rect(s, bx, by, bw, bh, fill=WHITE, line=CREAM_B, line_w=1, radius=10).name = "RPA::life.events.%d.card" % i
         draw_image(s, ev.get("image"), bx, by + bh - ch_img, bw, ch_img, radius=10)
-        fa(s, ev.get("icon"), bx + 18, by + bh - ch_img - 14, 14, GOLD_D)
+        fa(s, ev.get("icon"), bx + 18, by + bh - ch_img - 14, 14, GOLD_D, slot="life.events.%d.icon" % i)
         text_line(s, bx + 34, by + bh - ch_img - 18, ev.get("label", ""), "Osw-SB", 12.5, DEEP,
                   name="RPA::life.events.%d.label" % i)
         para(s, bx + 14, by + bh - ch_img - 30, bw - 26, ev.get("desc"), "Sg", 9.0, INK2, 11.6,
@@ -392,8 +408,9 @@ def page_life(prs, d, page_no):
         fy = gy - nrows * (chh2 + gap) - 8; fh = 58.0
         fx, fyy, fw, fhh = ov("life.finance.card", M, fy - fh, CW, fh)
         grad_rect(s, fx, fyy, fw, fhh, GOLD_D, GOLD, radius=14, vertical=False).name = "RPA::life.finance.card"
-        oval(s, fx + 34, fyy + fhh / 2, 19, fill=WHITE, fill_alpha=0.92)
-        fa(s, fin.get("icon", "coins"), fx + 34, fyy + fhh / 2, 18, GOLD_D)
+        ficx, ficy = iov("life.finance.icon", fx + 34, fyy + fhh / 2)
+        oval(s, ficx, ficy, 19, fill=WHITE, fill_alpha=0.92)
+        fa(s, fin.get("icon", "coins"), ficx, ficy, 18, GOLD_D, slot="life.finance.icon")
         text_line(s, fx + 66, fyy + fhh - 24, str(fin["title"]).upper(), "Osw-B", 16, WHITE)
         para(s, fx + 66, fyy + fhh - 30, fw - 150, fin.get("text"), "Sg-SB", 9.6, WHITE, 12, name="RPA::life.finance.text")
     footer(s, page_no, d["broker"])
@@ -466,13 +483,9 @@ def render(data, out):
     data.setdefault("content", {})
     global LAYOUT_OV
     LAYOUT_OV = data.get("layout") or {}
-    # Override de position des TEXTES AUTONOMES seulement (les textes de carte/panneau suivent
-    # leur conteneur — exclus pour éviter un double override).
-    standalone = {"cover.title.0", "cover.title.1", "cover.subtitle", "cover.hero_tag",
-                  "contact.title.0", "contact.title.1", "contact.cta"}
-    for sec in ("comfort", "security", "amenities", "life"):
-        standalone.update((sec + ".title.0", sec + ".title.1", sec + ".lead"))
-    H.set_pos({k: v for k, v in LAYOUT_OV.items() if k in standalone})
+    # Modèle GRANULAIRE : chaque TEXTE nommé est placé à sa propre boîte capturée (text_line/para
+    # consultent POS par nom). Les slots non-texte (.card/.image) n'y sont jamais cherchés → sans effet.
+    H.set_pos(LAYOUT_OV)
 
     cache = os.path.join(tempfile.gettempdir(), "softimmo_rpa_pptx")
     set_asset_dir(cache)
