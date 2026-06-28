@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Download, FileText, Info, MonitorPlay, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, Download, FileText, Info, MonitorPlay, RefreshCw, Eye, Check, Trash2 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Field, Input, Select } from '../components/ui.jsx';
 import { useI18n } from '../i18n/index.jsx';
@@ -76,6 +76,13 @@ export default function OffreEdit() {
       qc.invalidateQueries({ queryKey: ['offre', id] });
       qc.invalidateQueries({ queryKey: ['offres'] });
     } finally { setSaving(''); if (syncRef.current) syncRef.current.value = ''; }
+  };
+  // Garde-fou brouillon : approuver / rejeter le PPTX ré-ingéré, ou réinitialiser au défaut.
+  const draftAction = async (key, fn) => {
+    if (!id) return;
+    setSaving(key);
+    try { await fn(); qc.invalidateQueries({ queryKey: ['offre', id] }); qc.invalidateQueries({ queryKey: ['offres'] }); }
+    finally { setSaving(''); }
   };
 
   const Buttons = () => (
@@ -174,7 +181,20 @@ export default function OffreEdit() {
               <Button variant="primary" icon={RefreshCw} onClick={() => syncRef.current?.click()} disabled={saving === 'sync'}>
                 {saving === 'sync' ? t('off2.syncing') : t('off2.synchronize')}
               </Button>
+              {offer?.pptx_content && (
+                <Button variant="ghost" onClick={() => draftAction('reset', () => api.del(`/offres/${id}/pptx`))} disabled={!!saving}>
+                  {t('off2.pptxReset')}
+                </Button>
+              )}
             </div>
+            {offer?.draft_synced_at && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, padding: 10, borderRadius: 6, background: 'var(--color-bg-secondary)' }}>
+                <span className="badge badge-warning">{t('off2.draftBadge')}</span>
+                <Button variant="outline" size="sm" icon={Eye} onClick={() => window.open(api.url(`/offres/${id}/pdf?draft=1`), '_blank')} disabled={!!saving}>{t('off2.draftPreview')}</Button>
+                <Button variant="primary" size="sm" icon={Check} onClick={() => draftAction('approve', () => api.post(`/offres/${id}/pptx/approve`))} disabled={!!saving}>{t('off2.draftApprove')}</Button>
+                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => draftAction('discard', () => api.del(`/offres/${id}/pptx/draft`))} disabled={!!saving}>{t('off2.draftDiscard')}</Button>
+              </div>
+            )}
           </>
         )}
       </Card>

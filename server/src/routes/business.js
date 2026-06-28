@@ -705,7 +705,7 @@ export default function mountBusiness(parent = Router()) {
 
   // Données de rendu d'une offre SAUVEGARDÉE (PDF ou PPTX) : applique le contenu issu du
   // jumeau PPTX synchronisé (prioritaire) sinon la personnalisation (ordre/inclusion/assets).
-  function offerRenderData(d) {
+  function offerRenderData(d, { draft = false } = {}) {
     const o = offreOut(d);
     const variant = OFFRE_VARIANTS.includes(o.variant) ? o.variant : 'vendeur';
     const lang = OFFRE_LANGS.includes(o.lang) ? o.lang : 'fr';
@@ -728,7 +728,9 @@ export default function mountBusiness(parent = Router()) {
     const global = resolveOffreContent(Settings.get('offre_content', null));
     const contentOverride = {};
     for (const l of langs) {
-      contentOverride[l] = o.pptx_content?.[l] || applyOfferDiff(global[l]?.[variant] || {}, o.customization?.[l], resolveAsset);
+      // Garde-fou : en mode brouillon, le PPTX ré-ingéré non approuvé prime ; sinon version live.
+      const drafted = draft && o.draft_pptx_content?.[l];
+      contentOverride[l] = drafted || o.pptx_content?.[l] || applyOfferDiff(global[l]?.[variant] || {}, o.customization?.[l], resolveAsset);
     }
     const client = o.client_id ? Clients.get(o.client_id) : null;
     const property = o.property_id ? Properties.get(o.property_id) : null;
@@ -744,10 +746,10 @@ export default function mountBusiness(parent = Router()) {
 
   const getOffre = (id) => { const d = Documents.get(id); if (!d || d.doc_type !== 'offre') throw notFound('offre introuvable'); return d; };
 
-  // PDF d'une offre sauvegardée.
+  // PDF d'une offre sauvegardée (?draft=1 → prévisualise le brouillon PPTX non approuvé).
   parent.get('/offres/:id/pdf', wrap(async (req, res) => {
     const d = getOffre(req.params.id);
-    await streamOffrePdf(res, offerRenderData(d), offreOut(d).name || 'offre');
+    await streamOffrePdf(res, offerRenderData(d, { draft: wantDraft(req) }), offreOut(d).name || 'offre');
   }));
 
   // Jumeau PPTX éditable d'une offre (aller-retour).
@@ -762,7 +764,8 @@ export default function mountBusiness(parent = Router()) {
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
   }));
 
-  // Synchronisation : le PPTX édité est ré-ingéré → contenu de l'offre + PDF mis à jour.
+  // Synchronisation : le PPTX édité est ré-ingéré → enregistré en BROUILLON (draft_pptx_content),
+  // n'écrase PAS la version live. L'utilisateur prévisualise (?draft=1) puis Approuve ou Rejette.
   parent.post('/offres/:id/pptx/sync', upload.single('file'), wrap(async (req, res) => {
     const d = getOffre(req.params.id);
     if (!req.file) throw badRequest('Aucun fichier PPTX téléversé');
@@ -776,13 +779,46 @@ export default function mountBusiness(parent = Router()) {
       const o = offreOut(d);
       const l0 = (o.lang === 'en') ? 'en' : 'fr';   // le PPTX porte une seule langue (bi → fr)
       const data = { ...(d.data || {}) };
-      data.pptx_content = { ...(data.pptx_content || {}), [l0]: out.content };
-      data.pptx_synced_at = new Date().toISOString();
+      data.draft_pptx_content = { ...(data.draft_pptx_content || {}), [l0]: out.content };
+      data.draft_synced_at = new Date().toISOString();
       Documents.update(d.id, { data });
       res.json(offreOut(Documents.get(d.id)));
     } finally {
       try { fs.unlinkSync(tmp); } catch { /* ignore */ }
     }
+  }));
+
+  // Approuver le brouillon PPTX de l'offre : il remplace la version live, puis est effacé.
+  parent.post('/offres/:id/pptx/approve', wrap(async (req, res) => {
+    const d = getOffre(req.params.id);
+    if (!d.data || !d.data.draft_pptx_content) throw badRequest('Aucun brouillon à approuver');
+    const data = { ...d.data, pptx_content: { ...(d.data.pptx_content || {}), ...d.data.draft_pptx_content }, pptx_synced_at: new Date().toISOString() };
+    delete data.draft_pptx_content; delete data.draft_synced_at;
+    Documents.update(d.id, { data });
+    res.json(offreOut(Documents.get(d.id)));
+  }));
+
+  // Rejeter le brouillon PPTX (la version live reste inchangée).
+  parent.delete('/offres/:id/pptx/draft', wrap(async (req, res) => {
+    const d = getOffre(req.params.id);
+    if (d.data && (d.data.draft_pptx_content || d.data.draft_synced_at)) {
+      const data = { ...d.data }; delete data.draft_pptx_content; delete data.draft_synced_at;
+      Documents.update(d.id, { data });
+    }
+    res.status(204).end();
+  }));
+
+  // Reset to default : efface le contenu issu du PPTX (live + brouillon) → retour au contenu par
+  // défaut/éditeur de l'application (la personnalisation structurée de l'app est conservée).
+  parent.delete('/offres/:id/pptx', wrap(async (req, res) => {
+    const d = getOffre(req.params.id);
+    if (d.data && (d.data.pptx_content || d.data.draft_pptx_content)) {
+      const data = { ...d.data };
+      delete data.pptx_content; delete data.pptx_synced_at;
+      delete data.draft_pptx_content; delete data.draft_synced_at;
+      Documents.update(d.id, { data });
+    }
+    res.status(204).end();
   }));
 
   // Images de marque du courtier (logo, bannière de fond, portrait). Stockées dans broker_profile.
