@@ -58,21 +58,23 @@ export default function SalesAttributes() {
           <div className="page-subtitle">{t('sa.subtitle')}</div>
         </div>
         <div className="spacer" />
-        <div className="field" style={{ margin: 0, minWidth: 200 }}>
-          <label>{t('sa.typeFilter')}</label>
-          <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-            <option value="all">{t('sa.allTypes')}</option>
-            {types.map((ty) => <option key={ty.key} value={ty.key}>{lab(ty)}</option>)}
-          </Select>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+          <div className="field" style={{ margin: 0, minWidth: 200 }}>
+            <label>{t('sa.typeFilter')}</label>
+            <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
+              <option value="all">{t('sa.allTypes')}</option>
+              {types.map((ty) => <option key={ty.key} value={ty.key}>{lab(ty)}</option>)}
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            icon={RotateCcw}
+            disabled={reset.isPending}
+            onClick={() => { if (window.confirm(t('sa.resetConfirm'))) reset.mutate(); }}
+          >
+            {t('sa.reset')}
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          icon={RotateCcw}
-          disabled={reset.isPending}
-          onClick={() => { if (window.confirm(t('sa.resetConfirm'))) reset.mutate(); }}
-        >
-          {t('sa.reset')}
-        </Button>
       </div>
 
       {menuFor && <div className="sa-menu-backdrop" onClick={() => setMenuFor(null)} />}
