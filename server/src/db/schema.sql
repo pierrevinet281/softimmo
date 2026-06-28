@@ -288,6 +288,7 @@ CREATE TABLE IF NOT EXISTS properties (
   status        TEXT NOT NULL DEFAULT 'prospect', -- prospect|actif|inscrit|vendu|expire|archive
   summary       TEXT,
   notes         TEXT,
+  attributes    TEXT,                  -- JSON : valeurs des attributs de vente par type (voir lib/salesAttributes)
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
