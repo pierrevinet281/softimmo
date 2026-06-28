@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
   History, Scale, FileText, AlertTriangle, Info, Plus, Upload, FileDown, Presentation,
-  Image as ImageIcon, Trash2, Megaphone, Copy, Check,
+  Image as ImageIcon, Trash2, Megaphone, Copy, Check, Save, Pencil, Eye,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
@@ -463,7 +463,9 @@ const BROCHURE_TEMPLATES = [
   { id: 'industriel', labelKey: 'd.bro.industriel', descKey: 'd.bro.industriel.d' },
 ];
 
-function PptxSync({ statusUrl, postUrl, queryKey, labelKey, hintKey }) {
+// Round-trip PPTX d'UNE propriété avec garde-fou draft → approve/discard + reset to default.
+// Le sync enregistre un BROUILLON ; la version live n'est remplacée qu'à l'approbation.
+function PptxSync({ statusUrl, postUrl, approveUrl, discardUrl, draftPreviewUrl, queryKey, labelKey, hintKey }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const ref = useRef(null);
@@ -471,18 +473,21 @@ function PptxSync({ statusUrl, postUrl, queryKey, labelKey, hintKey }) {
   const [msg, setMsg] = useState(null);
   const { data } = useQuery({ queryKey, queryFn: () => api.get(statusUrl) });
   const inv = () => qc.invalidateQueries({ queryKey });
+  const run = async (fn, okKey) => {
+    setBusy(true); setMsg(null);
+    try { const r = await fn(); setMsg(okKey ? t(okKey) : null); inv(); return r; }
+    catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+  };
   const onFile = async (e) => {
     const f = e.target.files?.[0]; e.target.value = '';
     if (!f) return;
-    setBusy(true); setMsg(null);
-    try {
+    await run(async () => {
       const fd = new FormData(); fd.append('file', f);
       const r = await api.upload(postUrl, fd);
-      setMsg(t('d.bro.synced').replace('{n}', (r.roles || []).length));
-      inv();
-    } catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+      setMsg(t('d.bro.draft.ready').replace('{n}', (r.roles || []).length));
+      return r;
+    });
   };
-  const reset = async () => { await api.del(statusUrl); inv(); };
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -491,14 +496,23 @@ function PptxSync({ statusUrl, postUrl, queryKey, labelKey, hintKey }) {
         </Button>
         <input ref={ref} type="file" accept=".pptx" hidden onChange={onFile} />
         {data?.customized && <Badge tone="info">{t('d.bro.tpl.custom')}</Badge>}
-        {data?.customized && <Button size="sm" variant="ghost" onClick={reset}>{t('d.bro.tpl.reset')}</Button>}
+        {data?.customized && <Button size="sm" variant="ghost" onClick={() => run(() => api.del(statusUrl))} disabled={busy}>{t('d.bro.tpl.reset')}</Button>}
       </div>
+      {data?.hasDraft && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, padding: 8, borderRadius: 6, background: 'var(--color-bg-secondary)' }}>
+          <Badge tone="warning">{t('d.bro.draft.badge')}</Badge>
+          <Button size="sm" variant="outline" icon={Eye} onClick={() => window.open(draftPreviewUrl, '_blank')}>{t('d.bro.draft.preview')}</Button>
+          <Button size="sm" icon={Check} onClick={() => run(() => api.post(approveUrl), 'd.bro.draft.approved')} disabled={busy}>{t('d.bro.draft.approve')}</Button>
+          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => run(() => api.del(discardUrl))} disabled={busy}>{t('d.bro.draft.discard')}</Button>
+        </div>
+      )}
       {msg && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{msg}</div>}
       <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t(hintKey)}</div>
     </div>
   );
 }
 
+// Round-trip des POSITIONS du MODÈLE (global) avec garde-fou draft → approve/discard + reset.
 function TemplateLayout({ template }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -510,18 +524,21 @@ function TemplateLayout({ template }) {
     queryFn: () => api.get(`/brochure/templates/${template}/layout`),
   });
   const inv = () => qc.invalidateQueries({ queryKey: ['tpl-layout', template] });
+  const run = async (fn, okKey) => {
+    setBusy(true); setMsg(null);
+    try { const r = await fn(); setMsg(okKey ? t(okKey) : null); inv(); return r; }
+    catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+  };
   const onFile = async (e) => {
     const f = e.target.files?.[0]; e.target.value = '';
     if (!f) return;
-    setBusy(true); setMsg(null);
-    try {
+    await run(async () => {
       const fd = new FormData(); fd.append('file', f);
       const r = await api.upload(`/brochure/templates/${template}/layout`, fd);
-      setMsg(t('d.bro.tpl.done').replace('{n}', (r.roles || []).length));
-      inv();
-    } catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+      setMsg(t('d.bro.draft.ready').replace('{n}', (r.roles || []).length));
+      return r;
+    });
   };
-  const reset = async () => { await api.del(`/brochure/templates/${template}/layout`); inv(); };
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -530,16 +547,179 @@ function TemplateLayout({ template }) {
         </Button>
         <input ref={ref} type="file" accept=".pptx" hidden onChange={onFile} />
         {data?.customized && <Badge tone="info">{t('d.bro.tpl.custom')}</Badge>}
-        {data?.customized && <Button size="sm" variant="ghost" onClick={reset}>{t('d.bro.tpl.reset')}</Button>}
+        {data?.customized && <Button size="sm" variant="ghost" onClick={() => run(() => api.del(`/brochure/templates/${template}/layout`))} disabled={busy}>{t('d.bro.tpl.reset')}</Button>}
       </div>
+      {data?.hasDraft && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, padding: 8, borderRadius: 6, background: 'var(--color-bg-secondary)' }}>
+          <Badge tone="warning">{t('d.bro.draft.badge')}</Badge>
+          <Button size="sm" variant="outline" icon={Eye} onClick={() => window.open(api.url(`/brochure/templates/${template}/sample.pdf?draft=1`), '_blank')}>{t('d.bro.draft.preview')}</Button>
+          <Button size="sm" icon={Check} onClick={() => run(() => api.post(`/brochure/templates/${template}/layout/approve`), 'd.bro.draft.approved')} disabled={busy}>{t('d.bro.draft.approve')}</Button>
+          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => run(() => api.del(`/brochure/templates/${template}/layout/draft`))} disabled={busy}>{t('d.bro.draft.discard')}</Button>
+        </div>
+      )}
       {msg && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{msg}</div>}
       <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t('d.bro.tpl.hint')}</div>
     </div>
   );
 }
 
+// ─────────────────────────── Éditeur de contenu RPA (Module 4 phase 1b) ───────────────────────────
+// Format éditorial distinct (render_rpa_brochure). Déterministe, sans IA : le contenu par défaut
+// (rpa-brochure-content.json) sert de schéma ; la surcharge texte par propriété est enregistrée dans
+// documents.data.content ; les photos sont affectées aux emplacements via le rôle de la photo (rpa_*).
+const RPA_LABELS = {
+  running_title: 'Titre courant', cover: 'Couverture', comfort: 'Confort', security: 'Sécurité',
+  amenities: 'Commodités', life: 'Vie sociale', contact: 'Contact', pill: 'Pastille',
+  eyebrow: 'Sur-titre', title: 'Titre', subtitle: 'Sous-titre', chips: 'Puces', text: 'Texte',
+  lead: 'Accroche', kicker: 'Intro', features: 'Caractéristiques', label: 'Libellé', desc: 'Description',
+  note: 'Note', sub: 'Sous-texte', wide_caption: 'Légende (image large)', panel_title: 'Titre du panneau',
+  panel_items: 'Éléments du panneau', panel_caption: 'Légende du panneau', services: 'Services',
+  services_title: 'Titre des services', services_kicker: 'Intro services', gallery: 'Galerie',
+  caption: 'Légende', pillars: 'Piliers', events: 'Événements', neighborhood: 'Quartier',
+  neighborhood_title: 'Titre du quartier', neighborhood_kicker: 'Intro quartier', finance: 'Avantage financier',
+  cta: "Appel à l'action", disclaimer: 'Avertissement', running: 'Titre courant', hero_tag: 'Étiquette',
+};
+const RPA_SLOT_LABELS = {
+  rpa_cover: 'Couverture (héros)', rpa_comfort: 'Confort (image large)', rpa_security: 'Sécurité (panneau)',
+  rpa_gallery1: 'Galerie 1', rpa_gallery2: 'Galerie 2', rpa_gallery3: 'Galerie 3',
+  rpa_gallery4: 'Galerie 4', rpa_gallery5: 'Galerie 5', rpa_gallery6: 'Galerie 6',
+  rpa_event1: 'Événement 1', rpa_event2: 'Événement 2', rpa_event3: 'Événement 3',
+  rpa_contact: 'Contact (héros)',
+};
+const rpaLabel = (k) => RPA_LABELS[k] || String(k).replace(/_/g, ' ');
+const RPA_SKIP = new Set(['icon']);
+const rpaIsObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+function rpaMergeDeep(base, over) {
+  if (!rpaIsObj(base)) return over === undefined ? base : over;
+  if (!rpaIsObj(over)) return over === undefined ? base : over;
+  const out = { ...base };
+  for (const k of Object.keys(over)) out[k] = rpaIsObj(base[k]) && rpaIsObj(over[k]) ? rpaMergeDeep(base[k], over[k]) : over[k];
+  return out;
+}
+function rpaSetAt(obj, parts, value) {
+  const out = Array.isArray(obj) ? [...obj] : { ...obj };
+  let cur = out;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const k = parts[i];
+    cur[k] = Array.isArray(cur[k]) ? [...cur[k]] : { ...cur[k] };
+    cur = cur[k];
+  }
+  cur[parts[parts.length - 1]] = value;
+  return out;
+}
+const RPA_INPUT = { width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13, fontFamily: 'inherit' };
+function RpaText({ value, onChange }) {
+  const v = value == null ? '' : value;
+  const rows = v.length > 60 ? 3 : 1;
+  return <textarea value={v} rows={rows} onChange={(e) => onChange(e.target.value)} style={{ ...RPA_INPUT, resize: 'vertical' }} />;
+}
+function RpaNode({ node, path, onChange }) {
+  if (typeof node === 'string' || node == null) return <RpaText value={node} onChange={(val) => onChange(path, val)} />;
+  if (Array.isArray(node)) {
+    const allStr = node.every((x) => typeof x === 'string' || x == null);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: allStr ? 6 : 10 }}>
+        {node.map((item, i) => (allStr ? (
+          <RpaText key={i} value={item} onChange={(val) => onChange([...path, i], val)} />
+        ) : (
+          <div key={i} className="card" style={{ padding: 10, border: '1px solid var(--color-border)' }}>
+            <RpaNode node={item} path={[...path, i]} onChange={onChange} />
+          </div>
+        )))}
+      </div>
+    );
+  }
+  if (rpaIsObj(node)) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {Object.keys(node).filter((k) => !RPA_SKIP.has(k) && !k.startsWith('_')).map((k) => (
+          <div key={k}>
+            <div className="muted" style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{rpaLabel(k)}</div>
+            <RpaNode node={node[k]} path={[...path, k]} onChange={onChange} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+function RpaContentEditor({ propertyId, onClose }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({ queryKey: ['rpa-content', propertyId], queryFn: () => api.get(`/properties/${propertyId}/brochure/rpa/content`) });
+  const { data: photos = [] } = useQuery({ queryKey: ['photos', propertyId], queryFn: () => api.get(`/properties/${propertyId}/photos`) });
+  const [draft, setDraft] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  React.useEffect(() => {
+    if (data && draft === null) setDraft(rpaMergeDeep(data.schema || {}, data.value || {}));
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onChange = (path, value) => setDraft((d) => rpaSetAt(d, path, value));
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    try { await api.put(`/properties/${propertyId}/brochure/rpa/content`, { content: draft }); setMsg(t('d.rpa.saved')); }
+    catch (e) { setMsg(e.message); } finally { setBusy(false); }
+  };
+  const assign = async (role, mediaId) => {
+    const prev = photos.find((p) => p.role === role);
+    if (prev && prev.id !== mediaId) await api.patch(`/properties/${propertyId}/photos/${prev.id}`, { role: 'gallery' });
+    if (mediaId) await api.patch(`/properties/${propertyId}/photos/${mediaId}`, { role });
+    qc.invalidateQueries({ queryKey: ['photos', propertyId] });
+  };
+  const slots = data?.slots || [];
+  const sectionKeys = draft ? Object.keys(draft).filter((k) => !k.startsWith('_')) : [];
+  return (
+    <Modal title={t('d.rpa.title')} onClose={onClose} size="lg">
+      {isLoading || !draft ? (
+        <div className="muted">…</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '68vh', overflowY: 'auto', paddingRight: 4 }}>
+          <div className="muted" style={{ fontSize: 13 }}>{t('d.rpa.hint')}</div>
+          <Card>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('d.rpa.photos')}</div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{t('d.rpa.photos.hint')}</div>
+            {photos.length === 0 ? (
+              <div className="muted" style={{ fontSize: 12 }}>{t('d.rpa.photos.empty')}</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                {slots.map(({ slot, role }) => {
+                  const cur = photos.find((p) => p.role === role);
+                  return (
+                    <div key={role}>
+                      <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{RPA_SLOT_LABELS[role] || slot}</div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {cur && <img src={api.url(cur.url)} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
+                        <select value={cur?.id || ''} onChange={(e) => assign(role, e.target.value)} style={{ ...RPA_INPUT, flex: 1 }}>
+                          <option value="">{t('d.rpa.photo.none')}</option>
+                          {photos.map((p) => <option key={p.id} value={p.id}>{p.filename || p.id}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+          {sectionKeys.map((k) => (
+            <Card key={k}>
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>{rpaLabel(k)}</div>
+              <RpaNode node={draft[k]} path={[k]} onChange={onChange} />
+            </Card>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14, alignItems: 'center' }}>
+        {msg && <span className="muted" style={{ fontSize: 12 }}>{msg}</span>}
+        <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+        <Button icon={Save} onClick={save} disabled={busy || !draft}>{busy ? t('d.rpa.saving') : t('common.save')}</Button>
+      </div>
+    </Modal>
+  );
+}
+
 function BrochureChooser({ propertyId, onClose }) {
   const { t } = useI18n();
+  const [rpaEdit, setRpaEdit] = useState(false);
   const gen = (tplId, fmt) => {
     window.open(api.url(`/properties/${propertyId}/brochure.${fmt}?template=${tplId}`), '_blank');
     onClose();
@@ -562,23 +742,28 @@ function BrochureChooser({ propertyId, onClose }) {
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t(tpl.descKey)}</div>
             {!tpl.soon && (
               <>
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   <Button size="sm" icon={FileDown} onClick={() => gen(tpl.id, 'pdf')}>{t('d.bro.pdf')}</Button>
                   <Button size="sm" variant="outline" icon={Presentation} onClick={() => gen(tpl.id, 'pptx')}>{t('d.bro.pptx')}</Button>
+                  {tpl.id === 'rpa' && <Button size="sm" variant="outline" icon={Pencil} onClick={() => setRpaEdit(true)}>{t('d.bro.rpa.edit')}</Button>}
                 </div>
                 <PptxSync
                   statusUrl={`/properties/${propertyId}/brochure/${tpl.id}/presentation`}
                   postUrl={`/properties/${propertyId}/brochure/${tpl.id}/sync`}
+                  approveUrl={`/properties/${propertyId}/brochure/${tpl.id}/approve`}
+                  discardUrl={`/properties/${propertyId}/brochure/${tpl.id}/draft`}
+                  draftPreviewUrl={api.url(`/properties/${propertyId}/brochure.pdf?template=${tpl.id}&draft=1`)}
                   queryKey={['pres', propertyId, tpl.id]}
                   labelKey="d.bro.pres.update"
-                  hintKey="d.bro.pres.hint"
+                  hintKey={tpl.id === 'rpa' ? 'd.bro.pres.hintRpa' : 'd.bro.pres.hint'}
                 />
-                <TemplateLayout template={tpl.id} />
+                {tpl.id !== 'rpa' && <TemplateLayout template={tpl.id} />}
               </>
             )}
           </div>
         ))}
       </div>
+      {rpaEdit && <RpaContentEditor propertyId={propertyId} onClose={() => setRpaEdit(false)} />}
     </Modal>
   );
 }

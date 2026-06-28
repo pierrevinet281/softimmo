@@ -23,10 +23,22 @@ Formulaire (nom, type, catégorie, langue, texte, tags, notes) + téléversement
 (aperçu image / lien PDF). Bouton **« Ajouter un nouveau »** (après save) → repart vierge.
 > Le fichier ne s'attache qu'après création (id requis pour l'upload).
 
-## Gabarits (3 onglets)
-- **Brochures** : les 5 modèles (unifamiliale, Luxury, RPA·Location, Commercial, Industriel).
-  Chaque carte : **Aperçu PDF** (`/brochure/templates/:t/sample.pdf`) + **PPTX éditable**
-  (`…/sample.pptx`). RPA = format éditorial (PPTX masqué pour RPA, `pptx:false`).
+## Gabarits → Bibliothèque de brochures (onglet « Brochures », Session 38)
+Modèle **« cloner pour éditer »** : chaque carte = un document **`brochure_variant`**
+(`template` = famille → moteur de rendu). Les **5 familles** (unifamiliale, Luxury, RPA·Location,
+Commercial, Industriel) sont seedées comme **originaux verrouillés**.
+- **Carte** : nom, description, type(s) de propriété ; boutons **Aperçu PDF · Éditer · Cloner ·
+  Supprimer** (Supprimer caché sur un original ; cadenas si verrouillée). `Éditer` masqué si
+  verrouillée sauf admin (mono-utilisateur = admin).
+- **Clone** (`POST /brochure/library/clone`) → copie **`_copy` déverrouillée** + ouvre le dialogue.
+- **Dialogue Edit/Clone** (`VariantDialog`) : Retour · Nom · Type · Nom de propriété · Langue ·
+  **toggle Verrou** · Voir PDF · Télécharger PPTX · **Téléverser PPTX** (→ brouillon) · **Réviser
+  le brouillon** (`/sample.pdf?draft=1`) · **Approuver** (remplace code+PDF de la copie) · **Rejeter**.
+- **Garde-fou** : verrouillé → `Téléverser`/`Approuver` bloqués (déverrouiller ou cloner d'abord).
+- API : `GET /brochure/library`, `POST /clone`, `GET/PUT/DELETE /brochure/variants/:id`,
+  `POST …/sync` (→draft), `POST …/approve`, `DELETE …/draft`, `GET …/sample.pdf|.pptx`.
+- RPA = contenu **+ positions** (aller-retour granulaire, voir *Brochure RPA.md*) ; familles
+  standard = positions (`ingest_pptx`).
 - **Posts** / **Présentations** : à venir (EmptyState).
 
 ## Lien avec l'offre

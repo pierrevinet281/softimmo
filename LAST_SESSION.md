@@ -1,8 +1,8 @@
 # LAST_SESSION.md
 
-> Continuité entre sessions. Lu après `CLAUDE.md`. Mis à jour au closeout.
-> **Concis volontairement** — l'historique détaillé vit dans `git log` (PR par session) et
-> les tâches reportées dans **GitHub issue #53**. Vue d'ensemble : `PLAN_GLOBAL.md`.
+> Continuité entre sessions. Lu après `CLAUDE.md`. **Concis volontairement** — le détail vit
+> dans `git log` (PR par session), les tâches reportées dans **issue #53**, la vue d'ensemble
+> dans `PLAN_GLOBAL.md`, l'architecture dans `documentation/`.
 
 ---
 
@@ -11,65 +11,63 @@
 **Prompt de reprise :** « Nouvelle session Softimmo. Lis `CLAUDE.md`, `LAST_SESSION.md` et
 `PLAN_GLOBAL.md`, puis enchaîne sur la prochaine tâche (issue #53). Mode continu. »
 
-**Où on en est (après 37 sessions, tout sur `main`) :**
-- **Modules 1 & 2 livrés** (analyse de propriété ; ACM/évaluation). Suites Module 2 dans #53.
-- **Module 3 (Offre de services) COMPLET** : générateur PDF déterministe vendeur/acheteur ;
-  **offres sauvegardables** (Liste/Ajouter-éditer/Gabarits, convertir en gabarit) ;
-  **customizer par offre** (toggles inclure/exclure, glisser-déposer, insertion d'images) ;
-  **aller-retour PPTX** ; page **ACCOUNT › Profile** (identité + image de marque + contenu).
-- **Module 4 (brochures + annonces)** : 5 modèles PDF/PPTX + round-trip propriété ; **brochure
-  RPA éditoriale 6 pages** (moteur livré). **Commercial/Industriel + form RPA 1b à bâtir (#53).**
-- **Assets courtier** : bibliothèque `broker_assets` (Liste/Ajouter-éditer/Gabarits).
-- Doc : `documentation/ARCHITECTURE.md`, `documentation/Pages Technical Documentation/`,
-  `PLAN_GLOBAL.md`. Lanceurs : `..\Scripts\`.
+**Où on en est (après 38 sessions, tout sur `main`) :**
+- **Modules 1, 2 (cœur), 3 livrés.** Suites Module 2 dans #53.
+- **Module 4 (marketing) — brochure RPA très avancée :**
+  - Éditeur de contenu structuré + affectation des photos (13 emplacements).
+  - **Jumeau PPTX fidèle** (miroir au point près du PDF) + **aller-retour PPTX↔code↔PDF
+    granulaire** : l'utilisateur déplace/édite **n'importe quel élément** dans PowerPoint
+    (≈180 suivis : images, cartes, icônes, libellés, logos, pastilles, titres, filets) → reflété
+    dans le PDF **et** le PPTX.
+  - **Garde-fou** sync : brouillon → **Approuver/Rejeter/Réinitialiser** (brochure propriété,
+    offre, gabarit).
+  - **Bibliothèque de brochures** (`/assets-courtier/templates`) : 5 familles = **originaux
+    verrouillés** → **Clone** en copie éditable (dialogue Edit/Clone complet).
+- **Restent (#53)** : étendre le round-trip granulaire aux familles **standard**, bâtir
+  **Commercial/Industriel**, Module 5, suites Module 2.
 
-**Prochaine tâche → issue #53** (ordre suggéré : RPA Phase 1b → Commercial → Industriel →
-Module 5). Voir `PLAN_GLOBAL.md`.
+**Rappels** : seul `SoftImmoDev` modifiable (sauf lanceurs `..\Scripts` demandés) ; conformité non
+négociable ; déterministe d'abord. Remote `https://github.com/pierrevinet281/softimmo`.
+**Backup : `..\Backup-Softimmo\Lancer-Backup.bat`** (consigner hash dans `documentation/BACKUP_LOG.md`).
 
-**Rappels** : seul `SoftImmoDev` modifiable (sauf lanceurs `..\Scripts` demandés explicitement) ;
-conformité non négociable ; déterministe d'abord. Remote
-`https://github.com/pierrevinet281/softimmo`. **Backup : `..\Backup-Softimmo\Lancer-Backup.bat`.**
+---
+
+## Session 38 — Brochure RPA : édition + aller-retour PPTX granulaire + bibliothèque (2026-06-28)
+
+**Fichiers clés** : `render_rpa_brochure.py` (PDF), `render_rpa_brochure_pptx.py` + `rpa_pptx_helpers.py`
+(jumeau PPTX), `ingest_rpa_brochure_pptx.py` (round-trip), `rpaBrochure.js`, `business.js` (routes
+bibliothèque + garde-fou), `BrokerTemplates.jsx`, `OffreEdit.jsx`, `PropertyDetail.jsx`.
+
+1. **Éditeur de contenu RPA (Phase 1b)** + affectation photos aux rôles `rpa_*`. Correctif couverture
+   (chevauchement pastilles/sous-titre).
+2. **Jumeau PPTX RPA fidèle** : refait selon la méthode de l'app ancêtre `rpa_mlt` (primitives
+   `rpa_pptx_helpers` aux mêmes coordonnées que le PDF, icônes FA en PNG). Voir mémoire
+   `pptx-twin-mirrors-pdf`.
+3. **Round-trip granulaire (positions)** : ingest capture **texte + position** de chaque forme
+   nommée ; **les 2 moteurs** consultent `data.layout`. Nommage `RPA::` (texte+pos) / `RPAp::`
+   (pos seule). Helpers `ov/ovc/iov/tov_text/tov_para/ovline` (PDF), `set_pos/POS` (PPTX),
+   conversion boîte↔ligne-de-base (`ASC`). **Vérifié par rendu réel** (capture défaut = baseline ;
+   déplacements OK).
+4. **Garde-fou draft** sur les 3 round-trips (brochure propriété, offre, gabarit) :
+   sync → `data.draft` → aperçu `?draft=1` → Approve/Reject/Reset.
+5. **Bibliothèque de brochures** (modèle unifié `documents` doc_type=`brochure_variant`) :
+   5 familles seedées verrouillées ; **clone** → copie `_copy` éditable. Routes `/brochure/library`,
+   `/clone`, `/variants/:id/*`. Indépendance : rendu propriété = son snapshot (sinon défaut gabarit).
+
+**Vérifié** : `vite build`, `node --check`, `python ast` ; round-trips RPA testés bout-en-bout (rendu
+PDF/PPTX réel via le serveur + export PNG PowerPoint).
+
+**Reste (#53)** : round-trip granulaire pour familles standard ; fins séparateurs/scrims ; polices
+PPTX embarquées ; contenu RPA EN ; Commercial/Industriel.
 
 ---
 
-## Session 37 — Module 3 complet (offres + customizer + PPTX) + brochure RPA + Profil (2026-06-27)
-
-**Module 3 — refonte complète du module Offre :**
-- **Nav** : nouveau bloc **ACCOUNT › Profile** (`/profile`, ex-« Profil du courtier ») ; **Offre
-  de services** devient parent (Liste et recherche / Ajouter-éditer / Gabarits). Blocs Broker
-  profile + Témoignages retirés de `/offres` (désormais dans Profile).
-- **Offres = entités** (`documents` doc_type='offre') : `GET/POST/PUT/DELETE /offres`,
-  `?templates=`, **Nom de l'offre**, type client/opportunité, **Convertir en gabarit**.
-  Boutons **Enregistrer / Enregistrer et générer le PDF / Enregistrer et personnaliser en PPTX**
-  (haut + bas). Pages `OffresList`, `OffreEdit`, `OffreTemplates`.
-- **Customizer par offre** (`OffreContentCustomizer`) : **toggles verts inclure/exclure**
-  (sections + éléments) alignés à droite, **glisser-déposer** (sections + éléments), **insertion
-  d'images** n'importe où (logo/bannière/portrait/buste/photo + bibliothèque). Stocké dans
-  `data.customization[lang]` (diff) ; `offre.js applyOfferDiff` → contenu prêt au rendu.
-- **Aller-retour PPTX** : `render_offre_pptx.py` (1 diapo/section, formes nommées) +
-  `ingest_offre_pptx.py` (`GET /offres/:id/pptx`, `POST …/pptx/sync`). `pptx_content` prioritaire
-  sur le PDF ; le dernier édité (app vs PPTX) gagne.
-- **Profil du courtier** : identité + **image de marque** (logo/bannière/portrait + couleurs
-  bannière/titres) + **éditeur de contenu** (DnD, masquer, sections custom). `render_offre.py`
-  thématisé (couleurs + bannière image + contraste auto).
-- **Correctifs** : logo de l'offre (repli bibliothèque Assets) ; **bug latent** PIL `Image`
-  masquait le flowable ReportLab `Image` (plantait la photo contact) — corrigé.
-
-**Module 4 — brochure RPA éditoriale** : `render_rpa_brochure.py` (6 pages, data-driven, porté
-de `rpa_mlt`), `rpa-brochure-content.json` (FR), `rpaBrochure.js`, routage `template='rpa'`.
-Polices Oswald + Font Awesome copiées dans `assets/fonts/`.
-
-**Assets courtier** : table `broker_assets` + repo + CRUD + upload/raw ; pages Liste/Édition/
-Gabarits ; types (dont **buste**) ; bouton **Ajouter un nouveau**.
-
-**Exploitation** : lanceurs dans `..\Scripts\` (Demarrer / Arreter [ports 8787/5180] /
-Production / Installation-Initiale).
-
-**Vérifié** : builds web OK ; round-trips offre PDF+PPTX testés bout-en-bout sur le serveur.
-
----
+## Sessions antérieures (résumé)
+- **S37** : Module 3 complet (offres sauvegardables + customizer + aller-retour PPTX), page Profil,
+  Assets courtier, moteur brochure RPA éditoriale 6 pages. Détail : `git log`.
+- **S1–36** : Modules 1 & 2, socle (shell/DB/jobs/IA), brochures standard + layout PPTX.
 
 ## Prochaines tâches
-Voir **issue #53** et `PLAN_GLOBAL.md`. Priorité : **brochure RPA Phase 1b** (formulaire +
-photos), puis **Commercial** et **Industriel** (taxonomies de champs → BD + formulaire + détail
-+ brochure, champ vide masqué), puis **Module 5** (guides).
+Voir **issue #53** et `PLAN_GLOBAL.md`. Priorité : **étendre le round-trip granulaire aux familles
+standard**, puis **Commercial** et **Industriel** (taxonomies → BD + formulaire + détail + brochure),
+puis **Module 5**.
