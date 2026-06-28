@@ -18,7 +18,7 @@ import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js'
 import { computeAcm } from '../engine/acm.js';
 import { buildMarketingCopy } from '../engine/marketingCopy.js';
 import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS, resolveOffreContent, applyOfferDiff } from '../engine/offre.js';
-import { buildRpaData, imagesFromMedia } from '../engine/rpaBrochure.js';
+import { buildRpaData, imagesFromMedia, rpaDefaults, RPA_IMAGE_SLOTS, RPA_ROLES } from '../engine/rpaBrochure.js';
 import { getAcmParams, setAcmParams, getAcmDefaults } from '../lib/acmParams.js';
 
 // Permissive schemas: every field optional + passthrough. Required-on-create is enforced
@@ -394,6 +394,33 @@ export default function mountBusiness(parent = Router()) {
     res.status(204).end();
   }));
 
+  // ── Brochure RPA : édition du contenu (Module 4 phase 1b) ──
+  // Format éditorial distinct (render_rpa_brochure) : le contenu par défaut sert de schéma ;
+  // la surcharge par propriété (texte) est stockée dans documents.data.content (template='rpa').
+  // Les photos sont affectées aux emplacements via le rôle de la photo (rpa_*, voir RPA_IMAGE_SLOTS).
+  parent.get('/properties/:id/brochure/rpa/content', wrap(async (req, res) => {
+    if (!Properties.get(req.params.id)) throw notFound('property introuvable');
+    const lang = String(req.query.lang || 'fr');
+    const pres = getPresentation(req.params.id, 'rpa');
+    res.json({
+      lang,
+      schema: rpaDefaults(lang),                 // défauts (= placeholders + structure du formulaire)
+      value: (pres && pres.data && pres.data.content) || {},  // surcharge texte enregistrée
+      slots: RPA_IMAGE_SLOTS,                     // { slot, role } pour l'affectation des photos
+    });
+  }));
+
+  parent.put('/properties/:id/brochure/rpa/content', wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const content = (req.body && typeof req.body.content === 'object' && req.body.content) || {};
+    const existing = getPresentation(property.id, 'rpa');
+    const data = { ...((existing && existing.data) || {}), content };
+    if (existing) Documents.update(existing.id, { data });
+    else Documents.create({ property_id: property.id, template: 'rpa', doc_type: 'brochure', title: 'Présentation rpa', format: 'pdf', status: 'final', data });
+    res.json({ saved: true });
+  }));
+
   // ── Photos de propriété (téléversement + rôles pour la brochure) ──
   const PHOTO_ROLES = ['hero', 'map', 'interior', 'gallery'];
   const EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
@@ -433,7 +460,8 @@ export default function mountBusiness(parent = Router()) {
     if (!m || m.property_id !== req.params.id) throw notFound('photo introuvable');
     const patch = {};
     if (req.body?.role !== undefined) {
-      if (!PHOTO_ROLES.includes(req.body.role)) throw badRequest(`Rôle inconnu : ${req.body.role}`);
+      // Rôles génériques (brochure standard) + rôles d'emplacement RPA (rpa_*).
+      if (!PHOTO_ROLES.includes(req.body.role) && !RPA_ROLES.includes(req.body.role)) throw badRequest(`Rôle inconnu : ${req.body.role}`);
       patch.role = req.body.role;
     }
     if (req.body?.position !== undefined) patch.position = Number(req.body.position) || 0;

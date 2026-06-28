@@ -11,6 +11,12 @@ const DEFAULTS = JSON.parse(fs.readFileSync(path.join(__dirname, 'rpa-brochure-c
 
 export const RPA_LANGS = ['fr'];
 
+// Contenu par défaut d'une langue (lecture seule) — sert de schéma au formulaire d'édition (phase 1b).
+export function rpaDefaults(lang = 'fr') {
+  const L = RPA_LANGS.includes(lang) ? lang : 'fr';
+  return DEFAULTS[L] || {};
+}
+
 // Emplacements d'images de la brochure RPA (rôles de property_media → slot du gabarit).
 // Le formulaire (phase 1b) permettra d'affecter chaque photo ; ici on mappe par rôle.
 export const RPA_IMAGE_SLOTS = [
@@ -28,6 +34,9 @@ export const RPA_IMAGE_SLOTS = [
   { slot: 'life.events.2.image', role: 'rpa_event3' },
   { slot: 'contact.hero', role: 'rpa_contact' },
 ];
+
+// Rôles d'image RPA assignables aux photos de propriété (validation + formulaire phase 1b).
+export const RPA_ROLES = RPA_IMAGE_SLOTS.map((s) => s.role);
 
 const asset = (...p) => path.join(config.pythonDir, 'assets', ...p);
 
