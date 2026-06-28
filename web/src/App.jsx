@@ -12,6 +12,7 @@ import { useI18n } from './i18n/index.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Properties from './pages/Properties.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
+import SalesAttributes from './pages/SalesAttributes.jsx';
 import Evaluation from './pages/Evaluation.jsx';
 import OffresList from './pages/OffresList.jsx';
 import OffreEdit from './pages/OffreEdit.jsx';
@@ -38,7 +39,10 @@ const NAV = [
   { sectionKey: 'sec.account' },
   { to: '/profile', labelKey: 'nav.profile', icon: UserCircle },
   { sectionKey: 'sec.mandates' },
-  { to: '/properties', labelKey: 'nav.properties', icon: Building2 },
+  { to: '/properties', labelKey: 'nav.properties', icon: Building2, children: [
+    { to: '/properties', labelKey: 'nav.props.list', end: true },
+    { to: '/properties/attributs', labelKey: 'nav.props.attrs' },
+  ] },
   { to: '/clients', labelKey: 'nav.clients', icon: Home },
   { sectionKey: 'sec.analysis' },
   { to: '/evaluation', labelKey: 'nav.evaluation', icon: FileBarChart },
@@ -70,7 +74,7 @@ const NAV = [
 
 // path -> label key, for the topbar title.
 const TITLE_KEY = {
-  '/': 'nav.overview', '/properties': 'nav.properties', '/clients': 'nav.clients',
+  '/': 'nav.overview', '/properties': 'nav.properties', '/properties/attributs': 'sa.title', '/clients': 'nav.clients',
   '/evaluation': 'nav.evaluation', '/profile': 'nav.profile',
   '/assets-courtier': 'nav.brokerAssets', '/offres': 'nav.offers',
   '/trousse-demarrage': 'nav.startKit', '/trousse-marketing': 'nav.marketingKit',
@@ -159,6 +163,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/properties" element={<Properties />} />
+          <Route path="/properties/attributs" element={<SalesAttributes />} />
           <Route path="/properties/:id" element={<PropertyDetail />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/evaluation" element={<Evaluation />} />

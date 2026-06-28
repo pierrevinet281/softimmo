@@ -20,6 +20,7 @@ import { buildMarketingCopy } from '../engine/marketingCopy.js';
 import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS, resolveOffreContent, applyOfferDiff } from '../engine/offre.js';
 import { buildRpaData, imagesFromMedia, rpaDefaults, rpaContent, RPA_IMAGE_SLOTS, RPA_ROLES } from '../engine/rpaBrochure.js';
 import { getAcmParams, setAcmParams, getAcmDefaults } from '../lib/acmParams.js';
+import { buildMatrix, setCell, resetMatrix, formSchema } from '../lib/salesAttributes.js';
 
 // Permissive schemas: every field optional + passthrough. Required-on-create is enforced
 // by the factory. Enum/type tightening can be layered later without breaking inputs.
@@ -341,6 +342,28 @@ export default function mountBusiness(parent = Router()) {
       transactions: Transactions.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
     };
     res.json(buildMarketingCopy(bundle, { lang: req.query.lang, emoji: req.query.emoji === 'true' }));
+  }));
+
+  // ── Attributs de vente (Module 1/4) : matrice attribut × type, éditable par l'admin ──
+  // Source : taxonomie seed + surcharges Settings (voir lib/salesAttributes.js). Pilote ensuite
+  // les formulaires de caractérisation par type, puis la brochure.
+  parent.get('/sales-attributes', wrap((req, res) => res.json(buildMatrix(Settings))));
+  parent.put('/sales-attributes/cell', wrap((req, res) => {
+    const { attr, type, value } = req.body || {};
+    if (!attr || !type) throw badRequest('attr et type requis');
+    try {
+      setCell(Settings, String(attr), String(type), !!value);
+    } catch (e) {
+      throw badRequest(e.message);
+    }
+    res.json({ ok: true });
+  }));
+  parent.post('/sales-attributes/reset', wrap((req, res) => { resetMatrix(Settings); res.json({ ok: true }); }));
+  // Schéma de formulaire (attributs activés, groupés) pour un type de propriété donné.
+  parent.get('/sales-attributes/form/:type', wrap((req, res) => {
+    const schema = formSchema(Settings, String(req.params.type));
+    if (!schema) throw notFound('type de propriété inconnu');
+    res.json(schema);
   }));
 
   // ── Mise en page des modèles de brochure (round-trip PowerPoint, docs/09) ──

@@ -54,6 +54,16 @@ code, .mono { font-family: var(--font-mono); }
 .switch .switch-knob { display: block; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transform: translateX(0); transition: transform 0.15s ease; }
 .switch.on { background: var(--color-success, #07D581); }
 .switch.on .switch-knob { transform: translateX(19px); }
+
+/* Matrice « Attributs Ventes » (attribut × type, éditable) */
+.sa-matrix th, .sa-matrix td { vertical-align: middle; }
+.sa-matrix .sa-catrow td { background: var(--color-surface-2, var(--color-border)); font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+.sa-matrix tbody tr:hover td { background: var(--color-surface-2, rgba(0,0,0,0.02)); }
+.sa-matrix .sa-catrow:hover td { background: var(--color-surface-2, var(--color-border)); }
+.sa-typehead { background: none; border: none; cursor: pointer; font: inherit; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
+.sa-typehead:hover { color: var(--color-info, #67C8FA); }
+.sa-formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+
 .item-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-radius: 6px; }
 .item-row .item-text { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-row.item-excluded .item-text { opacity: 0.45; text-decoration: line-through; }
