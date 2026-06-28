@@ -220,6 +220,11 @@ export default function mountBusiness(parent = Router()) {
   // sans incidence sur le modèle). Stockée dans `documents` (doc_type='brochure').
   const getPresentation = (pid, tpl) =>
     (Documents.listBy('property_id', pid) || []).find((doc) => doc.doc_type === 'brochure' && doc.template === tpl) || null;
+  // Modèle unifié : un « document brochure » SANS propriété (property_id NULL) = le défaut du
+  // gabarit d'une famille. L'éditer affecte les FUTURES brochures ; les brochures déjà
+  // personnalisées d'une propriété sont des snapshots indépendants (priorité à leur contenu propre).
+  const getTemplateDoc = (tpl) =>
+    (Documents.list({ doc_type: 'brochure', limit: 2000 }).rows || []).find((d) => d.template === tpl && !d.property_id) || null;
   const CONTENT_FIELDS = ['title', 'city', 'summary_line', 'address', 'mls', 'headline', 'description', 'price_text', 'rooms'];
   // Lit la source de surcharge d'une présentation : le brouillon non approuvé (draft=true) sinon
   // la version live. Garde-fou du round-trip PPTX→code (voir POST …/sync, …/approve, …/draft).
@@ -261,13 +266,11 @@ export default function mountBusiness(parent = Router()) {
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pdf`);
     const draft = wantDraft(req);
     if (template === 'rpa') {
-      // RPA : format éditorial distinct (render_rpa_brochure) — défauts + surcharge propriété + photos.
+      // RPA : contenu propre à la propriété (snapshot indépendant) ; à défaut, repli sur le
+      // défaut du gabarit (une propriété non personnalisée suit le gabarit courant).
       const src = presSource(getPresentation(pid, 'rpa'), draft);
-      const data = buildRpaData({
-        broker: defaultBroker(),
-        contentOverride: src?.content || null,
-        images: imagesFromMedia(bundle.media),
-      });
+      const content = src?.content || getTemplateDoc('rpa')?.data?.content || null;
+      const data = buildRpaData({ broker: defaultBroker(), contentOverride: content, images: imagesFromMedia(bundle.media) });
       await runWorker('render_rpa_brochure', { data, out }, { timeoutMs: 60000 });
     } else {
       await runWorker('render_brochure', { data: brochureRenderData(bundle, template, { draft }), out }, { timeoutMs: 60000 });
@@ -295,9 +298,10 @@ export default function mountBusiness(parent = Router()) {
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `brochure-${pid}-${Date.now()}.pptx`);
     if (template === 'rpa') {
-      // Jumeau PPTX éditable du format éditorial RPA (sur le contenu live de la propriété).
+      // Jumeau PPTX éditable du format éditorial RPA (contenu propre, sinon défaut du gabarit).
       const src = presSource(getPresentation(pid, 'rpa'), false);
-      const data = buildRpaData({ broker: defaultBroker(), contentOverride: src?.content || null, images: imagesFromMedia(bundle.media) });
+      const content = src?.content || getTemplateDoc('rpa')?.data?.content || null;
+      const data = buildRpaData({ broker: defaultBroker(), contentOverride: content, images: imagesFromMedia(bundle.media) });
       await runWorker('render_rpa_brochure_pptx', { data, out }, { timeoutMs: 60000 });
     } else {
       await runWorker('render_brochure_pptx', { data: brochureRenderData(bundle, template), out }, { timeoutMs: 60000 });
@@ -476,12 +480,66 @@ export default function mountBusiness(parent = Router()) {
     if (!Properties.get(req.params.id)) throw notFound('property introuvable');
     const lang = String(req.query.lang || 'fr');
     const pres = getPresentation(req.params.id, 'rpa');
+    // Valeur de départ : contenu propre de la propriété ; à défaut, le défaut du gabarit (héritage).
+    const value = (pres && pres.data && pres.data.content) || getTemplateDoc('rpa')?.data?.content || {};
     res.json({
       lang,
       schema: rpaDefaults(lang),                 // défauts (= placeholders + structure du formulaire)
-      value: (pres && pres.data && pres.data.content) || {},  // surcharge texte enregistrée
+      value,
       slots: RPA_IMAGE_SLOTS,                     // { slot, role } pour l'affectation des photos
     });
+  }));
+
+  // ── Gabarit RPA : contenu par défaut (niveau gabarit, property_id NULL) — modèle unifié ──
+  // Même cycle garde-fou que pour une propriété : sync → brouillon → aperçu → approuver/rejeter.
+  parent.get('/brochure/templates/rpa/content', wrap(async (req, res) => {
+    const lang = String(req.query.lang || 'fr');
+    const d = (getTemplateDoc('rpa') || {}).data || {};
+    res.json({ lang, schema: rpaDefaults(lang), value: d.content || {}, hasDraft: !!d.draft, customized: !!d.content });
+  }));
+
+  parent.post('/brochure/templates/rpa/content/sync', upload.single('file'), wrap(async (req, res) => {
+    if (!req.file) throw badRequest('Aucun fichier PowerPoint téléversé');
+    if (!/\.pptx$/i.test(req.file.originalname || '')) throw badRequest('Le fichier doit être un .pptx');
+    const dir = path.join(config.root, 'data', 'uploads'); fs.mkdirSync(dir, { recursive: true });
+    const tmp = path.join(dir, `tpl-rpa-${Date.now()}.pptx`); fs.writeFileSync(tmp, req.file.buffer);
+    try {
+      const tdoc = getTemplateDoc('rpa');
+      const base = rpaContent({ contentOverride: tdoc?.data?.content || null });
+      const out = await runWorker('ingest_rpa_brochure_pptx', { pptx: tmp, base }, { timeoutMs: 60000 });
+      const data = { ...((tdoc && tdoc.data) || {}) };
+      data.draft = { content: out.content || {}, synced_at: new Date().toISOString() };
+      if (tdoc) Documents.update(tdoc.id, { data });
+      else Documents.create({ property_id: null, template: 'rpa', doc_type: 'brochure', title: 'Gabarit RPA', format: 'pdf', status: 'final', data });
+      res.status(201).json({ draft: true });
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    }
+  }));
+
+  parent.post('/brochure/templates/rpa/content/approve', wrap(async (req, res) => {
+    const tdoc = getTemplateDoc('rpa');
+    if (!tdoc || !tdoc.data || !tdoc.data.draft) throw badRequest('Aucun brouillon à approuver');
+    const data = { ...tdoc.data, content: tdoc.data.draft.content || {} };
+    delete data.draft;
+    Documents.update(tdoc.id, { data });
+    res.json({ approved: true });
+  }));
+
+  parent.delete('/brochure/templates/rpa/content/draft', wrap(async (req, res) => {
+    const tdoc = getTemplateDoc('rpa');
+    if (tdoc && tdoc.data && tdoc.data.draft) {
+      const data = { ...tdoc.data }; delete data.draft;
+      if (data.content) Documents.update(tdoc.id, { data });
+      else Documents.delete(tdoc.id);
+    }
+    res.status(204).end();
+  }));
+
+  parent.delete('/brochure/templates/rpa/content', wrap(async (req, res) => {
+    const tdoc = getTemplateDoc('rpa');
+    if (tdoc) Documents.delete(tdoc.id);
+    res.status(204).end();
   }));
 
   parent.put('/properties/:id/brochure/rpa/content', wrap(async (req, res) => {
@@ -965,9 +1023,13 @@ export default function mountBusiness(parent = Router()) {
     fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `gabarit-${template}-${Date.now()}.${fmt}`);
     if (template === 'rpa') {
-      // Gabarit RPA (format éditorial) : PDF d'aperçu ou jumeau PPTX éditable, à partir des défauts.
+      // Gabarit RPA : PDF d'aperçu ou jumeau PPTX éditable, à partir du contenu du GABARIT
+      // (défauts + surcharge gabarit). ?draft=1 → prévisualise le brouillon non approuvé.
+      const tdoc = getTemplateDoc('rpa');
+      const td = (tdoc && tdoc.data) || {};
+      const content = (draft && td.draft) ? td.draft.content : (td.content || null);
       const worker = fmt === 'pptx' ? 'render_rpa_brochure_pptx' : 'render_rpa_brochure';
-      await runWorker(worker, { data: buildRpaData({ broker: defaultBroker() }), out }, { timeoutMs: 60000 });
+      await runWorker(worker, { data: buildRpaData({ broker: defaultBroker(), contentOverride: content }), out }, { timeoutMs: 60000 });
     } else {
       const worker = fmt === 'pptx' ? 'render_brochure_pptx' : 'render_brochure';
       const data = sampleBrochureData(template);
