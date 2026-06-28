@@ -566,8 +566,9 @@ def page_contact(c, d, page_no):
         c.drawString(M, yy, ln); yy -= 38
     c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(M, yy + 6, M + 54, yy + 6)
     draw_para(c, sec.get("cta"), st(F_L, 13, WHITE, leading=18), M, yy - 6, CW * 0.74)
-    # carte contact
+    # carte contact (tous les enfants sont relatifs à cardx/cardy/cardw/cardh → 1 override déplace tout)
     cardx = M; cardw = CW * 0.57; cardy = 148; cardh = band_bottom - 148 - 26
+    cardx, cardy, cardw, cardh = ov("contact.card", cardx, cardy, cardw, cardh)
     c.setFillColor(WHITE); c.setStrokeColor(LINE); c.setLineWidth(1.2); c.roundRect(cardx, cardy, cardw, cardh, 14, stroke=1, fill=1)
     c.setFillColor(GOLD); c.roundRect(cardx, cardy + cardh - 6, cardw, 6, 3, stroke=0, fill=1)
     ix = cardx + 28; iy = cardy + cardh - 42

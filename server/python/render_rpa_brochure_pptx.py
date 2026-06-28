@@ -415,7 +415,8 @@ def page_contact(prs, d, page_no):
     if sec.get("cta"):
         para(s, M, yy - 6, CW * 0.74, sec.get("cta"), "Sg-L", 13, WHITE, 18, name="RPA::contact.cta")
     cardx = M; cardw = CW * 0.57; cardy = 148.0; cardh = band_bottom - 148 - 26
-    rect(s, cardx, cardy, cardw, cardh, fill=WHITE, line=LINE, line_w=1.2, radius=14)
+    cardx, cardy, cardw, cardh = ov("contact.card", cardx, cardy, cardw, cardh)
+    rect(s, cardx, cardy, cardw, cardh, fill=WHITE, line=LINE, line_w=1.2, radius=14).name = "RPA::contact.card"
     rect(s, cardx, cardy + cardh - 6, cardw, 6, fill=GOLD, radius=3)
     ix = cardx + 28; iy = cardy + cardh - 42
     text_line(s, ix, iy, str(broker.get("name", "")).upper(), "Osw-B", 26, DEEP)
