@@ -1,184 +1,458 @@
 # -*- coding: utf-8 -*-
-"""Jumeau PPTX éditable de la brochure RPA (format éditorial 6 pages — aller-retour, docs/09).
+"""Jumeau PPTX éditable de la brochure RPA — MIROIR FIDÈLE du PDF (render_rpa_brochure.py).
 
-Le PDF RPA (render_rpa_brochure.py) est un document éditorial riche ; pour permettre l'édition
-dans PowerPoint puis la resynchronisation, on génère ici une diapo ÉDITABLE par SECTION, où
-CHAQUE feuille de texte modifiable est une forme NOMMÉE « RPA::<chemin.pointé> » (ex.
-« RPA::comfort.features.0.label »). `ingest_rpa_brochure_pptx.py` relit ces formes et superpose
-le texte édité sur le contenu de base — les ICÔNES et la structure sont préservées (non éditables).
+Reproduit chaque page aux MÊMES coordonnées que le moteur PDF (via rpa_pptx_helpers, qui
+convertit l'espace ReportLab y-depuis-le-bas vers l'EMU PowerPoint). Objets natifs (texte,
+formes, dégradés, scrims, images cover-crop arrondies, icônes Font Awesome en PNG net) →
+le PPTX est visuellement identique au PDF. Data-driven : tout vient de `data`.
 
-Déterministe, sans IA (CLAUDE.md §3). E/S : lit {"data": {...}, "out": "<chemin.pptx>"} sur stdin,
-écrit le PPTX, renvoie {"path"}. Conformité : mentions agence + courtier (désignation) en pied.
+Round-trip : les boîtes de texte VERBATIM (non transformées) portent un nom « RPA::<chemin> »
+relu par ingest_rpa_brochure_pptx.py. Les libellés rendus en MAJUSCULES (kickers, titres de
+sous-section) ne sont pas nommés — ils s'éditent via l'éditeur de contenu structuré, pour ne
+pas figer leur casse au round-trip.
+
+E/S : lit {"data": {...}, "out": "<chemin.pptx>"} sur stdin, écrit le PPTX, renvoie {"path"}.
 """
 import os
 import sys
 import json
+import tempfile
 
 from pptx import Presentation
-from pptx.util import Pt
-from pptx.dml.color import RGBColor
-from pptx.enum.shapes import MSO_SHAPE
+from PIL import ImageFont
 
-FONT = "Segoe UI"
-FONT_BOLD = "Segoe UI Semibold"
-PW, PH = 612.0, 792.0   # Lettre portrait (pt), cohérent avec le PDF
+import rpa_pptx_helpers as H
+from rpa_pptx_helpers import (E, text_line, para, rect, oval, line, grad_rect, scrim,
+                              picture, picture_raw, icon, img_size, set_asset_dir, set_icon_fonts)
+
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+FN = os.path.join(ASSETS, "fonts")
+WF = "C:/Windows/Fonts"
+
+PW, PH = 612.0, 792.0
 M = 50.0
 CW = PW - 2 * M
 
-INK = "1A1A1A"
-INK2 = "5A5A5A"
-INK3 = "8A8A8A"
-WHITE = "FFFFFF"
-BAND = "2E6E5E"   # vert RPA (cohérent avec le thème du PDF)
-GOLD = "BF9A46"
+# ── Palette (identique au PDF render_rpa_brochure.py) ──
+INK = "#21303A"; INK2 = "#4A5A63"; DEEP = "#0F3B4C"; DEEP_D = "#0A2C39"; DEEP2 = "#1E6478"
+GOLD = "#BF9A46"; GOLD_D = "#9A7826"; GOLD_LT = "#E8D9B0"
+CREAM = "#F8F3E8"; CREAM_B = "#EBE1CB"; MIST = "#ECF2F3"; MIST_B = "#D9E5E6"
+LINE = "#E1E5E2"; WHITE = "#FFFFFF"
 
-SKIP = {"icon"}
-
-# Libellés FR des clés (le contenu RPA est FR ; cohérent avec l'éditeur web).
-LABELS = {
-    "running_title": "Titre courant", "cover": "Couverture", "comfort": "Confort",
-    "security": "Sécurité", "amenities": "Commodités", "life": "Vie sociale", "contact": "Contact",
-    "pill": "Pastille", "eyebrow": "Sur-titre", "title": "Titre", "subtitle": "Sous-titre",
-    "chips": "Puces", "text": "Texte", "lead": "Accroche", "kicker": "Intro",
-    "features": "Caractéristiques", "label": "Libellé", "desc": "Description", "note": "Note",
-    "sub": "Sous-texte", "wide_caption": "Légende (image large)", "panel_title": "Titre du panneau",
-    "panel_items": "Éléments du panneau", "panel_caption": "Légende du panneau", "services": "Services",
-    "services_title": "Titre des services", "services_kicker": "Intro services", "gallery": "Galerie",
-    "caption": "Légende", "pillars": "Piliers", "events": "Événements", "neighborhood": "Quartier",
-    "neighborhood_title": "Titre du quartier", "neighborhood_kicker": "Intro quartier",
-    "finance": "Avantage financier", "cta": "Appel à l'action", "disclaimer": "Avertissement",
-    "running": "Titre courant", "hero_tag": "Étiquette",
+# Codepoints Font Awesome (identiques au PDF). Clés stables du modèle de contenu.
+IC = {
+    "house": 0x1F3E0, "leaf": 0xF06C, "bolt": 0xF0E7, "blender": 0xF517,
+    "wifi": 0xF1EB, "car": 0x1F698, "shield": 0xF3ED, "nurse": 0xF82F, "bell": 0x1F6CE,
+    "key": 0x1F511, "camera": 0xF03D, "fire": 0x1F525, "steth": 0x1FA7A, "pills": 0xF484,
+    "cart": 0x1F6D2, "swim": 0x1F3CA, "dumbbell": 0xF44B, "film": 0x1F39E, "book": 0x1F56E,
+    "golf": 0xF450, "dice": 0x1F3B2, "church": 0xF51D, "calendar": 0xF073, "champagne": 0x1F942,
+    "utensils": 0x1F374, "pin": 0xF3C5, "bus": 0x1F68D, "hospital": 0x1F3E5, "store": 0xF54E,
+    "coins": 0xF51E, "phone": 0x1F57B, "envelope": 0x1F582, "check": 0xF058, "tree": 0x1F332,
+    "heart": 0x1F9E1, "couch": 0xF4B8, "water": 0xF773, "masks": 0x1F3AD, "globe": 0x1F310,
+    "cake": 0x1F382,
 }
+ICB = {"linkedin": 0xF0E1}
+
+_mfont = {}
 
 
-def _rgb(h):
-    return RGBColor.from_string(h.lstrip("#"))
+def _measure(ttf, size, text):
+    """Largeur de texte (pt ≈ px à 72 dpi) via PIL — pour les éléments calculés (pastilles)."""
+    key = (ttf, size)
+    f = _mfont.get(key)
+    if f is None:
+        try:
+            f = ImageFont.truetype(ttf, int(round(size)))
+        except Exception:  # noqa: BLE001
+            f = False
+        _mfont[key] = f
+    if not f:
+        return len(text) * size * 0.5
+    return f.getlength(text)
 
 
-def humanize(k):
-    return LABELS.get(k, str(k).replace("_", " ").capitalize())
-
-
-def _box(slide, x, y, w, h, name=None):
-    tb = slide.shapes.add_textbox(Pt(x), Pt(y), Pt(w), Pt(h))
-    if name:
-        tb.name = name
-    tf = tb.text_frame
-    tf.word_wrap = True
-    return tf
-
-
-def _para(tf, text, *, size=11, bold=False, italic=False, color=INK, first=False):
-    p = tf.paragraphs[0] if first and not tf.paragraphs[0].runs else tf.add_paragraph()
-    r = p.add_run()
-    r.text = "" if text is None else str(text)
-    r.font.size = Pt(size)
-    r.font.bold = bool(bold)
-    r.font.italic = bool(italic)
-    r.font.name = FONT_BOLD if bold else FONT
-    r.font.color.rgb = _rgb(color)
-    return p
-
-
-def _footer(slide, broker):
-    desig = " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s])
-    agency = broker.get("agency", "")
-    if broker.get("company"):
-        agency = (agency + " | " + broker["company"]) if agency else broker["company"]
-    bits = [broker.get("name"), desig, agency]
-    tf = _box(slide, M, PH - 30, CW, 20)
-    _para(tf, "  ·  ".join([b for b in bits if b]), size=7.5, color=INK2, first=True)
-    _para(tf, "Document de présentation — ne constitue pas un contrat de courtage.", size=6.6, color=INK3)
-
-
-class Deck:
-    def __init__(self, broker):
-        self.prs = Presentation()
-        self.prs.slide_width = Pt(PW)
-        self.prs.slide_height = Pt(PH)
-        self.broker = broker or {}
-        self.slide = None
-        self.y = 0.0
-        self.title = ""
-
-    def _blank(self):
-        return self.prs.slides.add_slide(self.prs.slide_layouts[6])
-
-    def new_slide(self, title, cont=False):
-        self.slide = self._blank()
-        self.title = title
-        rect = self.slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Pt(0), Pt(0), Pt(PW), Pt(54))
-        rect.fill.solid(); rect.fill.fore_color.rgb = _rgb(BAND); rect.line.fill.background()
-        rect.name = "RPA::__band"
-        tf = _box(self.slide, M, 14, CW, 30)
-        _para(tf, title + ("  (suite)" if cont else ""), size=16, bold=True, color=WHITE, first=True)
-        self.y = 74.0
-        _footer(self.slide, self.broker)
-
-    def _ensure(self, need):
-        if self.y + need > PH - 44:
-            self.new_slide(self.title, cont=True)
-
-    def subhead(self, text):
-        self._ensure(22)
-        tf = _box(self.slide, M, self.y, CW, 16)
-        _para(tf, text, size=10.5, bold=True, color=BAND, first=True)
-        self.y += 20
-
-    def field(self, path, value, label, size=11):
-        text = "" if value is None else str(value)
-        approx = (len(text) // 88 + 1) if text else 1
-        bh = max(size + 9, approx * (size + 5) + 8)
-        self._ensure(15 + bh + 8)
-        lf = _box(self.slide, M, self.y, CW, 12)
-        _para(lf, label, size=8, bold=True, color=INK3, first=True)
-        self.y += 14
-        bf = _box(self.slide, M, self.y, CW, bh, name="RPA::" + path)
-        _para(bf, text, size=size, color=INK, first=True)
-        self.y += bh + 9
-
-
-def emit(deck, path, node, label):
-    if node is None or isinstance(node, str):
-        deck.field(".".join(path), node, label)
+def fa(s, key, cx, cy, size, color, brand=False):
+    cp = (ICB if brand else IC).get(key)
+    if cp is None:
         return
-    if isinstance(node, list):
-        for i, item in enumerate(node):
-            emit(deck, path + [str(i)], item, "%s %d" % (label, i + 1))
+    icon(s, chr(cp), cx, cy, size, color, font="FAB" if brand else "FA")
+
+
+def draw_image(s, path, x, y, w, h, radius=10, dpi=240):
+    """Image cover-crop arrondie ; réserve élégante (gris MIST) si l'image est absente."""
+    if path and os.path.exists(path):
+        picture(s, path, x, y, w, h, radius=radius, dpi=dpi)
+    else:
+        rect(s, x, y, w, h, fill=MIST, line=MIST_B, line_w=1, radius=radius)
+
+
+def draw_logo(s, path, x, y, w=None, h=None, anchor="bl"):
+    if not (path and os.path.exists(path)):
+        return 0, 0
+    iw, ih = img_size(path); ar = iw / ih
+    if w and not h:
+        h = w / ar
+    if h and not w:
+        w = h * ar
+    if anchor == "br":
+        x -= w
+    elif anchor == "tl":
+        y -= h
+    elif anchor == "tr":
+        x -= w; y -= h
+    elif anchor == "center":
+        x -= w / 2; y -= h / 2
+    picture_raw(s, path, x, y, w, h)
+    return w, h
+
+
+def kicker(s, x, y, text, color=GOLD, size=10.5, tracking=2.6):
+    if text:
+        text_line(s, x, y, str(text).upper(), "Osw-SB", size, color, tracking=tracking)
+
+
+def title_block(s, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule=True, rule_w=46, kbase=None):
+    kicker(s, x, y_top, kick, color=GOLD)
+    yy = y_top - 20
+    lead = title_size * 1.02
+    for i, ln in enumerate(title_lines or []):
+        text_line(s, x, yy - title_size * 0.80, ln, "Osw-B", title_size, tcolor,
+                  name=("RPA::%s.title.%d" % (kbase, i)) if kbase else None)
+        yy -= lead
+    if rule:
+        line(s, x, yy - 2, x + rule_w, yy - 2, GOLD, 2.4)
+        yy -= 8
+    return yy
+
+
+def feature_card(s, x, y, w, h, glyph, label, desc, bg=CREAM, bdr=CREAM_B, icon_color=GOLD_D,
+                 label_color=DEEP, nbase=None):
+    if not label and not desc:
         return
-    if isinstance(node, dict):
-        last = path[-1] if path else ""
-        if len(path) >= 2:  # sous-objet nommé ou élément de tableau → en-tête
-            deck.subhead(label if not last.isdigit() else label)
-        for k, v in node.items():
-            if k in SKIP or str(k).startswith("_"):
-                continue
-            emit(deck, path + [k], v, humanize(k))
+    rect(s, x, y, w, h, fill=bg, line=bdr, line_w=1, radius=9)
+    cxx = x + 26; cyy = y + h - 26
+    oval(s, cxx, cyy, 16, fill=WHITE, line=GOLD_LT, line_w=1)
+    fa(s, glyph, cxx, cyy, 15, icon_color)
+    tx = x + 52
+    text_line(s, tx, y + h - 22, label or "", "Osw-SB", 12.5, label_color,
+              name=("RPA::%s.label" % nbase) if nbase else None)
+    para(s, tx, y + h - 32, w - (tx - x) - 12, desc, "Sg", 9.0, INK2, 11.6,
+         name=("RPA::%s.desc" % nbase) if nbase else None)
+
+
+def footer(s, page_no, broker):
+    y = 34.0
+    line(s, M, y + 10, PW - M, y + 10, LINE, 0.8)
+    bits = [broker.get("name"), broker.get("title_line"), broker.get("agency")]
+    text_line(s, M, y, "  ·  ".join([b for b in bits if b]), "Sg", 7.6, INK2)
+    text_line(s, PW - M, y, "%02d" % page_no, "Sg-SB", 7.6, GOLD_D, align="r")
+
+
+def running_head(s, label, right_label):
+    y = PH - 42
+    text_line(s, M, y, str(label).upper(), "Osw-SB", 8.5, GOLD_D, tracking=2.2)
+    if right_label:
+        text_line(s, PW - M, y, str(right_label).upper(), "Osw-SB", 8.5, DEEP, tracking=2.2, align="r")
+    line(s, M, y - 8, PW - M, y - 8, LINE, 0.8)
+
+
+def _intro(s, sec, rt, num, kbase):
+    running_head(s, sec.get("running", num or ""), rt)
+    yb = title_block(s, M, PH - 70, sec.get("kicker", ""), sec.get("title", []), title_size=30, kbase=kbase)
+    lh = 0
+    if sec.get("lead"):
+        para(s, M, yb - 8, CW, sec.get("lead"), "Sg", 11.5, INK, 17, name="RPA::%s.lead" % kbase)
+        # hauteur approximée du paragraphe (pour le placement) — comme le PDF mesure ReportLab.
+        lh = _para_h(sec.get("lead"), 11.5, 17, CW)
+    return yb - 8 - lh - 16
+
+
+def _para_h(text, size, leading, w):
+    """Approxime la hauteur d'un paragraphe (nb de lignes × interligne)."""
+    if not text:
+        return 0
+    avg = size * 0.50
+    per = max(1, int(w / avg))
+    import math
+    lines = max(1, math.ceil(len(str(text)) / per))
+    return lines * leading
+
+
+# ════════════════════════════ PAGES ════════════════════════════
+def new_slide(prs):
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    rect(s, 0, 0, PW, PH, fill=WHITE)
+    return s
+
+
+def page_cover(prs, d):
+    A = d["assets"]; broker = d["broker"]; cov = d["content"].get("cover", {})
+    s = new_slide(prs)
+    hero_h = 440.0; hero_y = PH - hero_h
+    draw_image(s, cov.get("hero"), 0, hero_y, PW, hero_h, radius=0, dpi=200)
+    scrim(s, 0, hero_y, PW, 180, bot_alpha=200)
+    scrim(s, 0, PH - 90, PW, 90, top_alpha=150, bot_alpha=0)
+    draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=30, anchor="tl")
+    if cov.get("pill"):
+        pw = _measure(os.path.join(FN, "Oswald-600.ttf"), 9, str(cov["pill"]).upper()) + 1.4 * (len(str(cov["pill"])) - 1)
+        pill_w = max(150.0, pw + 42); px = PW - M - pill_w; py = PH - 46
+        rect(s, px, py, pill_w, 22, fill=WHITE, fill_alpha=0.16, line=WHITE, line_w=1, radius=11)
+        fa(s, "check", px + 15, py + 11, 11, WHITE)
+        text_line(s, px + 27, py + 7, str(cov["pill"]).upper(), "Osw-SB", 9, WHITE, tracking=1.4)
+    if cov.get("hero_tag"):
+        text_line(s, M, hero_y + 24, cov["hero_tag"], "Osw-SB", 12, WHITE, name="RPA::cover.hero_tag")
+    ly = hero_y; x = M
+    kicker(s, x, ly - 42, cov.get("eyebrow", ""), color=GOLD_D, size=11)
+    tl = cov.get("title", [])
+    yy = ly - 90
+    for i, ln in enumerate(tl[:2]):
+        text_line(s, x, yy, ln, "Osw-B", 46, DEEP, name="RPA::cover.title.%d" % i)
+        yy -= 44
+    line(s, x, yy + 8, x + 54, yy + 8, GOLD, 2.6)
+    if cov.get("subtitle"):
+        para(s, x, yy - 4, CW * 0.90, cov["subtitle"], "Sg-L", 13, INK, 17, name="RPA::cover.subtitle")
+    chips = cov.get("chips", [])
+    sub_h = _para_h(cov.get("subtitle"), 13, 17, CW * 0.90)
+    cy = max(96.0, (yy - 4 - sub_h) - 14 - 30); cx = x
+    for i, chip in enumerate(chips[:3]):
+        txt = chip.get("text", "")
+        tw = _measure(os.path.join(WF, "seguisb.ttf"), 10, txt); cw = tw + 42
+        rect(s, cx, cy, cw, 30, fill=MIST, line=MIST_B, line_w=1, radius=15)
+        fa(s, chip.get("icon"), cx + 17, cy + 15, 12, GOLD_D)
+        text_line(s, cx + 31, cy + 10.5, txt, "Sg-SB", 10, DEEP, name="RPA::cover.chips.%d.text" % i)
+        cx += cw + 11
+    by = 46.0
+    line(s, M, by + 34, PW - M, by + 34, LINE, 1)
+    draw_logo(s, A.get("agency_logo_black"), M, by, h=26, anchor="bl")
+    text_line(s, PW - M, by + 16, " · ".join([b for b in [broker.get("name"), broker.get("title_line")] if b]),
+              "Sg", 9.5, INK2, align="r")
+    contact = "   ·   ".join([b for b in [broker.get("phone"), broker.get("email")] if b])
+    text_line(s, PW - M, by + 2, contact, "Sg-SB", 9.5, DEEP, align="r")
+
+
+def page_comfort(prs, d, page_no):
+    sec = d["content"].get("comfort", {}); rt = d["content"].get("running_title")
+    s = new_slide(prs)
+    top = _intro(s, sec, rt, "01 · " + sec.get("running", ""), "comfort")
+    ih = 178.0
+    draw_image(s, sec.get("wide_image"), M, top - ih, CW, ih, radius=12)
+    capn = sec.get("wide_caption") or {}
+    if capn.get("text"):
+        scrim(s, M, top - ih, CW, 48, bot_alpha=150)
+        fa(s, capn.get("icon"), M + 18, top - ih + 15, 11, GOLD_LT)
+        text_line(s, M + 33, top - ih + 11, capn["text"], "Sg-SB", 9.5, WHITE, name="RPA::comfort.wide_caption.text")
+    gy = top - ih - 22
+    feats = sec.get("features", [])
+    gap = 14.0; cardw = (CW - gap) / 2; cardh = 66.0
+    for i, f in enumerate(feats[:6]):
+        r = i // 2; col = i % 2
+        x = M + col * (cardw + gap); y = gy - cardh - r * (cardh + gap)
+        feature_card(s, x, y, cardw, cardh, f.get("icon"), f.get("label"), f.get("desc"),
+                     nbase="comfort.features.%d" % i)
+    rows = (min(len(feats[:6]), 6) + 1) // 2
+    note = sec.get("note") or {}
+    if note.get("title"):
+        ny = gy - rows * (cardh + gap) - 6
+        grad_rect(s, M, ny - 46, CW, 46, DEEP, DEEP2, radius=12, vertical=False)
+        fa(s, "check", M + 26, ny - 23, 15, GOLD_LT)
+        text_line(s, M + 48, ny - 19, note["title"], "Osw-SB", 12.5, WHITE, name="RPA::comfort.note.title")
+        if note.get("sub"):
+            text_line(s, M + 48, ny - 32, note["sub"], "Sg", 9.5, GOLD_LT, name="RPA::comfort.note.sub")
+    footer(s, page_no, d["broker"])
+
+
+def page_security(prs, d, page_no):
+    sec = d["content"].get("security", {}); rt = d["content"].get("running_title")
+    s = new_slide(prs)
+    top = _intro(s, sec, rt, "02 · " + sec.get("running", ""), "security")
+    panel_w = CW * 0.605; img_w = CW - panel_w - 16; panel_h = 236.0
+    grad_rect(s, M, top - panel_h, panel_w, panel_h, DEEP, DEEP_D, radius=14, vertical=True)
+    if sec.get("panel_title"):
+        text_line(s, M + 22, top - 26, str(sec["panel_title"]).upper(), "Osw-SB", 12, GOLD_LT, tracking=1.6)
+    iy = top - 50
+    for i, it in enumerate(sec.get("panel_items", [])[:5]):
+        fa(s, it.get("icon"), M + 30, iy - 2, 14, GOLD)
+        para(s, M + 50, iy + 6, panel_w - 50 - 18, it.get("text"), "Sg", 10, WHITE, 13.0,
+             name="RPA::security.panel_items.%d.text" % i)
+        iy -= 37
+    draw_image(s, sec.get("panel_image"), M + panel_w + 16, top - panel_h, img_w, panel_h, radius=14)
+    if sec.get("panel_caption"):
+        scrim(s, M + panel_w + 16, top - panel_h, img_w, 70, bot_alpha=150)
+        text_line(s, M + panel_w + 16 + 12, top - panel_h + 12, sec["panel_caption"], "Sg-SB", 9, WHITE,
+                  name="RPA::security.panel_caption")
+    sy = top - panel_h - 26
+    kicker(s, M, sy, sec.get("services_kicker", ""), color=GOLD_D, size=10.5)
+    if sec.get("services_title"):
+        text_line(s, M, sy - 26, str(sec["services_title"]).upper(), "Osw-B", 21, DEEP)
+    svcs = sec.get("services", [])
+    gap = 14.0; cw = (CW - 2 * gap) / 3; chh = 92.0; sc_y = sy - 40
+    for i, sv in enumerate(svcs[:3]):
+        x = M + i * (cw + gap); y = sc_y - chh
+        rect(s, x, y, cw, chh, fill=CREAM, line=CREAM_B, line_w=1, radius=10)
+        oval(s, x + 26, y + chh - 26, 17, fill=WHITE, line=GOLD_LT, line_w=1)
+        fa(s, sv.get("icon"), x + 26, y + chh - 26, 16, GOLD_D)
+        text_line(s, x + 52, y + chh - 30, sv.get("label", ""), "Osw-SB", 13, DEEP,
+                  name="RPA::security.services.%d.label" % i)
+        para(s, x + 16, y + chh - 48, cw - 30, sv.get("desc"), "Sg", 9.2, INK2, 11.8,
+             name="RPA::security.services.%d.desc" % i)
+    footer(s, page_no, d["broker"])
+
+
+def page_amenities(prs, d, page_no):
+    sec = d["content"].get("amenities", {}); rt = d["content"].get("running_title")
+    s = new_slide(prs)
+    top = _intro(s, sec, rt, "03 · " + sec.get("running", ""), "amenities")
+    gallery = sec.get("gallery", [])
+
+    def cap(x, y, w, item, idx):
+        if not item.get("caption"):
+            return
+        scrim(s, x, y, w, 42, bot_alpha=165)
+        fa(s, item.get("icon"), x + 15, y + 13, 11, GOLD_LT)
+        text_line(s, x + 30, y + 9, item["caption"], "Sg-SB", 9.5, WHITE, name="RPA::amenities.gallery.%d.caption" % idx)
+    gap = 12.0; big_w = CW * 0.60; big_h = 196.0; sm_w = CW - big_w - gap; sm_h = (196.0 - gap) / 2
+    g = (gallery + [{}] * 6)[:6]
+    bx, by = M, top - big_h
+    draw_image(s, g[0].get("image"), bx, by, big_w, big_h, radius=12); cap(bx, by, big_w, g[0], 0)
+    rx = M + big_w + gap
+    draw_image(s, g[1].get("image"), rx, top - sm_h, sm_w, sm_h, radius=12); cap(rx, top - sm_h, sm_w, g[1], 1)
+    draw_image(s, g[2].get("image"), rx, top - big_h, sm_w, sm_h, radius=12); cap(rx, top - big_h, sm_w, g[2], 2)
+    r2y = by - gap; cw3 = (CW - 2 * gap) / 3; h3 = 150.0
+    for i in range(3):
+        item = g[3 + i]
+        x = M + i * (cw3 + gap); y = r2y - h3
+        draw_image(s, item.get("image"), x, y, cw3, h3, radius=12); cap(x, y, cw3, item, 3 + i)
+    pillars = sec.get("pillars", [])
+    sy = r2y - h3 - 22; gap = 14.0; cw = (CW - 2 * gap) / 3; chh = 66.0
+    for i, p in enumerate(pillars[:3]):
+        x = M + i * (cw + gap); y = sy - chh
+        feature_card(s, x, y, cw, chh, p.get("icon"), p.get("label"), p.get("desc"), bg=MIST, bdr=MIST_B,
+                     nbase="amenities.pillars.%d" % i)
+    footer(s, page_no, d["broker"])
+
+
+def page_life(prs, d, page_no):
+    sec = d["content"].get("life", {}); rt = d["content"].get("running_title")
+    s = new_slide(prs)
+    top = _intro(s, sec, rt, "04 · " + sec.get("running", ""), "life")
+    gap = 14.0; cw = (CW - 2 * gap) / 3; ch_img = 82.0; chh = 150.0
+    for i, ev in enumerate(sec.get("events", [])[:3]):
+        x = M + i * (cw + gap); y = top - chh
+        rect(s, x, y, cw, chh, fill=WHITE, line=CREAM_B, line_w=1, radius=10)
+        draw_image(s, ev.get("image"), x, y + chh - ch_img, cw, ch_img, radius=10)
+        fa(s, ev.get("icon"), x + 18, y + chh - ch_img - 14, 14, GOLD_D)
+        text_line(s, x + 34, y + chh - ch_img - 18, ev.get("label", ""), "Osw-SB", 12.5, DEEP,
+                  name="RPA::life.events.%d.label" % i)
+        para(s, x + 14, y + chh - ch_img - 30, cw - 26, ev.get("desc"), "Sg", 9.0, INK2, 11.6,
+             name="RPA::life.events.%d.desc" % i)
+    qy = top - chh - 24
+    kicker(s, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5)
+    if sec.get("neighborhood_title"):
+        text_line(s, M, qy - 26, str(sec["neighborhood_title"]).upper(), "Osw-B", 21, DEEP)
+    qcards = sec.get("neighborhood", [])
+    gap = 14.0; cw2 = (CW - gap) / 2; chh2 = 58.0; gy = qy - 38
+    for i, q in enumerate(qcards[:4]):
+        r = i // 2; col = i % 2
+        x = M + col * (cw2 + gap); y = gy - chh2 - r * (chh2 + gap)
+        feature_card(s, x, y, cw2, chh2, q.get("icon"), q.get("label"), q.get("desc"), bg=MIST, bdr=MIST_B,
+                     nbase="life.neighborhood.%d" % i)
+    fin = sec.get("finance") or {}
+    if fin.get("title"):
+        nrows = (min(len(qcards), 4) + 1) // 2
+        fy = gy - nrows * (chh2 + gap) - 8; fh = 58.0
+        grad_rect(s, M, fy - fh, CW, fh, GOLD_D, GOLD, radius=14, vertical=False)
+        oval(s, M + 34, fy - fh / 2, 19, fill=WHITE, fill_alpha=0.92)
+        fa(s, fin.get("icon", "coins"), M + 34, fy - fh / 2, 18, GOLD_D)
+        text_line(s, M + 66, fy - 24, str(fin["title"]).upper(), "Osw-B", 16, WHITE)
+        para(s, M + 66, fy - 30, CW - 150, fin.get("text"), "Sg-SB", 9.6, WHITE, 12, name="RPA::life.finance.text")
+    footer(s, page_no, d["broker"])
+
+
+def page_contact(prs, d, page_no):
+    A = d["assets"]; broker = d["broker"]; sec = d["content"].get("contact", {})
+    s = new_slide(prs)
+    txt_ref = PH - 250; band_bottom = PH - 308; band_h = PH - band_bottom
+    draw_image(s, sec.get("hero"), 0, band_bottom, PW, band_h, radius=0, dpi=200)
+    scrim(s, 0, band_bottom, PW, band_h, top_alpha=120, bot_alpha=225)
+    draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl")
+    kicker(s, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11)
+    tl = sec.get("title", [])
+    yy = txt_ref + 108
+    for i, ln in enumerate(tl[:2]):
+        text_line(s, M, yy, ln, "Osw-B", 38, WHITE, name="RPA::contact.title.%d" % i)
+        yy -= 38
+    line(s, M, yy + 6, M + 54, yy + 6, GOLD, 2.6)
+    if sec.get("cta"):
+        para(s, M, yy - 6, CW * 0.74, sec.get("cta"), "Sg-L", 13, WHITE, 18, name="RPA::contact.cta")
+    cardx = M; cardw = CW * 0.57; cardy = 148.0; cardh = band_bottom - 148 - 26
+    rect(s, cardx, cardy, cardw, cardh, fill=WHITE, line=LINE, line_w=1.2, radius=14)
+    rect(s, cardx, cardy + cardh - 6, cardw, 6, fill=GOLD, radius=3)
+    ix = cardx + 28; iy = cardy + cardh - 42
+    text_line(s, ix, iy, str(broker.get("name", "")).upper(), "Osw-B", 26, DEEP)
+    text_line(s, ix, iy - 17, broker.get("title_line", ""), "Sg-SB", 10.5, GOLD_D)
+    agency = "  ·  ".join([b for b in [broker.get("agency"), broker.get("company")] if b])
+    text_line(s, ix, iy - 32, agency, "Sg", 9.5, INK2)
+    line(s, ix, iy - 46, cardx + cardw - 28, iy - 46, LINE, 1)
+    rows = []
+    if broker.get("phone"):
+        rows.append(("phone", broker["phone"], False))
+    if broker.get("email"):
+        rows.append(("envelope", broker["email"], False))
+    if broker.get("linkedin"):
+        rows.append(("linkedin", broker["linkedin"], True))
+    ry = iy - 68
+    for g, txt, brand in rows:
+        oval(s, ix + 13, ry, 13, fill=DEEP)
+        fa(s, g, ix + 13, ry, 12, WHITE, brand=brand)
+        text_line(s, ix + 36, ry - 4.5, txt, "Sg-SB", 11.5, INK)
+        ry -= 31
+    EXP_W = 118.0
+    draw_logo(s, A.get("agency_logo_black"), ix, cardy + 20, w=EXP_W, anchor="bl")
+    qr = A.get("qr")
+    if qr and os.path.exists(qr):
+        qrs = 70.0; qx = cardx + cardw - 28 - qrs; qy = cardy + 18
+        picture_raw(s, qr, qx, qy, qrs, qrs)
+        if broker.get("linkedin_label"):
+            text_line(s, qx + qrs / 2, qy - 9, broker["linkedin_label"], "Sg", 7.4, INK2, align="c")
+    if sec.get("disclaimer"):
+        para(s, M, 92, CW * 0.50, sec["disclaimer"], "Sg", 7.4, INK2, 9.6, name="RPA::contact.disclaimer")
+    footer(s, page_no, broker)
+    sp = A.get("broker_hero")
+    if sp and os.path.exists(sp):
+        iw, ih = img_size(sp); ar = iw / ih; sp_h = 312.0; sp_w = sp_h * ar
+        sp_x = PW - sp_w + 26; sp_y = 0
+        picture_raw(s, sp, sp_x, sp_y, sp_w, sp_h)
+        if A.get("company_logo") and os.path.exists(A["company_logo"]):
+            pv_w = EXP_W * 1.5
+            draw_logo(s, A["company_logo"], sp_x + sp_w * 0.56, sp_y + sp_h * 0.245, w=pv_w, anchor="center")
 
 
 def render(data, out):
-    content = data.get("content") or {}
-    broker = data.get("broker") or {}
-    deck = Deck(broker)
+    broker = data.setdefault("broker", {})
+    broker.setdefault("title_line", " ".join([s for s in [broker.get("title"), broker.get("subtitle")] if s]))
+    data.setdefault("assets", {})
+    data.setdefault("content", {})
 
-    # Chaînes de premier niveau (ex. running_title) regroupées sur une diapo « Général ».
-    strs = [(k, v) for k, v in content.items() if isinstance(v, str) and not str(k).startswith("_")]
-    if strs:
-        deck.new_slide("Général")
-        for k, v in strs:
-            deck.field(k, v, humanize(k))
+    cache = os.path.join(tempfile.gettempdir(), "softimmo_rpa_pptx")
+    set_asset_dir(cache)
+    set_icon_fonts(os.path.join(FN, "fa-solid-900.ttf"), os.path.join(FN, "fa-brands-400.ttf"))
 
-    # Une diapo par section (objet de premier niveau).
-    for k, v in content.items():
-        if str(k).startswith("_") or not isinstance(v, dict):
-            continue
-        deck.new_slide(humanize(k))
-        for kk, vv in v.items():
-            if kk in SKIP or str(kk).startswith("_"):
-                continue
-            emit(deck, [k, kk], vv, humanize(kk))
-
-    deck.prs.save(out)
+    prs = Presentation()
+    prs.slide_width = E(PW)
+    prs.slide_height = E(PH)
+    page_cover(prs, data)
+    page_comfort(prs, data, 2)
+    page_security(prs, data, 3)
+    page_amenities(prs, data, 4)
+    page_life(prs, data, 5)
+    page_contact(prs, data, 6)
+    try:
+        cov = data["content"].get("cover", {})
+        prs.core_properties.title = (cov.get("title") or ["Brochure RPA"])[0]
+        prs.core_properties.author = broker.get("name", "Softimmo")
+    except Exception:  # noqa: BLE001
+        pass
+    prs.save(out)
     return out
 
 
@@ -194,7 +468,7 @@ def main():
         print(json.dumps({"path": out}))
     except Exception as e:  # noqa: BLE001
         import traceback
-        print(json.dumps({"error": str(e), "trace": traceback.format_exc()[-700:]}))
+        print(json.dumps({"error": str(e), "trace": traceback.format_exc()[-900:]}))
 
 
 if __name__ == "__main__":
