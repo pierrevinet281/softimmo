@@ -326,9 +326,11 @@ def title_block(c, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule
     return yy
 
 
-def feature_card(c, x, y, w, h, glyph, label, desc, bg=CREAM, bdr=CREAM_B, icon_color=GOLD_D, label_color=DEEP):
+def feature_card(c, x, y, w, h, glyph, label, desc, bg=CREAM, bdr=CREAM_B, icon_color=GOLD_D, label_color=DEEP, slot=None):
     if not label and not desc:
         return
+    if slot:
+        x, y, w, h = ov(slot, x, y, w, h)  # déplacer la carte → enfants relatifs suivent
     c.setFillColor(bg); c.setStrokeColor(bdr); c.setLineWidth(1); c.roundRect(x, y, w, h, 9, stroke=1, fill=1)
     cxx = x + 26; cyy = y + h - 26
     c.setFillColor(WHITE); c.setStrokeColor(GOLD_LT); c.setLineWidth(1); c.circle(cxx, cyy, 16, stroke=1, fill=1)
@@ -432,7 +434,7 @@ def page_comfort(c, d, page_no):
     for i, f in enumerate(feats[:6]):
         r = i // 2; col = i % 2
         x = M + col * (cardw + gap); y = gy - cardh - r * (cardh + gap)
-        feature_card(c, x, y, cardw, cardh, f.get("icon"), f.get("label"), f.get("desc"))
+        feature_card(c, x, y, cardw, cardh, f.get("icon"), f.get("label"), f.get("desc"), slot="comfort.features.%d.card" % i)
     rows = (min(len(feats[:6]), 6) + 1) // 2
     note = sec.get("note") or {}
     if note.get("title"):
@@ -470,11 +472,12 @@ def page_security(c, d, page_no):
     gap = 14; cw = (CW - 2 * gap) / 3; chh = 92; sc_y = sy - 40
     for i, s in enumerate(svcs[:3]):
         x = M + i * (cw + gap); y = sc_y - chh
-        c.setFillColor(CREAM); c.setStrokeColor(CREAM_B); c.setLineWidth(1); c.roundRect(x, y, cw, chh, 10, stroke=1, fill=1)
-        c.setFillColor(WHITE); c.setStrokeColor(GOLD_LT); c.circle(x + 26, y + chh - 26, 17, stroke=1, fill=1)
-        fa_icon(c, s.get("icon"), x + 26, y + chh - 26, 16, GOLD_D)
-        c.setFont(F_TSB, 13); c.setFillColor(DEEP); c.drawString(x + 52, y + chh - 30, s.get("label", ""))
-        draw_para(c, s.get("desc"), st(F_R, 9.2, INK2, leading=11.8), x + 16, y + chh - 48, cw - 30)
+        bx, by, bw, bh = ov("security.services.%d.card" % i, x, y, cw, chh)
+        c.setFillColor(CREAM); c.setStrokeColor(CREAM_B); c.setLineWidth(1); c.roundRect(bx, by, bw, bh, 10, stroke=1, fill=1)
+        c.setFillColor(WHITE); c.setStrokeColor(GOLD_LT); c.circle(bx + 26, by + bh - 26, 17, stroke=1, fill=1)
+        fa_icon(c, s.get("icon"), bx + 26, by + bh - 26, 16, GOLD_D)
+        c.setFont(F_TSB, 13); c.setFillColor(DEEP); c.drawString(bx + 52, by + bh - 30, s.get("label", ""))
+        draw_para(c, s.get("desc"), st(F_R, 9.2, INK2, leading=11.8), bx + 16, by + bh - 48, bw - 30)
     footer(c, page_no, d["broker"]); c.showPage()
 
 
@@ -506,7 +509,7 @@ def page_amenities(c, d, page_no):
     sy = r2y - h3 - 22; gap = 14; cw = (CW - 2 * gap) / 3; chh = 66
     for i, p in enumerate(pillars[:3]):
         x = M + i * (cw + gap); y = sy - chh
-        feature_card(c, x, y, cw, chh, p.get("icon"), p.get("label"), p.get("desc"), bg=MIST, bdr=MIST_B)
+        feature_card(c, x, y, cw, chh, p.get("icon"), p.get("label"), p.get("desc"), bg=MIST, bdr=MIST_B, slot="amenities.pillars.%d.card" % i)
     footer(c, page_no, d["broker"]); c.showPage()
 
 
@@ -517,11 +520,12 @@ def page_life(c, d, page_no):
     gap = 14; cw = (CW - 2 * gap) / 3; ch_img = 82; chh = 150
     for i, ev in enumerate(sec.get("events", [])[:3]):
         x = M + i * (cw + gap); y = top - chh
-        c.setFillColor(WHITE); c.setStrokeColor(CREAM_B); c.setLineWidth(1); c.roundRect(x, y, cw, chh, 10, stroke=1, fill=1)
-        draw_image(c, ev.get("image"), x, y + chh - ch_img, cw, ch_img, radius=10)
-        fa_icon(c, ev.get("icon"), x + 18, y + chh - ch_img - 14, 14, GOLD_D)
-        c.setFont(F_TSB, 12.5); c.setFillColor(DEEP); c.drawString(x + 34, y + chh - ch_img - 18, ev.get("label", ""))
-        draw_para(c, ev.get("desc"), st(F_R, 9.0, INK2, leading=11.6), x + 14, y + chh - ch_img - 30, cw - 26)
+        bx, by, bw, bh = ov("life.events.%d.card" % i, x, y, cw, chh)
+        c.setFillColor(WHITE); c.setStrokeColor(CREAM_B); c.setLineWidth(1); c.roundRect(bx, by, bw, bh, 10, stroke=1, fill=1)
+        draw_image(c, ev.get("image"), bx, by + bh - ch_img, bw, ch_img, radius=10)
+        fa_icon(c, ev.get("icon"), bx + 18, by + bh - ch_img - 14, 14, GOLD_D)
+        c.setFont(F_TSB, 12.5); c.setFillColor(DEEP); c.drawString(bx + 34, by + bh - ch_img - 18, ev.get("label", ""))
+        draw_para(c, ev.get("desc"), st(F_R, 9.0, INK2, leading=11.6), bx + 14, by + bh - ch_img - 30, bw - 26)
     qy = top - chh - 24
     kicker(c, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5)
     if sec.get("neighborhood_title"):
@@ -531,7 +535,7 @@ def page_life(c, d, page_no):
     for i, q in enumerate(qcards[:4]):
         r = i // 2; col = i % 2
         x = M + col * (cw2 + gap); y = gy - chh2 - r * (chh2 + gap)
-        feature_card(c, x, y, cw2, chh2, q.get("icon"), q.get("label"), q.get("desc"), bg=MIST, bdr=MIST_B)
+        feature_card(c, x, y, cw2, chh2, q.get("icon"), q.get("label"), q.get("desc"), bg=MIST, bdr=MIST_B, slot="life.neighborhood.%d.card" % i)
     fin = sec.get("finance") or {}
     if fin.get("title"):
         nrows = (min(len(qcards), 4) + 1) // 2

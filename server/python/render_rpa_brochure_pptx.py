@@ -143,10 +143,14 @@ def title_block(s, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule
 
 
 def feature_card(s, x, y, w, h, glyph, label, desc, bg=CREAM, bdr=CREAM_B, icon_color=GOLD_D,
-                 label_color=DEEP, nbase=None):
+                 label_color=DEEP, nbase=None, slot=None):
     if not label and not desc:
         return
-    rect(s, x, y, w, h, fill=bg, line=bdr, line_w=1, radius=9)
+    if slot:
+        x, y, w, h = ov(slot, x, y, w, h)  # déplacer la carte → enfants relatifs suivent
+    card = rect(s, x, y, w, h, fill=bg, line=bdr, line_w=1, radius=9)
+    if slot:
+        card.name = "RPA::" + slot
     cxx = x + 26; cyy = y + h - 26
     oval(s, cxx, cyy, 16, fill=WHITE, line=GOLD_LT, line_w=1)
     fa(s, glyph, cxx, cyy, 15, icon_color)
@@ -265,7 +269,7 @@ def page_comfort(prs, d, page_no):
         r = i // 2; col = i % 2
         x = M + col * (cardw + gap); y = gy - cardh - r * (cardh + gap)
         feature_card(s, x, y, cardw, cardh, f.get("icon"), f.get("label"), f.get("desc"),
-                     nbase="comfort.features.%d" % i)
+                     nbase="comfort.features.%d" % i, slot="comfort.features.%d.card" % i)
     rows = (min(len(feats[:6]), 6) + 1) // 2
     note = sec.get("note") or {}
     if note.get("title"):
@@ -305,12 +309,13 @@ def page_security(prs, d, page_no):
     gap = 14.0; cw = (CW - 2 * gap) / 3; chh = 92.0; sc_y = sy - 40
     for i, sv in enumerate(svcs[:3]):
         x = M + i * (cw + gap); y = sc_y - chh
-        rect(s, x, y, cw, chh, fill=CREAM, line=CREAM_B, line_w=1, radius=10)
-        oval(s, x + 26, y + chh - 26, 17, fill=WHITE, line=GOLD_LT, line_w=1)
-        fa(s, sv.get("icon"), x + 26, y + chh - 26, 16, GOLD_D)
-        text_line(s, x + 52, y + chh - 30, sv.get("label", ""), "Osw-SB", 13, DEEP,
+        bx, by, bw, bh = ov("security.services.%d.card" % i, x, y, cw, chh)
+        rect(s, bx, by, bw, bh, fill=CREAM, line=CREAM_B, line_w=1, radius=10).name = "RPA::security.services.%d.card" % i
+        oval(s, bx + 26, by + bh - 26, 17, fill=WHITE, line=GOLD_LT, line_w=1)
+        fa(s, sv.get("icon"), bx + 26, by + bh - 26, 16, GOLD_D)
+        text_line(s, bx + 52, by + bh - 30, sv.get("label", ""), "Osw-SB", 13, DEEP,
                   name="RPA::security.services.%d.label" % i)
-        para(s, x + 16, y + chh - 48, cw - 30, sv.get("desc"), "Sg", 9.2, INK2, 11.8,
+        para(s, bx + 16, by + bh - 48, bw - 30, sv.get("desc"), "Sg", 9.2, INK2, 11.8,
              name="RPA::security.services.%d.desc" % i)
     footer(s, page_no, d["broker"])
 
@@ -348,7 +353,7 @@ def page_amenities(prs, d, page_no):
     for i, p in enumerate(pillars[:3]):
         x = M + i * (cw + gap); y = sy - chh
         feature_card(s, x, y, cw, chh, p.get("icon"), p.get("label"), p.get("desc"), bg=MIST, bdr=MIST_B,
-                     nbase="amenities.pillars.%d" % i)
+                     nbase="amenities.pillars.%d" % i, slot="amenities.pillars.%d.card" % i)
     footer(s, page_no, d["broker"])
 
 
@@ -359,12 +364,13 @@ def page_life(prs, d, page_no):
     gap = 14.0; cw = (CW - 2 * gap) / 3; ch_img = 82.0; chh = 150.0
     for i, ev in enumerate(sec.get("events", [])[:3]):
         x = M + i * (cw + gap); y = top - chh
-        rect(s, x, y, cw, chh, fill=WHITE, line=CREAM_B, line_w=1, radius=10)
-        draw_image(s, ev.get("image"), x, y + chh - ch_img, cw, ch_img, radius=10)
-        fa(s, ev.get("icon"), x + 18, y + chh - ch_img - 14, 14, GOLD_D)
-        text_line(s, x + 34, y + chh - ch_img - 18, ev.get("label", ""), "Osw-SB", 12.5, DEEP,
+        bx, by, bw, bh = ov("life.events.%d.card" % i, x, y, cw, chh)
+        rect(s, bx, by, bw, bh, fill=WHITE, line=CREAM_B, line_w=1, radius=10).name = "RPA::life.events.%d.card" % i
+        draw_image(s, ev.get("image"), bx, by + bh - ch_img, bw, ch_img, radius=10)
+        fa(s, ev.get("icon"), bx + 18, by + bh - ch_img - 14, 14, GOLD_D)
+        text_line(s, bx + 34, by + bh - ch_img - 18, ev.get("label", ""), "Osw-SB", 12.5, DEEP,
                   name="RPA::life.events.%d.label" % i)
-        para(s, x + 14, y + chh - ch_img - 30, cw - 26, ev.get("desc"), "Sg", 9.0, INK2, 11.6,
+        para(s, bx + 14, by + bh - ch_img - 30, bw - 26, ev.get("desc"), "Sg", 9.0, INK2, 11.6,
              name="RPA::life.events.%d.desc" % i)
     qy = top - chh - 24
     kicker(s, M, qy, sec.get("neighborhood_kicker", ""), color=GOLD_D, size=10.5)
@@ -376,7 +382,7 @@ def page_life(prs, d, page_no):
         r = i // 2; col = i % 2
         x = M + col * (cw2 + gap); y = gy - chh2 - r * (chh2 + gap)
         feature_card(s, x, y, cw2, chh2, q.get("icon"), q.get("label"), q.get("desc"), bg=MIST, bdr=MIST_B,
-                     nbase="life.neighborhood.%d" % i)
+                     nbase="life.neighborhood.%d" % i, slot="life.neighborhood.%d.card" % i)
     fin = sec.get("finance") or {}
     if fin.get("title"):
         nrows = (min(len(qcards), 4) + 1) // 2
