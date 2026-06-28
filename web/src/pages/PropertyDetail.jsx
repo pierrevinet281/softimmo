@@ -512,6 +512,7 @@ function PptxSync({ statusUrl, postUrl, approveUrl, discardUrl, draftPreviewUrl,
   );
 }
 
+// Round-trip des POSITIONS du MODÈLE (global) avec garde-fou draft → approve/discard + reset.
 function TemplateLayout({ template }) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -523,18 +524,21 @@ function TemplateLayout({ template }) {
     queryFn: () => api.get(`/brochure/templates/${template}/layout`),
   });
   const inv = () => qc.invalidateQueries({ queryKey: ['tpl-layout', template] });
+  const run = async (fn, okKey) => {
+    setBusy(true); setMsg(null);
+    try { const r = await fn(); setMsg(okKey ? t(okKey) : null); inv(); return r; }
+    catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+  };
   const onFile = async (e) => {
     const f = e.target.files?.[0]; e.target.value = '';
     if (!f) return;
-    setBusy(true); setMsg(null);
-    try {
+    await run(async () => {
       const fd = new FormData(); fd.append('file', f);
       const r = await api.upload(`/brochure/templates/${template}/layout`, fd);
-      setMsg(t('d.bro.tpl.done').replace('{n}', (r.roles || []).length));
-      inv();
-    } catch (e2) { setMsg(e2.message); } finally { setBusy(false); }
+      setMsg(t('d.bro.draft.ready').replace('{n}', (r.roles || []).length));
+      return r;
+    });
   };
-  const reset = async () => { await api.del(`/brochure/templates/${template}/layout`); inv(); };
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -543,8 +547,16 @@ function TemplateLayout({ template }) {
         </Button>
         <input ref={ref} type="file" accept=".pptx" hidden onChange={onFile} />
         {data?.customized && <Badge tone="info">{t('d.bro.tpl.custom')}</Badge>}
-        {data?.customized && <Button size="sm" variant="ghost" onClick={reset}>{t('d.bro.tpl.reset')}</Button>}
+        {data?.customized && <Button size="sm" variant="ghost" onClick={() => run(() => api.del(`/brochure/templates/${template}/layout`))} disabled={busy}>{t('d.bro.tpl.reset')}</Button>}
       </div>
+      {data?.hasDraft && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, padding: 8, borderRadius: 6, background: 'var(--color-bg-secondary)' }}>
+          <Badge tone="warning">{t('d.bro.draft.badge')}</Badge>
+          <Button size="sm" variant="outline" icon={Eye} onClick={() => window.open(api.url(`/brochure/templates/${template}/sample.pdf?draft=1`), '_blank')}>{t('d.bro.draft.preview')}</Button>
+          <Button size="sm" icon={Check} onClick={() => run(() => api.post(`/brochure/templates/${template}/layout/approve`), 'd.bro.draft.approved')} disabled={busy}>{t('d.bro.draft.approve')}</Button>
+          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => run(() => api.del(`/brochure/templates/${template}/layout/draft`))} disabled={busy}>{t('d.bro.draft.discard')}</Button>
+        </div>
+      )}
       {msg && <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{msg}</div>}
       <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t('d.bro.tpl.hint')}</div>
     </div>

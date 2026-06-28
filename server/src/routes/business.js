@@ -323,17 +323,19 @@ export default function mountBusiness(parent = Router()) {
   // Le courtier édite un gabarit PPTX puis le téléverse : on en extrait les positions
   // (pptx_to_layout) vers server/python/layouts/<template>.json, lu ensuite par les moteurs.
   const layoutPath = (tpl) => path.join(config.pythonDir, 'layouts', `${tpl}.json`);
+  const layoutDraftPath = (tpl) => path.join(config.pythonDir, 'layouts', `${tpl}.draft.json`);
+  // Lit un fichier layout JSON (live ou brouillon) → objet, ou null. Sert d'override d'aperçu.
+  const readLayout = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch { return null; } };
 
   parent.get('/brochure/templates/:template/layout', wrap(async (req, res) => {
     const tpl = String(req.params.template);
     if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
-    const p = layoutPath(tpl);
-    if (!fs.existsSync(p)) return res.json({ customized: false, roles: [] });
-    let roles = [];
-    try { roles = Object.keys(JSON.parse(fs.readFileSync(p, 'utf-8'))); } catch { /* ignore */ }
-    res.json({ customized: true, roles });
+    const live = readLayout(layoutPath(tpl));
+    res.json({ customized: !!live, hasDraft: fs.existsSync(layoutDraftPath(tpl)), roles: live ? Object.keys(live) : [] });
   }));
 
+  // Sync = extraction des positions du PPTX édité → enregistré en BROUILLON (layouts/<tpl>.draft.json),
+  // n'écrase PAS le modèle live. Aperçu via sample.pdf?draft=1, puis Approuver ou Rejeter.
   parent.post('/brochure/templates/:template/layout', upload.single('file'), wrap(async (req, res) => {
     const tpl = String(req.params.template);
     if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
@@ -344,17 +346,36 @@ export default function mountBusiness(parent = Router()) {
     const tmp = path.join(dir, `tpl-${tpl}-${Date.now()}.pptx`);
     fs.writeFileSync(tmp, req.file.buffer);
     try {
-      const out = await runWorker('pptx_to_layout', { pptx: tmp, out: layoutPath(tpl) }, { timeoutMs: 60000 });
-      res.status(201).json({ customized: true, roles: out.roles || [] });
+      const out = await runWorker('pptx_to_layout', { pptx: tmp, out: layoutDraftPath(tpl) }, { timeoutMs: 60000 });
+      res.status(201).json({ draft: true, roles: out.roles || [] });
     } finally {
       try { fs.unlinkSync(tmp); } catch { /* ignore */ }
     }
   }));
 
+  // Approuver le brouillon de modèle : il remplace le modèle live, puis est effacé.
+  parent.post('/brochure/templates/:template/layout/approve', wrap(async (req, res) => {
+    const tpl = String(req.params.template);
+    if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
+    if (!fs.existsSync(layoutDraftPath(tpl))) throw badRequest('Aucun brouillon à approuver');
+    fs.renameSync(layoutDraftPath(tpl), layoutPath(tpl));  // draft → live (écrase)
+    res.json({ approved: true });
+  }));
+
+  // Rejeter le brouillon (le modèle live reste inchangé).
+  parent.delete('/brochure/templates/:template/layout/draft', wrap(async (req, res) => {
+    const tpl = String(req.params.template);
+    if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
+    try { fs.unlinkSync(layoutDraftPath(tpl)); } catch { /* déjà absent */ }
+    res.status(204).end();
+  }));
+
+  // Reset to default : efface le modèle personnalisé (live + brouillon) → positions par défaut du code.
   parent.delete('/brochure/templates/:template/layout', wrap(async (req, res) => {
     const tpl = String(req.params.template);
     if (!BROCHURE_TEMPLATES.includes(tpl)) throw badRequest(`Modèle inconnu : ${tpl}`);
     try { fs.unlinkSync(layoutPath(tpl)); } catch { /* déjà absent */ }
+    try { fs.unlinkSync(layoutDraftPath(tpl)); } catch { /* déjà absent */ }
     res.status(204).end();
   }));
 
@@ -921,7 +942,7 @@ export default function mountBusiness(parent = Router()) {
       ],
     };
   }
-  async function streamBrochureSample(res, template, fmt) {
+  async function streamBrochureSample(res, template, fmt, { draft = false } = {}) {
     if (!BROCHURE_TEMPLATES.includes(template)) throw badRequest(`Modèle inconnu : ${template}`);
     const dir = path.join(config.root, 'data', 'uploads');
     fs.mkdirSync(dir, { recursive: true });
@@ -931,7 +952,10 @@ export default function mountBusiness(parent = Router()) {
       await runWorker('render_rpa_brochure', { data: buildRpaData({ broker: defaultBroker() }), out }, { timeoutMs: 60000 });
     } else {
       const worker = fmt === 'pptx' ? 'render_brochure_pptx' : 'render_brochure';
-      await runWorker(worker, { data: sampleBrochureData(template), out }, { timeoutMs: 60000 });
+      const data = sampleBrochureData(template);
+      // Aperçu du brouillon : injecte le layout draft comme surcharge (load_layout le fusionne par-dessus).
+      if (draft) { const dl = readLayout(layoutDraftPath(template)); if (dl) data.layout = dl; }
+      await runWorker(worker, { data, out }, { timeoutMs: 60000 });
     }
     res.setHeader('Content-Type', fmt === 'pptx'
       ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
@@ -940,7 +964,7 @@ export default function mountBusiness(parent = Router()) {
     res.sendFile(out, (err) => { try { fs.unlinkSync(out); } catch { /* ignore */ } if (err && !res.headersSent) res.status(500).end(); });
   }
   parent.get('/brochure/templates/:template/sample.pdf', wrap(async (req, res) => {
-    await streamBrochureSample(res, String(req.params.template), 'pdf');
+    await streamBrochureSample(res, String(req.params.template), 'pdf', { draft: wantDraft(req) });
   }));
   parent.get('/brochure/templates/:template/sample.pptx', wrap(async (req, res) => {
     await streamBrochureSample(res, String(req.params.template), 'pptx');
