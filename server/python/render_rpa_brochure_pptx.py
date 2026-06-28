@@ -90,6 +90,14 @@ def iov(slot, cx, cy):
     return cx, cy
 
 
+def ovline(slot, x1, y1, x2, y2):
+    """Filet horizontal depuis sa boîte override."""
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return b[0], b[1], b[0] + b[2], b[1]
+    return x1, y1, x2, y2
+
+
 def fa(s, key, cx, cy, size, color, brand=False, slot=None):
     cp = (ICB if brand else IC).get(key)
     if cp is None:
@@ -154,7 +162,11 @@ def title_block(s, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule
                   name=("RPA::%s.title.%d" % (kbase, i)) if kbase else None)
         yy -= lead
     if rule:
-        line(s, x, yy - 2, x + rule_w, yy - 2, GOLD, 2.4)
+        if kbase:
+            a, ry, b2, _ = ovline("%s.rule" % kbase, x, yy - 2, x + rule_w, yy - 2)
+            line(s, a, ry, b2, ry, GOLD, 2.4).name = "RPAp::%s.rule" % kbase
+        else:
+            line(s, x, yy - 2, x + rule_w, yy - 2, GOLD, 2.4)
         yy -= 8
     return yy
 
@@ -248,7 +260,8 @@ def page_cover(prs, d):
     for i, ln in enumerate(tl[:2]):
         text_line(s, x, yy, ln, "Osw-B", 46, DEEP, name="RPA::cover.title.%d" % i)
         yy -= 44
-    line(s, x, yy + 8, x + 54, yy + 8, GOLD, 2.6)
+    crl = ovline("cover.rule", x, yy + 8, x + 54, yy + 8)
+    line(s, crl[0], crl[1], crl[2], crl[1], GOLD, 2.6).name = "RPAp::cover.rule"
     if cov.get("subtitle"):
         para(s, x, yy - 4, CW * 0.90, cov["subtitle"], "Sg-L", 13, INK, 17, name="RPA::cover.subtitle")
     chips = cov.get("chips", [])
@@ -427,25 +440,27 @@ def page_contact(prs, d, page_no):
     txt_ref = PH - 250; band_bottom = PH - 308; band_h = PH - band_bottom
     draw_image(s, sec.get("hero"), 0, band_bottom, PW, band_h, radius=0, dpi=200, slot="contact.hero")
     scrim(s, 0, band_bottom, PW, band_h, top_alpha=120, bot_alpha=225)
-    draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl")
+    draw_logo(s, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl", slot="contact.logo_white")
     kicker(s, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11, slot="contact.kicker")
     tl = sec.get("title", [])
     yy = txt_ref + 108
     for i, ln in enumerate(tl[:2]):
         text_line(s, M, yy, ln, "Osw-B", 38, WHITE, name="RPA::contact.title.%d" % i)
         yy -= 38
-    line(s, M, yy + 6, M + 54, yy + 6, GOLD, 2.6)
+    krl = ovline("contact.rule", M, yy + 6, M + 54, yy + 6)
+    line(s, krl[0], krl[1], krl[2], krl[1], GOLD, 2.6).name = "RPAp::contact.rule"
     if sec.get("cta"):
         para(s, M, yy - 6, CW * 0.74, sec.get("cta"), "Sg-L", 13, WHITE, 18, name="RPA::contact.cta")
     cardx = M; cardw = CW * 0.57; cardy = 148.0; cardh = band_bottom - 148 - 26
     cardx, cardy, cardw, cardh = ov("contact.card", cardx, cardy, cardw, cardh)
     rect(s, cardx, cardy, cardw, cardh, fill=WHITE, line=LINE, line_w=1.2, radius=14).name = "RPA::contact.card"
-    rect(s, cardx, cardy + cardh - 6, cardw, 6, fill=GOLD, radius=3)
+    gsx, gsy, gsw, gsh = ov("contact.gold_strip", cardx, cardy + cardh - 6, cardw, 6)
+    rect(s, gsx, gsy, gsw, gsh, fill=GOLD, radius=3).name = "RPAp::contact.gold_strip"
     ix = cardx + 28; iy = cardy + cardh - 42
-    text_line(s, ix, iy, str(broker.get("name", "")).upper(), "Osw-B", 26, DEEP)
-    text_line(s, ix, iy - 17, broker.get("title_line", ""), "Sg-SB", 10.5, GOLD_D)
+    text_line(s, ix, iy, str(broker.get("name", "")).upper(), "Osw-B", 26, DEEP, name="RPAp::contact.name")
+    text_line(s, ix, iy - 17, broker.get("title_line", ""), "Sg-SB", 10.5, GOLD_D, name="RPAp::contact.designation")
     agency = "  ·  ".join([b for b in [broker.get("agency"), broker.get("company")] if b])
-    text_line(s, ix, iy - 32, agency, "Sg", 9.5, INK2)
+    text_line(s, ix, iy - 32, agency, "Sg", 9.5, INK2, name="RPAp::contact.agency")
     line(s, ix, iy - 46, cardx + cardw - 28, iy - 46, LINE, 1)
     rows = []
     if broker.get("phone"):
@@ -455,19 +470,21 @@ def page_contact(prs, d, page_no):
     if broker.get("linkedin"):
         rows.append(("linkedin", broker["linkedin"], True))
     ry = iy - 68
-    for g, txt, brand in rows:
-        oval(s, ix + 13, ry, 13, fill=DEEP)
-        fa(s, g, ix + 13, ry, 12, WHITE, brand=brand)
-        text_line(s, ix + 36, ry - 4.5, txt, "Sg-SB", 11.5, INK)
+    for ri, (g, txt, brand) in enumerate(rows):
+        rcx, rcy = iov("contact.row.%d.icon" % ri, ix + 13, ry)
+        oval(s, rcx, rcy, 13, fill=DEEP)
+        fa(s, g, rcx, rcy, 12, WHITE, brand=brand, slot="contact.row.%d.icon" % ri)
+        text_line(s, ix + 36, ry - 4.5, txt, "Sg-SB", 11.5, INK, name="RPAp::contact.row.%d.text" % ri)
         ry -= 31
     EXP_W = 118.0
-    draw_logo(s, A.get("agency_logo_black"), ix, cardy + 20, w=EXP_W, anchor="bl")
+    draw_logo(s, A.get("agency_logo_black"), ix, cardy + 20, w=EXP_W, anchor="bl", slot="contact.card_logo")
     qr = A.get("qr")
     if qr and os.path.exists(qr):
         qrs = 70.0; qx = cardx + cardw - 28 - qrs; qy = cardy + 18
-        picture_raw(s, qr, qx, qy, qrs, qrs)
+        qbx, qby, qbw, qbh = ov("contact.qr", qx, qy, qrs, qrs)
+        picture_raw(s, qr, qbx, qby, qbw, qbh).name = "RPAp::contact.qr"
         if broker.get("linkedin_label"):
-            text_line(s, qx + qrs / 2, qy - 9, broker["linkedin_label"], "Sg", 7.4, INK2, align="c")
+            text_line(s, qbx + qbw / 2, qby - 9, broker["linkedin_label"], "Sg", 7.4, INK2, align="c", name="RPAp::contact.qr_label")
     if sec.get("disclaimer"):
         para(s, M, 92, CW * 0.50, sec["disclaimer"], "Sg", 7.4, INK2, 9.6, name="RPA::contact.disclaimer")
     footer(s, page_no, broker)
@@ -475,10 +492,11 @@ def page_contact(prs, d, page_no):
     if sp and os.path.exists(sp):
         iw, ih = img_size(sp); ar = iw / ih; sp_h = 312.0; sp_w = sp_h * ar
         sp_x = PW - sp_w + 26; sp_y = 0
-        picture_raw(s, sp, sp_x, sp_y, sp_w, sp_h)
+        spx, spy, spw, sph = ov("contact.broker_hero", sp_x, sp_y, sp_w, sp_h)
+        picture_raw(s, sp, spx, spy, spw, sph).name = "RPAp::contact.broker_hero"
         if A.get("company_logo") and os.path.exists(A["company_logo"]):
             pv_w = EXP_W * 1.5
-            draw_logo(s, A["company_logo"], sp_x + sp_w * 0.56, sp_y + sp_h * 0.245, w=pv_w, anchor="center")
+            draw_logo(s, A["company_logo"], spx + spw * 0.56, spy + sph * 0.245, w=pv_w, anchor="center", slot="contact.company_logo")
 
 
 def render(data, out):

@@ -146,6 +146,14 @@ def ovc(slot, cx, cy):
     return cx, cy
 
 
+def ovline(slot, x1, y1, x2, y2):
+    """Filet horizontal : boîte override → (x1, y, x2, y) au bas de la boîte sur sa largeur."""
+    b = LAYOUT_OV.get(slot)
+    if isinstance(b, (list, tuple)) and len(b) == 4:
+        return float(b[0]), float(b[1]), float(b[0]) + float(b[2]), float(b[1])
+    return x1, y1, x2, y2
+
+
 def _exists(p):
     return bool(p) and os.path.exists(p) and Image is not None
 
@@ -357,7 +365,8 @@ def title_block(c, x, y_top, kick, title_lines, title_size=30, tcolor=DEEP, rule
             dx, dy = tov_text("%s.title.%d" % (kbase, i), dx, dy, title_size, "osw")
         c.drawString(dx, dy, ln); yy -= lead
     if rule:
-        c.setStrokeColor(GOLD); c.setLineWidth(2.4); c.line(x, yy - 2, x + rule_w, yy - 2); yy -= 8
+        a, ry, b2, _ = ovline("%s.rule" % kbase, x, yy - 2, x + rule_w, yy - 2) if kbase else (x, yy - 2, x + rule_w, yy - 2)
+        c.setStrokeColor(GOLD); c.setLineWidth(2.4); c.line(a, ry, b2, ry); yy -= 8
     return yy
 
 
@@ -426,7 +435,8 @@ def page_cover(c, d):
     for i, ln in enumerate(tl[:2]):
         dx, dy = tov_text("cover.title.%d" % i, x, yy, 46, "osw")
         c.drawString(dx, dy, ln); yy -= 42
-    c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(x, yy + 8, x + 54, yy + 8)
+    crl = ovline("cover.rule", x, yy + 8, x + 54, yy + 8)
+    c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(crl[0], crl[1], crl[2], crl[1])
     sub_top = yy - 4; sub_h = 0
     if cov.get("subtitle"):
         sx, sy, sw = tov_para("cover.subtitle", x, sub_top, CW * 0.90)
@@ -627,7 +637,7 @@ def page_contact(c, d, page_no):
     txt_ref = PH - 250; band_bottom = PH - 308; band_h = PH - band_bottom
     draw_image(c, sec.get("hero"), *ov("contact.hero", 0, band_bottom, PW, band_h), radius=0, dpi=200)
     draw_scrim(c, 0, band_bottom, PW, band_h, top_alpha=120, bot_alpha=225)
-    draw_logo(c, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl")
+    draw_logo(c, A.get("agency_logo_white"), M, PH - 34, h=28, anchor="tl", slot="contact.logo_white")
     kicker(c, M, txt_ref + 150, sec.get("kicker", ""), color=GOLD_LT, size=11, slot="contact.kicker")
     tl = sec.get("title", [])
     c.setFont(F_TB, 38); c.setFillColor(WHITE)
@@ -635,19 +645,24 @@ def page_contact(c, d, page_no):
     for i, ln in enumerate(tl[:2]):
         dx, dy = tov_text("contact.title.%d" % i, M, yy, 38, "osw")
         c.drawString(dx, dy, ln); yy -= 38
-    c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(M, yy + 6, M + 54, yy + 6)
+    krl = ovline("contact.rule", M, yy + 6, M + 54, yy + 6)
+    c.setStrokeColor(GOLD); c.setLineWidth(2.6); c.line(krl[0], krl[1], krl[2], krl[1])
     cx2, cy2, cw2 = tov_para("contact.cta", M, yy - 6, CW * 0.74)
     draw_para(c, sec.get("cta"), st(F_L, 13, WHITE, leading=18), cx2, cy2, cw2)
     # carte contact (tous les enfants sont relatifs à cardx/cardy/cardw/cardh → 1 override déplace tout)
     cardx = M; cardw = CW * 0.57; cardy = 148; cardh = band_bottom - 148 - 26
     cardx, cardy, cardw, cardh = ov("contact.card", cardx, cardy, cardw, cardh)
     c.setFillColor(WHITE); c.setStrokeColor(LINE); c.setLineWidth(1.2); c.roundRect(cardx, cardy, cardw, cardh, 14, stroke=1, fill=1)
-    c.setFillColor(GOLD); c.roundRect(cardx, cardy + cardh - 6, cardw, 6, 3, stroke=0, fill=1)
+    gsx, gsy, gsw, gsh = ov("contact.gold_strip", cardx, cardy + cardh - 6, cardw, 6)
+    c.setFillColor(GOLD); c.roundRect(gsx, gsy, gsw, gsh, 3, stroke=0, fill=1)
     ix = cardx + 28; iy = cardy + cardh - 42
-    c.setFont(F_TB, 26); c.setFillColor(DEEP); c.drawString(ix, iy, str(broker.get("name", "")).upper())
-    c.setFont(F_SB, 10.5); c.setFillColor(GOLD_D); c.drawString(ix, iy - 17, broker.get("title_line", ""))
+    cnx, cny = tov_text("contact.name", ix, iy, 26, "osw")
+    c.setFont(F_TB, 26); c.setFillColor(DEEP); c.drawString(cnx, cny, str(broker.get("name", "")).upper())
+    cdx, cdy = tov_text("contact.designation", ix, iy - 17, 10.5, "sgb")
+    c.setFont(F_SB, 10.5); c.setFillColor(GOLD_D); c.drawString(cdx, cdy, broker.get("title_line", ""))
     agency = "  ·  ".join([b for b in [broker.get("agency"), broker.get("company")] if b])
-    c.setFont(F_R, 9.5); c.setFillColor(INK2); c.drawString(ix, iy - 32, agency)
+    cax, cay = tov_text("contact.agency", ix, iy - 32, 9.5, "sg")
+    c.setFont(F_R, 9.5); c.setFillColor(INK2); c.drawString(cax, cay, agency)
     c.setStrokeColor(LINE); c.setLineWidth(1); c.line(ix, iy - 46, cardx + cardw - 28, iy - 46)
     rows = []
     if broker.get("phone"):
@@ -657,31 +672,36 @@ def page_contact(c, d, page_no):
     if broker.get("linkedin"):
         rows.append(("linkedin", broker["linkedin"], True))
     ry = iy - 68
-    for g, txt, brand in rows:
-        c.setFillColor(DEEP); c.circle(ix + 13, ry, 13, fill=1, stroke=0)
-        fa_icon(c, g, ix + 13, ry, 12, WHITE, brand=brand)
-        c.setFont(F_SB, 11.5); c.setFillColor(INK); c.drawString(ix + 36, ry - 4.5, txt)
+    for ri, (g, txt, brand) in enumerate(rows):
+        rcx, rcy = ovc("contact.row.%d.icon" % ri, ix + 13, ry)
+        c.setFillColor(DEEP); c.circle(rcx, rcy, 13, fill=1, stroke=0)
+        fa_icon(c, g, rcx, rcy, 12, WHITE, brand=brand)
+        rtx, rty = tov_text("contact.row.%d.text" % ri, ix + 36, ry - 4.5, 11.5, "sgb")
+        c.setFont(F_SB, 11.5); c.setFillColor(INK); c.drawString(rtx, rty, txt)
         ry -= 31
     EXP_W = 118
-    draw_logo(c, A.get("agency_logo_black"), ix, cardy + 20, w=EXP_W, anchor="bl")
+    draw_logo(c, A.get("agency_logo_black"), ix, cardy + 20, w=EXP_W, anchor="bl", slot="contact.card_logo")
     qr = A.get("qr")
     if _exists(qr):
         qrs = 70; qx = cardx + cardw - 28 - qrs; qy = cardy + 18
-        c.drawImage(logo_reader(qr), qx, qy, qrs, qrs, mask="auto")
+        qbx, qby, qbw, qbh = ov("contact.qr", qx, qy, qrs, qrs)
+        c.drawImage(logo_reader(qr), qbx, qby, qbw, qbh, mask="auto")
         if broker.get("linkedin_label"):
-            c.setFont(F_R, 7.4); c.setFillColor(INK2); c.drawCentredString(qx + qrs / 2, qy - 9, broker["linkedin_label"])
+            c.setFont(F_R, 7.4); c.setFillColor(INK2); c.drawCentredString(qbx + qbw / 2, qby - 9, broker["linkedin_label"])
     if sec.get("disclaimer"):
-        draw_para(c, sec["disclaimer"], st(F_R, 7.4, INK2, leading=9.6), M, 92, CW * 0.50)
+        dscx, dscy, dscw = tov_para("contact.disclaimer", M, 92, CW * 0.50)
+        draw_para(c, sec["disclaimer"], st(F_R, 7.4, INK2, leading=9.6), dscx, dscy, dscw)
     footer(c, page_no, broker)
     # héros courtier (SuperPierre) + logo compagnie superposé, dessinés en dernier (devant le pied)
     sp = A.get("broker_hero")
     if _exists(sp):
         iw, ih = img_size(sp); ar = iw / ih; sp_h = 312; sp_w = sp_h * ar
         sp_x = PW - sp_w + 26; sp_y = 0
-        c.drawImage(logo_reader(sp), sp_x, sp_y, sp_w, sp_h, mask="auto")
+        spx, spy, spw, sph = ov("contact.broker_hero", sp_x, sp_y, sp_w, sp_h)
+        c.drawImage(logo_reader(sp), spx, spy, spw, sph, mask="auto")
         if _exists(A.get("company_logo")):
             pv_w = EXP_W * 1.5
-            draw_logo(c, A["company_logo"], sp_x + sp_w * 0.56, sp_y + sp_h * 0.245, w=pv_w, anchor="center")
+            draw_logo(c, A["company_logo"], spx + spw * 0.56, spy + sph * 0.245, w=pv_w, anchor="center", slot="contact.company_logo")
     c.showPage()
 
 
