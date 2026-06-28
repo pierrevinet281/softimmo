@@ -274,11 +274,12 @@ def page_comfort(prs, d, page_no):
     note = sec.get("note") or {}
     if note.get("title"):
         ny = gy - rows * (cardh + gap) - 6
-        grad_rect(s, M, ny - 46, CW, 46, DEEP, DEEP2, radius=12, vertical=False)
-        fa(s, "check", M + 26, ny - 23, 15, GOLD_LT)
-        text_line(s, M + 48, ny - 19, note["title"], "Osw-SB", 12.5, WHITE, name="RPA::comfort.note.title")
+        nx, nyy, nw, nh = ov("comfort.note.card", M, ny - 46, CW, 46)
+        grad_rect(s, nx, nyy, nw, nh, DEEP, DEEP2, radius=12, vertical=False).name = "RPA::comfort.note.card"
+        fa(s, "check", nx + 26, nyy + nh - 23, 15, GOLD_LT)
+        text_line(s, nx + 48, nyy + nh - 19, note["title"], "Osw-SB", 12.5, WHITE, name="RPA::comfort.note.title")
         if note.get("sub"):
-            text_line(s, M + 48, ny - 32, note["sub"], "Sg", 9.5, GOLD_LT, name="RPA::comfort.note.sub")
+            text_line(s, nx + 48, nyy + nh - 32, note["sub"], "Sg", 9.5, GOLD_LT, name="RPA::comfort.note.sub")
     footer(s, page_no, d["broker"])
 
 
@@ -287,13 +288,14 @@ def page_security(prs, d, page_no):
     s = new_slide(prs)
     top = _intro(s, sec, rt, "02 · " + sec.get("running", ""), "security")
     panel_w = CW * 0.605; img_w = CW - panel_w - 16; panel_h = 236.0
-    grad_rect(s, M, top - panel_h, panel_w, panel_h, DEEP, DEEP_D, radius=14, vertical=True)
+    px, py, pw, ph = ov("security.panel", M, top - panel_h, panel_w, panel_h)
+    grad_rect(s, px, py, pw, ph, DEEP, DEEP_D, radius=14, vertical=True).name = "RPA::security.panel"
     if sec.get("panel_title"):
-        text_line(s, M + 22, top - 26, str(sec["panel_title"]).upper(), "Osw-SB", 12, GOLD_LT, tracking=1.6)
-    iy = top - 50
+        text_line(s, px + 22, py + ph - 26, str(sec["panel_title"]).upper(), "Osw-SB", 12, GOLD_LT, tracking=1.6)
+    iy = py + ph - 50
     for i, it in enumerate(sec.get("panel_items", [])[:5]):
-        fa(s, it.get("icon"), M + 30, iy - 2, 14, GOLD)
-        para(s, M + 50, iy + 6, panel_w - 50 - 18, it.get("text"), "Sg", 10, WHITE, 13.0,
+        fa(s, it.get("icon"), px + 30, iy - 2, 14, GOLD)
+        para(s, px + 50, iy + 6, pw - 50 - 18, it.get("text"), "Sg", 10, WHITE, 13.0,
              name="RPA::security.panel_items.%d.text" % i)
         iy -= 37
     draw_image(s, sec.get("panel_image"), M + panel_w + 16, top - panel_h, img_w, panel_h, radius=14, slot="security.panel_image")
@@ -387,11 +389,12 @@ def page_life(prs, d, page_no):
     if fin.get("title"):
         nrows = (min(len(qcards), 4) + 1) // 2
         fy = gy - nrows * (chh2 + gap) - 8; fh = 58.0
-        grad_rect(s, M, fy - fh, CW, fh, GOLD_D, GOLD, radius=14, vertical=False)
-        oval(s, M + 34, fy - fh / 2, 19, fill=WHITE, fill_alpha=0.92)
-        fa(s, fin.get("icon", "coins"), M + 34, fy - fh / 2, 18, GOLD_D)
-        text_line(s, M + 66, fy - 24, str(fin["title"]).upper(), "Osw-B", 16, WHITE)
-        para(s, M + 66, fy - 30, CW - 150, fin.get("text"), "Sg-SB", 9.6, WHITE, 12, name="RPA::life.finance.text")
+        fx, fyy, fw, fhh = ov("life.finance.card", M, fy - fh, CW, fh)
+        grad_rect(s, fx, fyy, fw, fhh, GOLD_D, GOLD, radius=14, vertical=False).name = "RPA::life.finance.card"
+        oval(s, fx + 34, fyy + fhh / 2, 19, fill=WHITE, fill_alpha=0.92)
+        fa(s, fin.get("icon", "coins"), fx + 34, fyy + fhh / 2, 18, GOLD_D)
+        text_line(s, fx + 66, fyy + fhh - 24, str(fin["title"]).upper(), "Osw-B", 16, WHITE)
+        para(s, fx + 66, fyy + fhh - 30, fw - 150, fin.get("text"), "Sg-SB", 9.6, WHITE, 12, name="RPA::life.finance.text")
     footer(s, page_no, d["broker"])
 
 

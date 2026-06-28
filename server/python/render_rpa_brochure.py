@@ -439,11 +439,12 @@ def page_comfort(c, d, page_no):
     note = sec.get("note") or {}
     if note.get("title"):
         ny = gy - rows * (cardh + gap) - 6
-        draw_gradient(c, M, ny - 46, CW, 46, DEEP, DEEP2, radius=12, vertical=False)
-        fa_icon(c, "check", M + 26, ny - 23, 15, GOLD_LT)
-        c.setFont(F_TSB, 12.5); c.setFillColor(WHITE); c.drawString(M + 48, ny - 19, note["title"])
+        nx, nyy, nw, nh = ov("comfort.note.card", M, ny - 46, CW, 46)
+        draw_gradient(c, nx, nyy, nw, nh, DEEP, DEEP2, radius=12, vertical=False)
+        fa_icon(c, "check", nx + 26, nyy + nh - 23, 15, GOLD_LT)
+        c.setFont(F_TSB, 12.5); c.setFillColor(WHITE); c.drawString(nx + 48, nyy + nh - 19, note["title"])
         if note.get("sub"):
-            c.setFont(F_R, 9.5); c.setFillColor(GOLD_LT); c.drawString(M + 48, ny - 32, note["sub"])
+            c.setFont(F_R, 9.5); c.setFillColor(GOLD_LT); c.drawString(nx + 48, nyy + nh - 32, note["sub"])
     footer(c, page_no, d["broker"]); c.showPage()
 
 
@@ -452,13 +453,14 @@ def page_security(c, d, page_no):
     c.setFillColor(WHITE); c.rect(0, 0, PW, PH, fill=1, stroke=0)
     top = _intro(c, sec, rt, "02 · " + sec.get("running", ""))
     panel_w = CW * 0.605; img_w = CW - panel_w - 16; panel_h = 236
-    draw_gradient(c, M, top - panel_h, panel_w, panel_h, DEEP, DEEP_D, radius=14, vertical=True)
+    px, py, pw, ph = ov("security.panel", M, top - panel_h, panel_w, panel_h)
+    draw_gradient(c, px, py, pw, ph, DEEP, DEEP_D, radius=14, vertical=True)
     if sec.get("panel_title"):
-        tracked(c, M + 22, top - 26, str(sec["panel_title"]).upper(), F_TSB, 12, GOLD_LT, 1.6)
-    iy = top - 50
+        tracked(c, px + 22, py + ph - 26, str(sec["panel_title"]).upper(), F_TSB, 12, GOLD_LT, 1.6)
+    iy = py + ph - 50
     for it in sec.get("panel_items", [])[:5]:
-        fa_icon(c, it.get("icon"), M + 30, iy - 2, 14, GOLD)
-        draw_para(c, it.get("text"), st(F_R, 10, WHITE, leading=13.0), M + 50, iy + 6, panel_w - 50 - 18)
+        fa_icon(c, it.get("icon"), px + 30, iy - 2, 14, GOLD)
+        draw_para(c, it.get("text"), st(F_R, 10, WHITE, leading=13.0), px + 50, iy + 6, pw - 50 - 18)
         iy -= 37
     draw_image(c, sec.get("panel_image"), *ov("security.panel_image", M + panel_w + 16, top - panel_h, img_w, panel_h), radius=14)
     if sec.get("panel_caption"):
@@ -540,11 +542,12 @@ def page_life(c, d, page_no):
     if fin.get("title"):
         nrows = (min(len(qcards), 4) + 1) // 2
         fy = gy - nrows * (chh2 + gap) - 8; fh = 58
-        draw_gradient(c, M, fy - fh, CW, fh, GOLD_D, GOLD, radius=14, vertical=False)
-        c.setFillColor(Color(1, 1, 1, 0.92)); c.circle(M + 34, fy - fh / 2, 19, fill=1, stroke=0)
-        fa_icon(c, fin.get("icon", "coins"), M + 34, fy - fh / 2, 18, GOLD_D)
-        c.setFont(F_TB, 16); c.setFillColor(WHITE); c.drawString(M + 66, fy - 24, str(fin["title"]).upper())
-        draw_para(c, fin.get("text"), st(F_SB, 9.6, WHITE, leading=12), M + 66, fy - 30, CW - 150)
+        fx, fyy, fw, fhh = ov("life.finance.card", M, fy - fh, CW, fh)
+        draw_gradient(c, fx, fyy, fw, fhh, GOLD_D, GOLD, radius=14, vertical=False)
+        c.setFillColor(Color(1, 1, 1, 0.92)); c.circle(fx + 34, fyy + fhh / 2, 19, fill=1, stroke=0)
+        fa_icon(c, fin.get("icon", "coins"), fx + 34, fyy + fhh / 2, 18, GOLD_D)
+        c.setFont(F_TB, 16); c.setFillColor(WHITE); c.drawString(fx + 66, fyy + fhh - 24, str(fin["title"]).upper())
+        draw_para(c, fin.get("text"), st(F_SB, 9.6, WHITE, leading=12), fx + 66, fyy + fhh - 30, fw - 150)
     footer(c, page_no, d["broker"]); c.showPage()
 
 
