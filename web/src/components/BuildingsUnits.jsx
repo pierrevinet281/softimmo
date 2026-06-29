@@ -73,6 +73,12 @@ function SelectCell({ value, onChange, children }) {
   return <select className="cell-input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>{children}</select>;
 }
 
+function CheckboxCell({ value, onChange }) {
+  return <input type="checkbox" className="checkbox" checked={!!Number(value)} onChange={(e) => onChange(e.target.checked ? 1 : 0)} />;
+}
+
+const LEASE_TYPES = ['', 'brut', 'net', 'TMI'];
+
 // Cellule dimension : valeur (commit au blur) + bascule d'unité (commit au clic).
 function DimCell({ value, unit, options, onValue, onUnit }) {
   return (
@@ -175,7 +181,7 @@ export default function BuildingsUnits({ propertyId, genre, propertyAddress }) {
                       </SelectCell>
                     </td>
                     <td className="cell">
-                      <SelectCell value={u.room_function} onChange={(v) => patchU(u.id, { room_function: v, unit_type: v || null, label: functionLabel(v, lang) || null })}>
+                      <SelectCell value={u.room_function} onChange={(v) => patchU(u.id, { room_function: v, label: functionLabel(v, lang) || null })}>
                         <option value="">{t('bu.pick')}</option>
                         {fns.map((o) => <option key={o.key} value={o.key}>{lang === 'en' ? o.en : o.fr}</option>)}
                       </SelectCell>
@@ -199,5 +205,76 @@ export default function BuildingsUnits({ propertyId, genre, propertyAddress }) {
         )}
       </Card>
     </>
+  );
+}
+
+// Rent roll : mêmes unités (table `units`), vue financière/locative, édition en ligne + scroll H.
+export function RentRoll({ propertyId }) {
+  const { t } = useI18n();
+  const units = useEntity('units', propertyId);
+  const blds = useEntity('buildings', propertyId);
+  const patchU = (id, body) => units.patch.mutate({ id, body });
+  const addUnit = () => units.create.mutate({ property_id: propertyId, is_vacant: 0 });
+  return (
+    <Card>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="section-label" style={{ margin: 0 }}>{t('d.tab.units')}</div>
+        <div className="spacer" />
+        <Button variant="primary" size="sm" icon={Plus} onClick={addUnit}>{t('bu.addUnit')}</Button>
+      </div>
+      {units.rows.length === 0 ? <EmptyState title={t('bu.noUnits')} /> : (
+        <div className="table-wrap" style={{ overflowX: 'auto' }}>
+          <table className="table">
+            <thead><tr>
+              <th style={{ minWidth: 130 }}>{t('bu.building')}</th>
+              <th style={{ minWidth: 90 }}>{t('d.unit.label')}</th>
+              <th style={{ minWidth: 90 }}>{t('common.type')}</th>
+              <th>{t('d.unit.bedrooms')}</th>
+              <th>{t('d.unit.bathrooms')}</th>
+              <th>{t('d.unit.area')}</th>
+              <th>{t('d.unit.rent')}</th>
+              <th>{t('d.unit.other')}</th>
+              <th style={{ minWidth: 100 }}>{t('d.unit.leaseType')}</th>
+              <th style={{ minWidth: 110 }}>{t('d.unit.leaseEnd')}</th>
+              <th style={{ minWidth: 120 }}>{t('d.unit.occupant')}</th>
+              <th>{t('d.unit.vacant')}</th>
+              <th style={{ minWidth: 140 }}>{t('common.notes')}</th>
+              <th style={{ width: 44 }} />
+            </tr></thead>
+            <tbody>
+              {units.rows.map((u) => (
+                <tr key={u.id}>
+                  <td className="cell">
+                    <SelectCell value={u.building_id} onChange={(v) => patchU(u.id, { building_id: v || null })}>
+                      <option value="">{t('bu.pick')}</option>
+                      {blds.rows.map((b) => <option key={b.id} value={b.id}>{b.address || b.label || b.id}</option>)}
+                    </SelectCell>
+                  </td>
+                  <td className="cell"><TextCell value={u.label} onCommit={(v) => patchU(u.id, { label: v })} /></td>
+                  <td className="cell"><TextCell value={u.unit_type} onCommit={(v) => patchU(u.id, { unit_type: v })} /></td>
+                  <td className="cell"><TextCell value={u.bedrooms} num onCommit={(v) => patchU(u.id, { bedrooms: numOrNull(v) })} /></td>
+                  <td className="cell"><TextCell value={u.bathrooms} num onCommit={(v) => patchU(u.id, { bathrooms: numOrNull(v) })} /></td>
+                  <td className="cell"><TextCell value={u.area} num onCommit={(v) => patchU(u.id, { area: numOrNull(v) })} /></td>
+                  <td className="cell"><TextCell value={u.rent_monthly} num onCommit={(v) => patchU(u.id, { rent_monthly: numOrNull(v) })} /></td>
+                  <td className="cell"><TextCell value={u.other_income} num onCommit={(v) => patchU(u.id, { other_income: numOrNull(v) })} /></td>
+                  <td className="cell">
+                    <SelectCell value={u.lease_type} onChange={(v) => patchU(u.id, { lease_type: v })}>
+                      {LEASE_TYPES.map((v) => <option key={v} value={v}>{v || '—'}</option>)}
+                    </SelectCell>
+                  </td>
+                  <td className="cell"><TextCell value={u.lease_end} onCommit={(v) => patchU(u.id, { lease_end: v })} /></td>
+                  <td className="cell"><TextCell value={u.occupant} onCommit={(v) => patchU(u.id, { occupant: v })} /></td>
+                  <td className="cell" style={{ textAlign: 'center' }}><CheckboxCell value={u.is_vacant} onChange={(v) => patchU(u.id, { is_vacant: v })} /></td>
+                  <td className="cell"><TextCell value={u.notes} onCommit={(v) => patchU(u.id, { notes: v })} /></td>
+                  <td>
+                    <Button variant="ghost" size="sm" icon={Trash2} onClick={() => { if (confirm(t('common.confirmDelete'))) units.remove.mutate(u.id); }} title={t('common.delete')} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
