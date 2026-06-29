@@ -40,10 +40,13 @@ function useEntity(path, propertyId) {
 // ───────────────────────── Bâtiment : formulaire ─────────────────────────
 const BLD_EMPTY = { address: '', width: '', width_unit: 'pi', length: '', length_unit: 'pi', building_area: '', area_unit: 'pi2', floors_total: '' };
 
-function BuildingForm({ propertyId, row, onClose, onSaved }) {
+function BuildingForm({ propertyId, propertyAddress, row, onClose, onSaved }) {
   const { t } = useI18n();
-  const [f, setF] = useState(() => ({ ...BLD_EMPTY, ...(row || {}) }));
+  const [f, setF] = useState(() => ({ ...BLD_EMPTY, ...(row || {}), ...(!row && propertyAddress ? { address: propertyAddress } : {}) }));
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+  // « Même adresse » : verrouille l'adresse du bâtiment sur celle de la propriété (auto-rempli).
+  const [same, setSame] = useState(() => (row ? (!!row.address && row.address === propertyAddress) : !!propertyAddress));
+  const toggleSame = (v) => { setSame(v); if (v) set('address', propertyAddress || ''); };
   const save = useMutation({
     mutationFn: (b) => (b.id ? api.patch(`/buildings/${b.id}`, b) : api.post('/buildings', b)),
     onSuccess: () => { onSaved(); onClose(); },
@@ -61,7 +64,13 @@ function BuildingForm({ propertyId, row, onClose, onSaved }) {
       <div className="field-row">
         <div className="field" style={{ gridColumn: '1 / -1' }}>
           <label>{t('bu.address')}</label>
-          <input className="input" value={f.address} onChange={(e) => set('address', e.target.value)} />
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 13, whiteSpace: 'nowrap' }}>
+              <input type="checkbox" className="checkbox" checked={same} onChange={(e) => toggleSame(e.target.checked)} />
+              {t('bu.sameAddress')}
+            </label>
+            <input className="input" style={{ flex: 1 }} value={f.address} disabled={same} onChange={(e) => set('address', e.target.value)} />
+          </div>
         </div>
         <DimField label={t('bu.width')} value={f.width} unit={f.width_unit} options={LIN} onValue={(v) => set('width', v)} onUnit={(u) => set('width_unit', u)} />
         <DimField label={t('bu.length')} value={f.length} unit={f.length_unit} options={LIN} onValue={(v) => set('length', v)} onUnit={(u) => set('length_unit', u)} />
@@ -125,7 +134,7 @@ function UnitForm({ propertyId, genre, buildings, row, onClose, onSaved }) {
 const dim = (v, u) => (v == null || v === '' ? '—' : `${v} ${UNIT_LABEL[u] || ''}`.trim());
 
 // ───────────────────────── Onglet Bâtiments & unités/pièces ─────────────────────────
-export default function BuildingsUnits({ propertyId, genre }) {
+export default function BuildingsUnits({ propertyId, genre, propertyAddress }) {
   const { t, lang } = useI18n();
   const blds = useEntity('buildings', propertyId);
   const units = useEntity('units', propertyId);
@@ -192,7 +201,7 @@ export default function BuildingsUnits({ propertyId, genre }) {
         )}
       </Card>
 
-      {bEdit && <BuildingForm propertyId={propertyId} row={bEdit === 'new' ? null : bEdit} onClose={() => setBEdit(null)} onSaved={blds.refetch} />}
+      {bEdit && <BuildingForm propertyId={propertyId} propertyAddress={propertyAddress} row={bEdit === 'new' ? null : bEdit} onClose={() => setBEdit(null)} onSaved={blds.refetch} />}
       {uEdit && <UnitForm propertyId={propertyId} genre={genre} buildings={blds.rows} row={uEdit === 'new' ? null : uEdit} onClose={() => setUEdit(null)} onSaved={() => { units.refetch(); blds.refetch(); }} />}
     </>
   );

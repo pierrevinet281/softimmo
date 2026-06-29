@@ -294,7 +294,7 @@ export default function PropertyEdit() {
 
       {isEdit && (bundle ? (
         <>
-          {tab === 'buildings' && <BuildingsUnits propertyId={id} genre={base.genre} />}
+          {tab === 'buildings' && <BuildingsUnits propertyId={id} genre={base.genre} propertyAddress={base.address} />}
           {tab === 'units' && <UnitsTab p={property} items={bundle.units} buildings={bundle.buildings} refetch={refetch} />}
           {tab === 'expenses' && <ExpensesTab p={property} items={bundle.expenses} refetch={refetch} />}
           {tab === 'profit' && <ProfitabilityTab propertyId={id} />}
