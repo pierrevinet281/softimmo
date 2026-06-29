@@ -180,10 +180,11 @@ export default function mountBusiness(parent = Router()) {
     // Photos téléversées → images de la brochure (rôles hero/map/interior ; gallery en repli).
     const media = bundle.media || [];
     const byRole = (r) => media.filter((m) => m.role === r).map((m) => m.file_path).filter(Boolean);
-    const gallery = byRole('gallery');
-    const hero = byRole('hero')[0] || gallery[0] || null;
+    // Pool d'intérieurs = toute photo non hero/carte (galerie, « interior », ou taguée par pièce).
+    const pool = media.filter((m) => m.role !== 'hero' && m.role !== 'map').map((m) => m.file_path).filter(Boolean);
+    const hero = byRole('hero')[0] || pool[0] || null;
     const map = byRole('map')[0] || null;
-    const interior = [...byRole('interior'), ...gallery.filter((g) => g !== hero)].slice(0, 3);
+    const interior = pool.filter((g) => g !== hero).slice(0, 3);
     return {
       images: { hero, map },
       interior,
@@ -818,9 +819,11 @@ export default function mountBusiness(parent = Router()) {
     if (!m || m.property_id !== req.params.id) throw notFound('photo introuvable');
     const patch = {};
     if (req.body?.role !== undefined) {
-      // Rôles génériques (brochure standard) + rôles d'emplacement RPA (rpa_*).
-      if (!PHOTO_ROLES.includes(req.body.role) && !RPA_ROLES.includes(req.body.role)) throw badRequest(`Rôle inconnu : ${req.body.role}`);
-      patch.role = req.body.role;
+      // Rôles génériques (brochure standard) + emplacements RPA (rpa_*) + pièces (clé minuscule,
+      // ex. cuisine, salle_de_bain — voir lib roomFunctions côté client).
+      const r = String(req.body.role || '');
+      if (!PHOTO_ROLES.includes(r) && !RPA_ROLES.includes(r) && !/^[a-z][a-z0-9_]*$/.test(r)) throw badRequest(`Rôle inconnu : ${req.body.role}`);
+      patch.role = r;
     }
     if (req.body?.position !== undefined) patch.position = Number(req.body.position) || 0;
     res.json(mediaOut(PropertyMedia.update(req.params.mediaId, patch)));

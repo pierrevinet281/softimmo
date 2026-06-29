@@ -10,6 +10,7 @@ import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
 import { EntityTable, EntityForm, InlineTable, PasteImportModal } from '../components/EntityTable.jsx';
 import { buildingsConfig, unitsConfig } from '../lib/propertyConfigs.jsx';
+import { functionsForGenre, functionLabel } from '../lib/roomFunctions.js';
 import { useI18n } from '../i18n/index.jsx';
 import { money, num, pct, mult } from '../lib/format.js';
 
@@ -300,9 +301,14 @@ const PHOTO_ROLES = [
   { id: 'gallery', key: 'd.ph.gallery' },
 ];
 
-export function PhotosTab({ property, refetch }) {
+export function PhotosTab({ property, units = [], refetch }) {
   const propertyId = property.id;
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  // Options de rôle : hero/carte, puis PIÈCES (selon le type) — celles déjà ajoutées d'abord.
+  const fns = functionsForGenre(property.genre);
+  const usedKeys = [...new Set((units || []).map((u) => u.room_function).filter(Boolean))];
+  const usedOpts = usedKeys.map((k) => ({ value: k, label: functionLabel(k, lang) }));
+  const restOpts = fns.filter((o) => !usedKeys.includes(o.key)).map((o) => ({ value: o.key, label: lang === 'en' ? o.en : o.fr }));
   const qc = useQueryClient();
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -377,9 +383,19 @@ export function PhotosTab({ property, refetch }) {
                 <select
                   value={m.role}
                   onChange={(e) => setRole(m, e.target.value)}
-                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)' }}
                 >
-                  {PHOTO_ROLES.map((r) => <option key={r.id} value={r.id}>{t(r.key)}</option>)}
+                  <option value="hero">{t('d.ph.hero')}</option>
+                  <option value="map">{t('d.ph.map')}</option>
+                  {usedOpts.length > 0 && (
+                    <optgroup label={t('d.ph.usedRooms')}>
+                      {usedOpts.map((o) => <option key={`u-${o.value}`} value={o.value}>{o.label}</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label={t('d.ph.otherRooms')}>
+                    {restOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </optgroup>
+                  <option value="gallery">{t('d.ph.unassigned')}</option>
                 </select>
                 <Button variant="ghost" size="sm" icon={Trash2} onClick={() => remove(m)} />
               </div>
