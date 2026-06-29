@@ -82,7 +82,7 @@ function BuildingForm({ propertyId, propertyAddress, row, onClose, onSaved }) {
 }
 
 // ───────────────────────── Unité / pièce : formulaire ─────────────────────────
-const UNIT_EMPTY = { building_id: '', floor: '', room_function: '', width: '', width_unit: 'pi', length: '', length_unit: 'pi', area: '', area_unit: 'pi2', ceiling_height: '', ceiling_unit: 'pi', floor_covering: '' };
+const UNIT_EMPTY = { building_id: '', floor: 0, room_function: '', width: '', width_unit: 'pi', length: '', length_unit: 'pi', area: '', area_unit: 'pi2', ceiling_height: '', ceiling_unit: 'pi', floor_covering: '' };
 
 function UnitForm({ propertyId, genre, buildings, row, onClose, onSaved }) {
   const { t, lang } = useI18n();
@@ -113,7 +113,12 @@ function UnitForm({ propertyId, genre, buildings, row, onClose, onSaved }) {
             {buildings.map((b) => <option key={b.id} value={b.id}>{b.address || b.label || b.id}</option>)}
           </Select>
         </div>
-        <FormField label={t('bu.floor')} type="number" value={f.floor} onChange={(e) => set('floor', e.target.value)} />
+        <div className="field">
+          <label>{t('bu.floor')}</label>
+          <Select value={String(f.floor ?? 0)} onChange={(e) => set('floor', Number(e.target.value))}>
+            {floorOptions(lang).map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+          </Select>
+        </div>
         <div className="field">
           <label>{t('bu.function')}</label>
           <Select value={f.room_function} onChange={(e) => set('room_function', e.target.value)}>
@@ -132,6 +137,24 @@ function UnitForm({ propertyId, genre, buildings, row, onClose, onSaved }) {
 }
 
 const dim = (v, u) => (v == null || v === '' ? '—' : `${v} ${UNIT_LABEL[u] || ''}`.trim());
+
+// Étages : RDC (0), positifs 1..99, sous-sols SS1..SS10 (= -1..-10). Stocké en entier.
+function floorOptions(lang) {
+  const ground = lang === 'en' ? 'GF' : 'RDC';
+  const sub = lang === 'en' ? 'B' : 'SS';
+  const opts = [];
+  for (let i = 99; i >= 1; i--) opts.push({ v: i, l: String(i) });
+  opts.push({ v: 0, l: ground });
+  for (let i = 1; i <= 10; i++) opts.push({ v: -i, l: `${sub}${i}` });
+  return opts;
+}
+function floorLabel(n, lang) {
+  if (n == null || n === '') return '—';
+  const x = Number(n);
+  if (x === 0) return lang === 'en' ? 'GF' : 'RDC';
+  if (x < 0) return `${lang === 'en' ? 'B' : 'SS'}${-x}`;
+  return String(x);
+}
 
 // ───────────────────────── Onglet Bâtiments & unités/pièces ─────────────────────────
 export default function BuildingsUnits({ propertyId, genre, propertyAddress }) {
@@ -186,7 +209,7 @@ export default function BuildingsUnits({ propertyId, genre, propertyAddress }) {
                 <tr key={u.id} onClick={() => setUEdit(u)}>
                   <td><strong>{functionLabel(u.room_function, lang) || u.label || '—'}</strong></td>
                   <td>{bldName(u.building_id)}</td>
-                  <td className="num">{u.floor ?? '—'}</td>
+                  <td className="num">{floorLabel(u.floor, lang)}</td>
                   <td className="num">{dim(u.area, u.area_unit)}</td>
                   <td>{dim(u.ceiling_height, u.ceiling_unit)}</td>
                   <td>{u.floor_covering || '—'}</td>
