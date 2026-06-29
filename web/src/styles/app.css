@@ -71,6 +71,10 @@ code, .mono { font-family: var(--font-mono); }
 .unit-opt { background: transparent; border: none; padding: 0 10px; cursor: pointer; font: inherit; font-size: 12px; color: var(--color-text-secondary); }
 .unit-opt + .unit-opt { border-left: 1px solid var(--color-border); }
 .unit-opt.active { background: var(--color-info, #67C8FA); color: #fff; }
+.dim-cell { display: flex; gap: 4px; align-items: stretch; }
+.dim-cell .cell-input { width: 64px; min-width: 48px; }
+.dim-cell .unit-toggle { flex: 0 0 auto; }
+.dim-cell .unit-opt { padding: 0 7px; }
 
 /* Combobox de recherche (champ Ville) */
 .combo { position: relative; }
