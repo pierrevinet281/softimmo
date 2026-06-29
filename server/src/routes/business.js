@@ -21,6 +21,7 @@ import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS, resolveOffreContent, apply
 import { buildRpaData, imagesFromMedia, rpaDefaults, rpaContent, RPA_IMAGE_SLOTS, RPA_ROLES } from '../engine/rpaBrochure.js';
 import { getAcmParams, setAcmParams, getAcmDefaults } from '../lib/acmParams.js';
 import { buildMatrix, setCell, resetMatrix, formSchema } from '../lib/salesAttributes.js';
+import { searchMunicipalities, regions as qcRegions } from '../lib/quebecGeo.js';
 
 // Permissive schemas: every field optional + passthrough. Required-on-create is enforced
 // by the factory. Enum/type tightening can be layered later without breaking inputs.
@@ -365,6 +366,12 @@ export default function mountBusiness(parent = Router()) {
     if (!schema) throw notFound('type de propriété inconnu');
     res.json(schema);
   }));
+
+  // ── Géo Québec : municipalités → région administrative (champ Ville + région auto) ──
+  parent.get('/geo/municipalities', wrap((req, res) => {
+    res.json({ rows: searchMunicipalities(String(req.query.q || ''), Number(req.query.limit) || 40) });
+  }));
+  parent.get('/geo/regions', wrap((req, res) => res.json({ regions: qcRegions() })));
 
   // ── Mise en page des modèles de brochure (round-trip PowerPoint, docs/09) ──
   // Le courtier édite un gabarit PPTX puis le téléverse : on en extrait les positions

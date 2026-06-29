@@ -286,6 +286,8 @@ CREATE TABLE IF NOT EXISTS properties (
   municipal_assessment REAL,           -- évaluation foncière municipale (corroboration ACM)
   assessment_year INTEGER,             -- année du rôle d'évaluation
   status        TEXT NOT NULL DEFAULT 'prospect', -- prospect|actif|inscrit|vendu|expire|archive
+  transaction_type TEXT,               -- vendeur|acheteur|locateur|locataire (mandat)
+  zoning_detail TEXT,                  -- zonage détaillé / code municipal (complément de zoning)
   summary       TEXT,
   notes         TEXT,
   attributes    TEXT,                  -- JSON : valeurs des attributs de vente par type (voir lib/salesAttributes)

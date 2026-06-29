@@ -7,6 +7,8 @@ import { Card, Button, Modal, FormField, Select, EmptyState } from '../component
 import { EntityTable } from '../components/EntityTable.jsx';
 import BuildingsUnits from '../components/BuildingsUnits.jsx';
 import ClientModal from '../components/ClientModal.jsx';
+import CityField from '../components/CityField.jsx';
+import { COUNTRIES, provincesFor, ZONING_OPTIONS } from '../lib/geo.js';
 import {
   ProfitabilityTab, ReadOnlyList, ExpensesTab, UnitsTab, MarketingTab, PhotosTab,
   BrochureChooser, transactionsConfig,
@@ -15,9 +17,10 @@ import { useI18n } from '../i18n/index.jsx';
 import { money, num } from '../lib/format.js';
 
 const BASE_EMPTY = {
-  client_id: '', name: '', genre: '', address: '', city: '', region: '', province: 'QC',
-  postal_code: '', country: 'Canada', zoning: '', lot_number: '', mls_number: '', status: 'prospect',
+  client_id: '', name: '', genre: '', transaction_type: '', address: '', city: '', region: '', province: 'QC',
+  postal_code: '', country: 'CA', zoning: '', zoning_detail: '', lot_number: '', mls_number: '', status: 'prospect',
 };
+const TX_TYPES = ['seller', 'buyer', 'landlord', 'tenant'];
 // Attributs déjà couverts par les champs fixes (haut de page) → exclus du formulaire dynamique.
 const CORE_ATTR_KEYS = new Set(['address', 'sector', 'genre_detail', 'zoning', 'lot_number']);
 const STATUSES = ['prospect', 'actif', 'inscrit', 'vendu', 'expire', 'archive'];
@@ -73,11 +76,16 @@ export default function PropertyEdit() {
   useEffect(() => {
     if (!property || loadedIdRef.current === property.id) return;
     loadedIdRef.current = property.id;
+    const cc = (property.country || '').toLowerCase();
+    const country = !property.country ? 'CA'
+      : (cc.startsWith('ca') ? 'CA' : (cc.startsWith('us') || cc.includes('état') || cc.includes('etat') || cc.includes('united') ? 'US' : property.country));
     const b = {
       client_id: property.client_id || '', name: property.name || '', genre: property.genre || '',
+      transaction_type: property.transaction_type || '',
       address: property.address || '', city: property.city || '', region: property.region || '',
-      province: property.province || 'QC', postal_code: property.postal_code || '', country: property.country || 'Canada',
-      zoning: property.zoning || '', lot_number: property.lot_number || '', mls_number: property.mls_number || '',
+      province: property.province || 'QC', postal_code: property.postal_code || '', country,
+      zoning: property.zoning || '', zoning_detail: property.zoning_detail || '',
+      lot_number: property.lot_number || '', mls_number: property.mls_number || '',
       status: property.status || 'prospect',
     };
     const a = property.attributes || {};
@@ -124,6 +132,7 @@ export default function PropertyEdit() {
     ...c, attributes: c.attributes.filter((a) => !CORE_ATTR_KEYS.has(a.key)),
   })).filter((c) => c.attributes.length);
   const saveToEdit = () => persist((row) => { if (!isEdit && row?.id) navigate(`/properties/edit/${row.id}`); });
+  const isQC = base.country === 'CA' && base.province === 'QC';
 
   return (
     <div className="page">
@@ -151,6 +160,7 @@ export default function PropertyEdit() {
         <Card>
           <div className="section-label">{t('pe.identity')}</div>
           <div className="field-row">
+            <FormField label={t('pe.name')} value={base.name} onChange={(e) => setBaseField('name', e.target.value)} placeholder={t('pe.namePh')} />
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label>{t('pe.client')}</label>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -161,22 +171,63 @@ export default function PropertyEdit() {
                 <Button variant="outline" icon={Plus} onClick={() => setNewClient(true)}>{t('pe.newClient')}</Button>
               </div>
             </div>
-            <FormField label={t('pe.name')} value={base.name} onChange={(e) => setBaseField('name', e.target.value)} placeholder={t('pe.namePh')} />
-            <FormField label={t('pe.address')} value={base.address} onChange={(e) => setBaseField('address', e.target.value)} />
-            <FormField label={t('pe.city')} value={base.city} onChange={(e) => setBaseField('city', e.target.value)} />
-            <FormField label={t('pe.region')} value={base.region} onChange={(e) => setBaseField('region', e.target.value)} />
-            <FormField label={t('pe.state')} value={base.province} onChange={(e) => setBaseField('province', e.target.value)} />
-            <FormField label={t('pe.postal')} value={base.postal_code} onChange={(e) => setBaseField('postal_code', e.target.value)} />
-            <FormField label={t('pe.country')} value={base.country} onChange={(e) => setBaseField('country', e.target.value)} />
+            <div className="field">
+              <label>{t('pe.transactionType')}</label>
+              <Select value={base.transaction_type} onChange={(e) => setBaseField('transaction_type', e.target.value)}>
+                <option value="">{t('pe.typePick')}</option>
+                {TX_TYPES.map((k) => <option key={k} value={k}>{t(`cli.kind.${k}`)}</option>)}
+              </Select>
+            </div>
+            <FormField label={t('pe.lots')} value={base.lot_number} onChange={(e) => setBaseField('lot_number', e.target.value)} />
             <FormField label={t('pe.mls')} value={base.mls_number} onChange={(e) => setBaseField('mls_number', e.target.value)} />
-            <FormField label={t('pe.lot')} value={base.lot_number} onChange={(e) => setBaseField('lot_number', e.target.value)} />
-            <FormField label={t('pe.zoning')} value={base.zoning} onChange={(e) => setBaseField('zoning', e.target.value)} />
             <div className="field">
               <label>{t('pe.status')}</label>
               <Select value={base.status} onChange={(e) => setBaseField('status', e.target.value)}>
                 {STATUSES.map((s) => <option key={s} value={s}>{t(`pe.st.${s}`)}</option>)}
               </Select>
             </div>
+
+            <div className="field">
+              <label>{t('pe.country')}</label>
+              <Select value={base.country} onChange={(e) => setBase((b) => ({ ...b, country: e.target.value, province: '', city: '', region: '' }))}>
+                {COUNTRIES.map((c) => <option key={c.v} value={c.v}>{lang === 'en' ? c.en : c.fr}</option>)}
+              </Select>
+            </div>
+            <div className="field">
+              <label>{t('pe.state')}</label>
+              <Select value={base.province} onChange={(e) => setBase((b) => ({ ...b, province: e.target.value, city: '', region: '' }))}>
+                <option value="">{t('pe.typePick')}</option>
+                {provincesFor(base.country).map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
+              </Select>
+            </div>
+            <div className="field">
+              <label>{t('pe.city')}</label>
+              {isQC ? (
+                <CityField value={base.city} placeholder={t('pe.cityPh')}
+                  onSelect={(name, region) => setBase((b) => ({ ...b, city: name, ...(region != null ? { region } : {}) }))} />
+              ) : (
+                <input className="input" value={base.city} onChange={(e) => setBaseField('city', e.target.value)} />
+              )}
+            </div>
+            <div className="field">
+              <label>{t('pe.region')}</label>
+              {isQC ? (
+                <input className="input" value={base.region} readOnly placeholder={t('pe.regionAuto')} style={{ background: 'var(--color-surface-2)' }} />
+              ) : (
+                <input className="input" value={base.region} onChange={(e) => setBaseField('region', e.target.value)} />
+              )}
+            </div>
+            <FormField label={t('pe.address')} value={base.address} onChange={(e) => setBaseField('address', e.target.value)} />
+            <FormField label={t('pe.postal')} value={base.postal_code} onChange={(e) => setBaseField('postal_code', e.target.value)} />
+
+            <div className="field">
+              <label>{t('pe.zoning')}</label>
+              <Select value={base.zoning} onChange={(e) => setBaseField('zoning', e.target.value)}>
+                <option value="">{t('pe.typePick')}</option>
+                {ZONING_OPTIONS.map((z) => <option key={z.v} value={z.v}>{lang === 'en' ? z.en : z.fr}</option>)}
+              </Select>
+            </div>
+            <FormField label={t('pe.zoningDetail')} value={base.zoning_detail} onChange={(e) => setBaseField('zoning_detail', e.target.value)} />
           </div>
 
           <div className="section-label" style={{ marginTop: 16 }}>{t('pe.propertyType')}</div>
