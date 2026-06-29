@@ -301,7 +301,7 @@ export default function PropertyEdit() {
           {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', id]]} />}
           {tab === 'comparables' && <ComparablesEditor propertyId={id} />}
           {tab === 'photos' && <PhotosTab property={property} units={bundle.units} refetch={refetch} />}
-          {tab === 'marketing' && <MarketingTab propertyId={id} />}
+          {tab === 'marketing' && <MarketingTab propertyId={id} saved={property.marketing} onSaved={refetch} />}
           {tab === 'reports' && (
             <ReadOnlyList icon={FileText} items={bundle.reports} hint={t('d.rep.hint')} columns={[
               { key: 'title', label: t('common.name') },

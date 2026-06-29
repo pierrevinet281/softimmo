@@ -54,6 +54,7 @@ const COLUMN_ADDITIONS = {
     ['municipal_assessment', 'REAL'], ['assessment_year', 'INTEGER'], ['brochure_qr_url', 'TEXT'],
     ['attributes', 'TEXT'],  // Module 1 : valeurs des attributs de vente (JSON)
     ['transaction_type', 'TEXT'], ['zoning_detail', 'TEXT'], ['mrc', 'TEXT'],  // mandat + zonage + MRC
+    ['marketing', 'TEXT'],  // textes marketing édités (JSON par langue)
   ],
   comparables: [
     ['centris_no', 'TEXT'], ['sale_date', 'TEXT'], ['list_price', 'REAL'], ['sold_price', 'REAL'],

@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
   History, Scale, FileText, AlertTriangle, Info, Plus, Upload, FileDown, Presentation,
@@ -221,44 +221,82 @@ export function UnitsTab({ p, items, buildings, refetch }) {
   );
 }
 
-// ─────────────────────────── Marketing : annonces texte (déterministe) ───────────────────────────
-function CopyField({ label, text, limit }) {
+// ─────────────────────────── Marketing : annonces texte (éditables + sauvegardables) ───────────────────────────
+function CopyField({ label, value, onChange, limit }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(text || ''); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* ignore */ }
+    try { await navigator.clipboard.writeText(value || ''); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* ignore */ }
   };
-  const over = limit && (text || '').length > limit;
+  const over = limit && (value || '').length > limit;
+  const rows = Math.min(12, Math.max(2, (value || '').split('\n').length, Math.ceil((value || '').length / 90) + 1));
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <strong style={{ fontSize: 13 }}>{label}</strong>
         <span className="muted" style={{ fontSize: 11, color: over ? 'var(--color-danger)' : undefined }}>
-          {(text || '').length}{limit ? ` / ${limit}` : ''} car.
+          {(value || '').length}{limit ? ` / ${limit}` : ''} car.
         </span>
         <div style={{ flex: 1 }} />
         <Button size="sm" variant="ghost" icon={copied ? Check : Copy} onClick={copy}>
           {copied ? t('d.mkt.copied') : t('d.mkt.copy')}
         </Button>
       </div>
-      <div style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 6, padding: 10, lineHeight: 1.5 }}>{text}</div>
+      <textarea className="textarea" value={value || ''} rows={rows} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', fontSize: 12, lineHeight: 1.5 }} />
     </div>
   );
 }
 
-export function MarketingTab({ propertyId }) {
+const MKT_FIELDS = [
+  { k: 'kijiji_title', labelKey: 'd.mkt.kijijiTitle', limit: 70 },
+  { k: 'kijiji_body', labelKey: 'd.mkt.kijijiBody' },
+  { k: 'facebook', label: 'Facebook' },
+  { k: 'marketplace', label: 'Facebook Marketplace' },
+  { k: 'instagram', label: 'Instagram', limit: 2200 },
+  { k: 'twitter', labelKey: 'd.mkt.xthread' },
+  { k: 'linkedin', label: 'LinkedIn', limit: 3000 },
+];
+const genTexts = (f) => ({
+  kijiji_title: f.kijiji.title, kijiji_body: f.kijiji.body, facebook: f.facebook.text,
+  marketplace: f.marketplace.description, instagram: f.instagram.caption,
+  twitter: (f.twitter.thread || []).join('\n\n'), linkedin: f.linkedin.text,
+});
+
+export function MarketingTab({ propertyId, saved, onSaved }) {
   const { t } = useI18n();
   const [lang, setLang] = useState('fr');
   const [emoji, setEmoji] = useState(false);
+  const [edited, setEdited] = useState(null);          // textes de la langue courante
+  const [savedMap, setSavedMap] = useState(() => saved || {}); // { lang: {k:texte} }
   const { data, isLoading } = useQuery({
     queryKey: ['mkt', propertyId, lang, emoji],
     queryFn: () => api.get(`/properties/${propertyId}/marketing-copy?lang=${lang}&emoji=${emoji}`),
   });
   const f = data?.formats;
-  const sel = { padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13 };
+  // À l'arrivée des données générées (ou changement de langue) : override sauvegardé sinon généré.
+  useEffect(() => {
+    if (!f) return;
+    setEdited(savedMap[lang] ? { ...genTexts(f), ...savedMap[lang] } : genTexts(f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, data]);
+
+  const save = useMutation({
+    mutationFn: (m) => api.patch(`/properties/${propertyId}`, { marketing: m }),
+    onSuccess: (p) => { setSavedMap(p.marketing || {}); onSaved?.(); },
+  });
+  const set = (k, v) => setEdited((e) => ({ ...e, [k]: v }));
+  const onSave = () => save.mutate({ ...savedMap, [lang]: edited });
+  const regenerate = () => { if (f) setEdited(genTexts(f)); };
+  const sel = { padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)', fontSize: 13 };
+
   return (
     <Card>
-      <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t('d.mkt.hint')}</div>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="muted" style={{ fontSize: 13 }}>{t('d.mkt.hint')}</div>
+        <div className="spacer" />
+        <Button variant="outline" size="sm" onClick={regenerate} disabled={!f}>{t('d.mkt.regenerate')}</Button>
+        <Button variant="primary" size="sm" icon={Save} onClick={onSave} disabled={!edited || save.isPending}>{save.isPending ? t('off2.saving') : t('common.save')}</Button>
+      </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
         <select value={lang} onChange={(e) => setLang(e.target.value)} style={sel}>
           <option value="fr">Français</option>
@@ -268,19 +306,16 @@ export function MarketingTab({ propertyId }) {
         <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
           <input type="checkbox" checked={emoji} onChange={(e) => setEmoji(e.target.checked)} /> {t('d.mkt.emoji')}
         </label>
+        {savedMap[lang] && <span className="muted" style={{ fontSize: 12 }}>{t('d.mkt.savedNote')}</span>}
       </div>
-      {isLoading || !f ? (
+      {isLoading || !edited ? (
         <div className="muted">…</div>
       ) : (
         <div>
-          <CopyField label={t('d.mkt.kijijiTitle')} text={f.kijiji.title} limit={70} />
-          <CopyField label={t('d.mkt.kijijiBody')} text={f.kijiji.body} />
-          <CopyField label="Facebook" text={f.facebook.text} />
-          <CopyField label="Facebook Marketplace" text={f.marketplace.description} />
-          <CopyField label="Instagram" text={f.instagram.caption} limit={2200} />
-          <CopyField label={t('d.mkt.xthread')} text={f.twitter.thread.join('\n\n')} />
-          <CopyField label="LinkedIn" text={f.linkedin.text} limit={3000} />
-          {data.disclaimers && (
+          {MKT_FIELDS.map((fld) => (
+            <CopyField key={fld.k} label={fld.labelKey ? t(fld.labelKey) : fld.label} value={edited[fld.k]} limit={fld.limit} onChange={(v) => set(fld.k, v)} />
+          ))}
+          {data?.disclaimers && (
             <div className="muted" style={{ fontSize: 11, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
               {data.disclaimers.map((d, i) => <div key={i}>• {d}</div>)}
             </div>
