@@ -3,7 +3,9 @@ import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, Plus, ArrowLeft } from 'lucide-react';
 import api from '../api/client.js';
-import { Card, Button, Modal, FormField, Select } from '../components/ui.jsx';
+import { Card, Button, Modal, FormField, Select, EmptyState } from '../components/ui.jsx';
+import { EntityTable } from '../components/EntityTable.jsx';
+import { buildingsConfig, unitsConfig } from '../lib/propertyConfigs.jsx';
 import ClientModal from '../components/ClientModal.jsx';
 import { useI18n } from '../i18n/index.jsx';
 
@@ -25,6 +27,7 @@ export default function PropertyEdit() {
   const [attrs, setAttrs] = useState({});
   const [pendingType, setPendingType] = useState(null); // type en attente de confirmation
   const [newClient, setNewClient] = useState(false);
+  const [tab, setTab] = useState('details'); // details | buildings
 
   // Instantané « sauvegardé » (réfs lues en synchrone par les garde-fous).
   const snapBaseRef = useRef(JSON.stringify(BASE_EMPTY));
@@ -102,9 +105,17 @@ export default function PropertyEdit() {
         <div className="spacer" />
         <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/properties')}>{t('pe.back')}</Button>
         <Button variant="primary" icon={Save} disabled={save.isPending || !base.name}
-          onClick={() => persist(() => navigate('/properties'))}>{t('common.save')}</Button>
+          onClick={() => persist((row) => { if (!isEdit && row?.id) navigate(`/properties/edit/${row.id}`); })}>{t('common.save')}</Button>
       </div>
 
+      <div className="tab-row">
+        <div className="tabs">
+          <button className={`tab ${tab === 'details' ? 'active' : ''}`} onClick={() => setTab('details')}>{t('pe.tab.details')}</button>
+          <button className={`tab ${tab === 'buildings' ? 'active' : ''}`} onClick={() => setTab('buildings')}>{t('pe.tab.buildings')}</button>
+        </div>
+      </div>
+
+      {tab === 'details' && (<>
       <Card>
         <div className="section-label">{t('pe.identity')}</div>
         <div className="field-row">
@@ -171,6 +182,25 @@ export default function PropertyEdit() {
           ))}
         </Card>
       )}
+      </>)}
+
+      {tab === 'buildings' && (
+        isEdit ? (
+          <BuildingsTab propertyId={id} />
+        ) : (
+          <Card>
+            <EmptyState
+              title={t('pe.bldSaveFirst')}
+              action={(
+                <Button variant="primary" icon={Save} disabled={save.isPending || !base.name}
+                  onClick={() => persist((row) => { if (row?.id) navigate(`/properties/edit/${row.id}`); })}>
+                  {t('common.save')}
+                </Button>
+              )}
+            />
+          </Card>
+        )
+      )}
 
       {newClient && (
         <ClientModal
@@ -217,5 +247,30 @@ export default function PropertyEdit() {
         </Modal>
       )}
     </div>
+  );
+}
+
+// Onglet « Bâtiments & unités/pièces » : tableaux CRUD réutilisant EntityTable (Module 1).
+function BuildingsTab({ propertyId }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const { data: bData } = useQuery({ queryKey: ['buildings', propertyId], queryFn: () => api.get(`/buildings?property_id=${propertyId}&limit=500&sort=created_at&dir=asc`) });
+  const { data: uData } = useQuery({ queryKey: ['units', propertyId], queryFn: () => api.get(`/units?property_id=${propertyId}&limit=2000&sort=created_at&dir=asc`) });
+  const buildings = bData?.rows || [];
+  const units = uData?.rows || [];
+  const refetchB = () => qc.invalidateQueries({ queryKey: ['buildings', propertyId] });
+  const refetchU = () => qc.invalidateQueries({ queryKey: ['units', propertyId] });
+
+  return (
+    <>
+      <Card>
+        <div className="section-label">{t('d.tab.buildings')}</div>
+        <EntityTable cfg={buildingsConfig(t)} propertyId={propertyId} items={buildings} onChanged={refetchB} extraInvalidate={[['units', propertyId]]} />
+      </Card>
+      <Card style={{ marginTop: 16 }}>
+        <div className="section-label">{t('pe.unitsRooms')}</div>
+        <EntityTable cfg={unitsConfig(t, buildings)} propertyId={propertyId} items={units} onChanged={refetchU} />
+      </Card>
+    </>
   );
 }
