@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Plus, ArrowLeft, FileText, Scale } from 'lucide-react';
+import { Save, Plus, ArrowLeft, FileText } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Modal, FormField, Select, EmptyState } from '../components/ui.jsx';
 import { EntityTable } from '../components/EntityTable.jsx';
 import BuildingsUnits, { RentRoll, ExpensesEditor } from '../components/BuildingsUnits.jsx';
+import { ComparablesEditor } from './Evaluation.jsx';
 import ClientModal from '../components/ClientModal.jsx';
 import CityField from '../components/CityField.jsx';
 import { COUNTRIES, provincesFor, ZONING_OPTIONS } from '../lib/geo.js';
@@ -14,7 +15,6 @@ import {
   BrochureChooser, transactionsConfig,
 } from './PropertyDetail.jsx';
 import { useI18n } from '../i18n/index.jsx';
-import { money, num } from '../lib/format.js';
 
 const BASE_EMPTY = {
   client_id: '', name: '', genre: '', transaction_type: '', address: '', city: '', region: '', mrc: '', province: 'QC',
@@ -299,15 +299,7 @@ export default function PropertyEdit() {
           {tab === 'expenses' && <ExpensesEditor propertyId={id} />}
           {tab === 'profit' && <ProfitabilityTab propertyId={id} />}
           {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', id]]} />}
-          {tab === 'comparables' && (
-            <ReadOnlyList icon={Scale} items={bundle.comparables} hint={t('d.comp.hint')} columns={[
-              { key: 'address', label: t('pe.address') },
-              { key: 'kind', label: t('common.type') },
-              { key: 'date', label: t('d.tx.date') },
-              { key: 'price', label: t('d.tx.price'), align: 'num', render: (r) => money(r.price) },
-              { key: 'area', label: t('d.unit.area'), align: 'num', render: (r) => num(r.area) },
-            ]} />
-          )}
+          {tab === 'comparables' && <ComparablesEditor propertyId={id} />}
           {tab === 'photos' && <PhotosTab property={property} refetch={refetch} />}
           {tab === 'marketing' && <MarketingTab propertyId={id} />}
           {tab === 'reports' && (
