@@ -28,6 +28,11 @@
 ## 3. Modèle de données (tables clés)
 - Métier : `clients`, `properties`, `buildings`, `units`, `expenses`, `transactions`,
   `comparables`, `reports`, `documents`, `property_media`.
+  - **Champs étendus (Session 39)** — `properties` : `attributes` (JSON : valeurs d'attributs de
+    vente par type), `transaction_type`, `mrc`, `zoning_detail`, `marketing` (JSON par langue).
+    `buildings`/`units` : dimensions (`width`/`length` + `width_unit`/`length_unit`/`area_unit`
+    pi·m / pi²·m²), `units.floor` (entier ; RDC=0, sous-sols négatifs), `room_function`,
+    `ceiling_height`/`ceiling_unit`, `floor_covering`. `clients.kind` ∈ seller|buyer|both|**landlord|tenant**.
 - **`documents`** (doc_type='analyse|evaluation|offre|brochure|brochure_variant|…') = **store polyvalent** :
   - `doc_type='brochure'` + `template` + `property_id` + `data.{layout,content,draft}` = surcharge
     de présentation **par propriété** (round-trip brochure). `property_id` NULL = défaut du gabarit
@@ -44,9 +49,12 @@
   globale du contenu d'offre (par-dessus `offre-content.json`).
 
 ## 4. Pipelines de rendu (déterministe, ReportLab / python-pptx)
-- **Brochures standard** (`render_brochure.py` + jumeau `render_brochure_pptx.py`) : layout
-  **à position fixe** projeté d'un gabarit PowerPoint (`brochure_layout.py`, 540×720→Lettre).
-  5 modèles (unifamilial, luxe, rpa*, commercial, industriel). Round-trip : `ingest_pptx.py`.
+- **Brochures standard** (`render_brochure.py` + jumeau `render_brochure_pptx.py`) : 5 modèles
+  (unifamilial, luxe, rpa*, commercial, industriel), espace PowerPoint 540×720→Lettre.
+  **Round-trip granulaire PAR ÉLÉMENT** (Session 39, comme RPA) : chaque élément est une forme
+  `STD::<slot>` (texte éditable + position) ou `STDp::<slot>` (position seule). Boîtes par défaut
+  centralisées dans **`brochure_slots.py`** (source unique des DEUX moteurs) ; helper `ovr(slot,…)`.
+  Ingest `ingest_pptx.py` / `pptx_to_layout.py` capturent texte + position par slot → `data.layout`.
 - **Brochure RPA** (`render_rpa_brochure.py`) : format **éditorial 6 pages** (différent),
   data-driven depuis `rpa-brochure-content.json` (+ surcharge propriété/gabarit), photos par rôle
   `rpa_*` → emplacements (`rpaBrochure.js`). *Polices Oswald + Font Awesome dans `assets/fonts/`.*
@@ -70,6 +78,36 @@
   Jumeau **PPTX** (`render_offre_pptx.py`, 1 diapo/section, formes nommées `OFF::clé::type::partie`)
   + ingestion (`ingest_offre_pptx.py`) = **aller-retour**. `offre.js` : `buildOffreData`,
   `resolveOffreContent`, `applyOfferDiff` (personnalisation par offre → contenu prêt au rendu).
+
+## 4b. Fiche propriété — page d'édition unifiée (Module 1, Session 39)
+- **Page unique** `web/src/pages/PropertyEdit.jsx` (`/properties/edit` = création, `/properties/edit/:id`
+  = édition) : espace de travail complet de la propriété. La liste `/properties` y mène ; l'ancienne
+  page détail `/properties/:id` **redirige** (`PropertyRedirect`). `PropertyDetail.jsx` n'est plus
+  routé — il **exporte** ses onglets réutilisés (`ProfitabilityTab`, `ReadOnlyList`, `MarketingTab`,
+  `PhotosTab`, `BrochureChooser`, `transactionsConfig`). `Evaluation.jsx` exporte `ComparablesEditor`.
+- **Onglets** : Property Overview · Buildings & Units/Rooms · Rent roll · Expenses · Profitability ·
+  Transactions · Comparables · Photos · Marketing · Reports.
+- **Overview** : champs fixes → colonnes `properties` ; **formulaire dynamique** → `properties.attributes`,
+  piloté par la matrice **Attributs Ventes** (`formSchema(type)`). Géo : pays/province (menus
+  `lib/geo.js`), ville (combobox `components/CityField.jsx` → `/geo/municipalities`), **région + MRC
+  auto** au QC. Zonage = menu (clé) + détail libre.
+- **Édition en ligne** (`components/BuildingsUnits.jsx` + exports `RentRoll`, `ExpensesEditor`) :
+  bouton Ajouter → création immédiate (défauts), cellules éditables → **PATCH par champ**, poubelle,
+  scroll horizontal. `DimCell` = valeur + bascule d'unité. Listes : `lib/roomFunctions.js`
+  (fonctions de pièce par type, bilingue) + recouvrements de plancher.
+- **Garde-fou non-enregistré** : `main.jsx` migré en **data router** (`createBrowserRouter`) pour
+  activer `useBlocker` ; + `beforeunload`. Modales « changer de type » et « quitter sans enregistrer ».
+- **Attributs Ventes** (`web/src/pages/SalesAttributes.jsx`, `/properties/attributs`) : matrice
+  attribut × 6 types. Taxonomie `db/seeds/sales-attributes.seed.json` + surcharges
+  `Settings['sales_attributes_matrix']` ; `lib/salesAttributes.js`
+  (`buildMatrix/setCell/resetMatrix/formSchema`) ; endpoints `/sales-attributes`
+  (+`/cell`, `/reset`, `/form/:type`).
+- **Géo Québec** : `datasources/MUN.xlsx` (MAMH, 1120 munis ; conservé dans le repo) → seed
+  `quebec-municipalities.seed.json` (nom, région, MRC) ; `lib/quebecGeo.js` ; endpoints
+  `/geo/municipalities`, `/geo/regions`.
+- **CSS dark mode** : les menus/popovers custom doivent utiliser `--color-bg-card` /
+  `--color-bg-secondary` / `--color-text-primary` (les tokens `--color-surface*` / `--color-text`
+  N'EXISTENT PAS → rendu blanc en sombre).
 
 ## 5. Conventions
 - Aucune donnée codée en dur (références/contenus → JSON sous `engine/` ou `db/seeds/`).

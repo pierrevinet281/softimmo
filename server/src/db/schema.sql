@@ -286,8 +286,13 @@ CREATE TABLE IF NOT EXISTS properties (
   municipal_assessment REAL,           -- évaluation foncière municipale (corroboration ACM)
   assessment_year INTEGER,             -- année du rôle d'évaluation
   status        TEXT NOT NULL DEFAULT 'prospect', -- prospect|actif|inscrit|vendu|expire|archive
+  transaction_type TEXT,               -- vendeur|acheteur|locateur|locataire (mandat)
+  mrc           TEXT,                  -- MRC (associée à la municipalité)
+  zoning_detail TEXT,                  -- zonage détaillé / code municipal (complément de zoning)
   summary       TEXT,
   notes         TEXT,
+  attributes    TEXT,                  -- JSON : valeurs des attributs de vente par type (voir lib/salesAttributes)
+  marketing     TEXT,                  -- JSON : textes marketing édités, par langue { fr:{...}, en:{...} }
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -315,6 +320,12 @@ CREATE TABLE IF NOT EXISTS buildings (
   fenestration     TEXT,               -- type de fenestration
   roofing          TEXT,               -- type de toiture
   flooring         TEXT,               -- type de planchers
+  address          TEXT,               -- adresse du bâtiment
+  width            REAL,               -- largeur
+  width_unit       TEXT,               -- pi|m
+  length           REAL,               -- longueur
+  length_unit      TEXT,               -- pi|m
+  area_unit        TEXT,               -- pi2|m2 (unité de building_area)
   notes            TEXT,
   created_at       TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
@@ -338,6 +349,16 @@ CREATE TABLE IF NOT EXISTS units (
   is_vacant     INTEGER DEFAULT 0,     -- 0/1
   occupant      TEXT,
   other_income  REAL,                  -- stationnement, buanderie, rangement…
+  floor         INTEGER,               -- # d'étage
+  room_function TEXT,                  -- fonction (clé : cuisine|salon|chambre|… selon le type)
+  width         REAL,                  -- largeur
+  width_unit    TEXT,                  -- pi|m
+  length        REAL,                  -- longueur
+  length_unit   TEXT,                  -- pi|m
+  area_unit     TEXT,                  -- pi2|m2 (unité de area)
+  ceiling_height REAL,                 -- hauteur de plafond
+  ceiling_unit  TEXT,                  -- pi|m
+  floor_covering TEXT,                 -- recouvrement de plancher
   notes         TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))

@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import App from './App.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import { I18nProvider } from './i18n/index.jsx';
@@ -15,14 +15,16 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1, staleTime: 10_000 } },
 });
 
+// Data router (createBrowserRouter) — requis pour useBlocker (garde-fou « quitter sans
+// enregistrer »). App conserve son shell + <Routes> via la route attrape-tout.
+const router = createBrowserRouter([{ path: '*', element: <App /> }]);
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <I18nProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <RouterProvider router={router} />
         </I18nProvider>
       </ToastProvider>
     </QueryClientProvider>

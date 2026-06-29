@@ -52,6 +52,9 @@ const COLUMN_ADDITIONS = {
   // Softimmo Module 2 (Évaluation / ACM) — Phase 3
   properties: [
     ['municipal_assessment', 'REAL'], ['assessment_year', 'INTEGER'], ['brochure_qr_url', 'TEXT'],
+    ['attributes', 'TEXT'],  // Module 1 : valeurs des attributs de vente (JSON)
+    ['transaction_type', 'TEXT'], ['zoning_detail', 'TEXT'], ['mrc', 'TEXT'],  // mandat + zonage + MRC
+    ['marketing', 'TEXT'],  // textes marketing édités (JSON par langue)
   ],
   comparables: [
     ['centris_no', 'TEXT'], ['sale_date', 'TEXT'], ['list_price', 'REAL'], ['sold_price', 'REAL'],
@@ -59,6 +62,16 @@ const COLUMN_ADDITIONS = {
     ['inclusions', 'TEXT'],
     ['foundation', 'TEXT'], ['cladding', 'TEXT'], ['windows_type', 'TEXT'], ['flooring', 'TEXT'],
     ['windows_age', 'INTEGER'], ['roof_age', 'INTEGER'],
+  ],
+  // Module 1 : éditeur Bâtiments & unités/pièces (dimensions + unités pi/m, fonction)
+  buildings: [
+    ['address', 'TEXT'], ['width', 'REAL'], ['width_unit', 'TEXT'],
+    ['length', 'REAL'], ['length_unit', 'TEXT'], ['area_unit', 'TEXT'],
+  ],
+  units: [
+    ['floor', 'INTEGER'], ['room_function', 'TEXT'], ['width', 'REAL'], ['width_unit', 'TEXT'],
+    ['length', 'REAL'], ['length_unit', 'TEXT'], ['area_unit', 'TEXT'],
+    ['ceiling_height', 'REAL'], ['ceiling_unit', 'TEXT'], ['floor_covering', 'TEXT'],
   ],
 };
 

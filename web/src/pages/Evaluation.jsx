@@ -384,6 +384,30 @@ function MatrixImport({ propertyId, onDone }) {
   );
 }
 
+// Éditeur de comparables réutilisable (onglet Comparables de la fiche propriété) : import PDF
+// (matrice) + ajout/édition manuels (mêmes config et endpoints que la page Évaluation).
+export function ComparablesEditor({ propertyId }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const { data: paramData } = useQuery({ queryKey: ['acmParams'], queryFn: () => api.get('/acm/params') });
+  const params = paramData?.params;
+  const { data: bundle } = useQuery({ queryKey: ['bundle', propertyId], queryFn: () => api.get(`/properties/${propertyId}/bundle`), enabled: !!propertyId });
+  const boolIncl = useMemo(() => new Set([...(params?.boolean_inclusions || []), 'sous_sol_fini', 'climatisation', 'thermopompe']), [params]);
+  const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).map((k) => ({ value: k, label: prettyIncl(k), boolean: boolIncl.has(k) })), [params, boolIncl]);
+  const featureFields = useMemo(() => buildFeatureFields(params), [params]);
+  const refetch = () => qc.invalidateQueries({ queryKey: ['bundle', propertyId] });
+  return (
+    <EntityTable
+      cfg={comparablesConfig(t, inclOptions, featureFields)}
+      propertyId={propertyId}
+      items={bundle?.comparables || []}
+      onChanged={refetch}
+      selectable
+      headerActions={<MatrixImport propertyId={propertyId} onDone={refetch} />}
+    />
+  );
+}
+
 // ─────────────────────────── Page ───────────────────────────
 export default function Evaluation() {
   const { t } = useI18n();

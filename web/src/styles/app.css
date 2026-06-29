@@ -54,6 +54,43 @@ code, .mono { font-family: var(--font-mono); }
 .switch .switch-knob { display: block; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transform: translateX(0); transition: transform 0.15s ease; }
 .switch.on { background: var(--color-success, #07D581); }
 .switch.on .switch-knob { transform: translateX(19px); }
+
+/* Matrice « Attributs Ventes » (attribut × type, éditable) */
+.sa-matrix th, .sa-matrix td { vertical-align: middle; }
+.sa-matrix .sa-catrow td { background: var(--color-bg-secondary); font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+.sa-matrix tbody tr:hover td { background: var(--color-bg-secondary); }
+.sa-matrix .sa-catrow:hover td { background: var(--color-bg-secondary); }
+.sa-typehead { background: none; border: none; cursor: pointer; font: inherit; font-weight: 600; color: var(--color-text-primary); display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
+.sa-typehead:hover { color: var(--color-info, #67C8FA); }
+.sa-formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+
+/* Champ dimension + bascule d'unité (pi/m, pi²/m²) — éditeur Bâtiments & unités/pièces */
+.dim-field { display: flex; gap: 8px; align-items: stretch; }
+.dim-field .input { flex: 1; min-width: 0; }
+.unit-toggle { display: inline-flex; border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden; flex: 0 0 auto; }
+.unit-opt { background: transparent; border: none; padding: 0 10px; cursor: pointer; font: inherit; font-size: 12px; color: var(--color-text-secondary); }
+.unit-opt + .unit-opt { border-left: 1px solid var(--color-border); }
+.unit-opt.active { background: var(--color-info, #67C8FA); color: #fff; }
+.dim-cell { display: flex; gap: 4px; align-items: stretch; }
+.dim-cell .cell-input { width: 64px; min-width: 48px; }
+.dim-cell .unit-toggle { flex: 0 0 auto; }
+.dim-cell .unit-opt { padding: 0 7px; }
+
+/* Combobox de recherche (champ Ville) */
+.combo { position: relative; }
+.combo-menu { position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 50; max-height: 260px; overflow-y: auto; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 4px; }
+.combo-opt { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit; padding: 7px 10px; border-radius: 6px; color: var(--color-text-primary); }
+.combo-opt:hover { background: var(--color-bg-secondary); }
+.sa-colhead { display: inline-flex; align-items: center; gap: 4px; justify-content: center; }
+.sa-funnel { background: none; border: none; cursor: pointer; color: var(--color-text-secondary); padding: 2px; border-radius: 4px; line-height: 0; }
+.sa-funnel:hover, .sa-funnel.active { color: var(--color-info, #67C8FA); }
+.sa-matrix th { position: relative; }
+.sa-menu-backdrop { position: fixed; inset: 0; z-index: 40; }
+.sa-menu { position: absolute; top: 100%; right: 4px; z-index: 50; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 4px; min-width: 150px; }
+.sa-menu button { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit; padding: 6px 10px; border-radius: 6px; color: var(--color-text-primary); }
+.sa-menu button:hover { background: var(--color-bg-secondary); }
+.sa-menu button.active { color: var(--color-info, #67C8FA); font-weight: 600; }
+
 .item-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-radius: 6px; }
 .item-row .item-text { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-row.item-excluded .item-text { opacity: 0.45; text-decoration: line-through; }

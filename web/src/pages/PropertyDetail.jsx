@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   ChevronLeft, Building, DoorOpen, Receipt, Calculator,
   History, Scale, FileText, AlertTriangle, Info, Plus, Upload, FileDown, Presentation,
@@ -9,76 +9,16 @@ import {
 import api from '../api/client.js';
 import { Card, Button, Badge, EmptyState, Modal } from '../components/ui.jsx';
 import { EntityTable, EntityForm, InlineTable, PasteImportModal } from '../components/EntityTable.jsx';
+import { buildingsConfig, unitsConfig } from '../lib/propertyConfigs.jsx';
+import { functionsForGenre, functionLabel } from '../lib/roomFunctions.js';
 import { useI18n } from '../i18n/index.jsx';
 import { money, num, pct, mult } from '../lib/format.js';
 
 // ─────────────────────────── Field / column specs per entity ───────────────────────────
 // Forms and tables are config-driven (DRY, mirrors the server-side repo/route factories).
+// Bâtiments / Unités : voir lib/propertyConfigs.js (partagés avec la page Ajouter/Éditer).
 const EXPENSE_CATS = ['taxes_municipales', 'taxes_scolaires', 'assurances', 'energie', 'entretien', 'gestion', 'deneigement', 'conciergerie', 'reserve', 'autre'];
 const TX_STATUS = ['inscription', 'en_vigueur', 'vendue', 'expiree', 'retiree'];
-const LEASE_TYPES = ['', 'brut', 'net', 'TMI'];
-
-function buildingsConfig(t) {
-  return {
-    path: 'buildings', titleKey: 'd.tab.buildings', icon: Building,
-    columns: [
-      { key: 'label', label: t('common.name'), render: (r) => r.label || r.building_type || '—' },
-      { key: 'building_type', label: t('d.bld.type') },
-      { key: 'year_built', label: t('d.bld.year'), align: 'num' },
-      { key: 'land_area', label: t('d.bld.land'), align: 'num', render: (r) => num(r.land_area) },
-      { key: 'building_area', label: t('d.bld.footprint'), align: 'num', render: (r) => num(r.building_area) },
-      { key: 'livable_area', label: t('d.bld.livable'), align: 'num', render: (r) => num(r.livable_area) },
-    ],
-    fields: [
-      { key: 'label', label: t('common.name'), half: true },
-      { key: 'building_type', label: t('d.bld.type'), half: true },
-      { key: 'year_built', label: t('d.bld.year'), type: 'number', half: true },
-      { key: 'floors_above', label: t('d.bld.floorsAbove'), type: 'number', half: true },
-      { key: 'floors_basement', label: t('d.bld.floorsBasement'), type: 'number', half: true },
-      { key: 'land_area', label: t('d.bld.land'), type: 'number', half: true },
-      { key: 'building_area', label: t('d.bld.footprint'), type: 'number', half: true },
-      { key: 'livable_area', label: t('d.bld.livable'), type: 'number', half: true },
-      { key: 'structure', label: t('d.bld.structure'), half: true },
-      { key: 'foundation', label: t('d.bld.foundation'), half: true },
-      { key: 'exterior_cladding', label: t('d.bld.cladding'), half: true },
-      { key: 'roofing', label: t('d.bld.roofing'), half: true },
-      { key: 'fenestration', label: t('d.bld.fenestration'), half: true },
-      { key: 'flooring', label: t('d.bld.flooring'), half: true },
-      { key: 'notes', label: t('common.notes'), type: 'textarea' },
-    ],
-  };
-}
-
-function unitsConfig(t, buildings) {
-  const bldOptions = [{ value: '', label: '—' }, ...buildings.map((b) => ({ value: b.id, label: b.label || b.building_type || b.id }))];
-  return {
-    path: 'units', titleKey: 'd.tab.units', icon: DoorOpen,
-    columns: [
-      { key: 'label', label: t('d.unit.label'), render: (r) => r.label || '—' },
-      { key: 'unit_type', label: t('common.type') },
-      { key: 'area', label: t('d.unit.area'), align: 'num', render: (r) => num(r.area) },
-      { key: 'rent_monthly', label: t('d.unit.rent'), align: 'num', render: (r) => money(r.rent_monthly) },
-      { key: 'other_income', label: t('d.unit.other'), align: 'num', render: (r) => money(r.other_income) },
-      { key: 'lease_end', label: t('d.unit.leaseEnd') },
-      { key: 'is_vacant', label: t('d.unit.vacant'), render: (r) => (Number(r.is_vacant) === 1 ? <Badge tone="warning">{t('d.unit.vacant')}</Badge> : <Badge tone="success">{t('d.unit.occupied')}</Badge>) },
-    ],
-    fields: [
-      { key: 'label', label: t('d.unit.label'), half: true },
-      { key: 'unit_type', label: t('common.type'), placeholder: 'ex. 4½', half: true },
-      { key: 'building_id', label: t('d.tab.buildings'), type: 'select', options: bldOptions, half: true },
-      { key: 'area', label: t('d.unit.area'), type: 'number', half: true },
-      { key: 'bedrooms', label: t('d.unit.bedrooms'), type: 'number', half: true },
-      { key: 'bathrooms', label: t('d.unit.bathrooms'), type: 'number', half: true },
-      { key: 'rent_monthly', label: t('d.unit.rent'), type: 'number', half: true },
-      { key: 'other_income', label: t('d.unit.other'), type: 'number', half: true },
-      { key: 'lease_type', label: t('d.unit.leaseType'), type: 'select', options: LEASE_TYPES.map((v) => ({ value: v, label: v || '—' })), half: true },
-      { key: 'lease_end', label: t('d.unit.leaseEnd'), placeholder: 'AAAA-MM-JJ', half: true },
-      { key: 'occupant', label: t('d.unit.occupant'), half: true },
-      { key: 'is_vacant', label: t('d.unit.vacant'), type: 'checkbox', half: true },
-      { key: 'notes', label: t('common.notes'), type: 'textarea' },
-    ],
-  };
-}
 
 function expensesConfig(t) {
   return {
@@ -100,7 +40,7 @@ function expensesConfig(t) {
   };
 }
 
-function transactionsConfig(t) {
+export function transactionsConfig(t) {
   return {
     path: 'transactions', titleKey: 'd.tab.transactions', icon: History,
     columns: [
@@ -123,7 +63,7 @@ function transactionsConfig(t) {
 }
 
 // ─────────────────────────── Profitability (Rentabilité) tab ───────────────────────────
-function ProfitabilityTab({ propertyId }) {
+export function ProfitabilityTab({ propertyId }) {
   const { t } = useI18n();
   const [value, setValue] = useState('');
   const [vacancy, setVacancy] = useState('');
@@ -204,7 +144,7 @@ function ProfitabilityTab({ propertyId }) {
 }
 
 // ─────────────────────────── Read-only list (comparables / reports — Module 2) ───────────────────────────
-function ReadOnlyList({ icon: Icon, items, columns, hint }) {
+export function ReadOnlyList({ icon: Icon, items, columns, hint }) {
   const { t } = useI18n();
   if (!items || items.length === 0) return <EmptyState icon={Icon} title={t('d.empty')} hint={hint} />;
   return (
@@ -244,7 +184,7 @@ function CharacterizationTab({ bundle, refetch }) {
 }
 
 // ─────────────────────────── Dépenses : tableau à édition en ligne (+ dialogue) ───────────────────────────
-function ExpensesTab({ p, items, refetch }) {
+export function ExpensesTab({ p, items, refetch }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [dialog, setDialog] = useState(false);
@@ -264,7 +204,7 @@ function ExpensesTab({ p, items, refetch }) {
 }
 
 // ─────────────────────────── Rent roll : table + import copier-coller ───────────────────────────
-function UnitsTab({ p, items, buildings, refetch }) {
+export function UnitsTab({ p, items, buildings, refetch }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [importing, setImporting] = useState(false);
@@ -281,44 +221,82 @@ function UnitsTab({ p, items, buildings, refetch }) {
   );
 }
 
-// ─────────────────────────── Marketing : annonces texte (déterministe) ───────────────────────────
-function CopyField({ label, text, limit }) {
+// ─────────────────────────── Marketing : annonces texte (éditables + sauvegardables) ───────────────────────────
+function CopyField({ label, value, onChange, limit }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(text || ''); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* ignore */ }
+    try { await navigator.clipboard.writeText(value || ''); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* ignore */ }
   };
-  const over = limit && (text || '').length > limit;
+  const over = limit && (value || '').length > limit;
+  const rows = Math.min(12, Math.max(2, (value || '').split('\n').length, Math.ceil((value || '').length / 90) + 1));
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <strong style={{ fontSize: 13 }}>{label}</strong>
         <span className="muted" style={{ fontSize: 11, color: over ? 'var(--color-danger)' : undefined }}>
-          {(text || '').length}{limit ? ` / ${limit}` : ''} car.
+          {(value || '').length}{limit ? ` / ${limit}` : ''} car.
         </span>
         <div style={{ flex: 1 }} />
         <Button size="sm" variant="ghost" icon={copied ? Check : Copy} onClick={copy}>
           {copied ? t('d.mkt.copied') : t('d.mkt.copy')}
         </Button>
       </div>
-      <div style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 6, padding: 10, lineHeight: 1.5 }}>{text}</div>
+      <textarea className="textarea" value={value || ''} rows={rows} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', fontSize: 12, lineHeight: 1.5 }} />
     </div>
   );
 }
 
-function MarketingTab({ propertyId }) {
+const MKT_FIELDS = [
+  { k: 'kijiji_title', labelKey: 'd.mkt.kijijiTitle', limit: 70 },
+  { k: 'kijiji_body', labelKey: 'd.mkt.kijijiBody' },
+  { k: 'facebook', label: 'Facebook' },
+  { k: 'marketplace', label: 'Facebook Marketplace' },
+  { k: 'instagram', label: 'Instagram', limit: 2200 },
+  { k: 'twitter', labelKey: 'd.mkt.xthread' },
+  { k: 'linkedin', label: 'LinkedIn', limit: 3000 },
+];
+const genTexts = (f) => ({
+  kijiji_title: f.kijiji.title, kijiji_body: f.kijiji.body, facebook: f.facebook.text,
+  marketplace: f.marketplace.description, instagram: f.instagram.caption,
+  twitter: (f.twitter.thread || []).join('\n\n'), linkedin: f.linkedin.text,
+});
+
+export function MarketingTab({ propertyId, saved, onSaved }) {
   const { t } = useI18n();
   const [lang, setLang] = useState('fr');
   const [emoji, setEmoji] = useState(false);
+  const [edited, setEdited] = useState(null);          // textes de la langue courante
+  const [savedMap, setSavedMap] = useState(() => saved || {}); // { lang: {k:texte} }
   const { data, isLoading } = useQuery({
     queryKey: ['mkt', propertyId, lang, emoji],
     queryFn: () => api.get(`/properties/${propertyId}/marketing-copy?lang=${lang}&emoji=${emoji}`),
   });
   const f = data?.formats;
-  const sel = { padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13 };
+  // À l'arrivée des données générées (ou changement de langue) : override sauvegardé sinon généré.
+  useEffect(() => {
+    if (!f) return;
+    setEdited(savedMap[lang] ? { ...genTexts(f), ...savedMap[lang] } : genTexts(f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, data]);
+
+  const save = useMutation({
+    mutationFn: (m) => api.patch(`/properties/${propertyId}`, { marketing: m }),
+    onSuccess: (p) => { setSavedMap(p.marketing || {}); onSaved?.(); },
+  });
+  const set = (k, v) => setEdited((e) => ({ ...e, [k]: v }));
+  const onSave = () => save.mutate({ ...savedMap, [lang]: edited });
+  const regenerate = () => { if (f) setEdited(genTexts(f)); };
+  const sel = { padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)', fontSize: 13 };
+
   return (
     <Card>
-      <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t('d.mkt.hint')}</div>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="muted" style={{ fontSize: 13 }}>{t('d.mkt.hint')}</div>
+        <div className="spacer" />
+        <Button variant="outline" size="sm" onClick={regenerate} disabled={!f}>{t('d.mkt.regenerate')}</Button>
+        <Button variant="primary" size="sm" icon={Save} onClick={onSave} disabled={!edited || save.isPending}>{save.isPending ? t('off2.saving') : t('common.save')}</Button>
+      </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
         <select value={lang} onChange={(e) => setLang(e.target.value)} style={sel}>
           <option value="fr">Français</option>
@@ -328,19 +306,16 @@ function MarketingTab({ propertyId }) {
         <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
           <input type="checkbox" checked={emoji} onChange={(e) => setEmoji(e.target.checked)} /> {t('d.mkt.emoji')}
         </label>
+        {savedMap[lang] && <span className="muted" style={{ fontSize: 12 }}>{t('d.mkt.savedNote')}</span>}
       </div>
-      {isLoading || !f ? (
+      {isLoading || !edited ? (
         <div className="muted">…</div>
       ) : (
         <div>
-          <CopyField label={t('d.mkt.kijijiTitle')} text={f.kijiji.title} limit={70} />
-          <CopyField label={t('d.mkt.kijijiBody')} text={f.kijiji.body} />
-          <CopyField label="Facebook" text={f.facebook.text} />
-          <CopyField label="Facebook Marketplace" text={f.marketplace.description} />
-          <CopyField label="Instagram" text={f.instagram.caption} limit={2200} />
-          <CopyField label={t('d.mkt.xthread')} text={f.twitter.thread.join('\n\n')} />
-          <CopyField label="LinkedIn" text={f.linkedin.text} limit={3000} />
-          {data.disclaimers && (
+          {MKT_FIELDS.map((fld) => (
+            <CopyField key={fld.k} label={fld.labelKey ? t(fld.labelKey) : fld.label} value={edited[fld.k]} limit={fld.limit} onChange={(v) => set(fld.k, v)} />
+          ))}
+          {data?.disclaimers && (
             <div className="muted" style={{ fontSize: 11, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
               {data.disclaimers.map((d, i) => <div key={i}>• {d}</div>)}
             </div>
@@ -361,9 +336,14 @@ const PHOTO_ROLES = [
   { id: 'gallery', key: 'd.ph.gallery' },
 ];
 
-function PhotosTab({ property, refetch }) {
+export function PhotosTab({ property, units = [], refetch }) {
   const propertyId = property.id;
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  // Options de rôle : hero/carte, puis PIÈCES (selon le type) — celles déjà ajoutées d'abord.
+  const fns = functionsForGenre(property.genre);
+  const usedKeys = [...new Set((units || []).map((u) => u.room_function).filter(Boolean))];
+  const usedOpts = usedKeys.map((k) => ({ value: k, label: functionLabel(k, lang) }));
+  const restOpts = fns.filter((o) => !usedKeys.includes(o.key)).map((o) => ({ value: o.key, label: lang === 'en' ? o.en : o.fr }));
   const qc = useQueryClient();
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -438,9 +418,19 @@ function PhotosTab({ property, refetch }) {
                 <select
                   value={m.role}
                   onChange={(e) => setRole(m, e.target.value)}
-                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                  style={{ flex: 1, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)' }}
                 >
-                  {PHOTO_ROLES.map((r) => <option key={r.id} value={r.id}>{t(r.key)}</option>)}
+                  <option value="hero">{t('d.ph.hero')}</option>
+                  <option value="map">{t('d.ph.map')}</option>
+                  {usedOpts.length > 0 && (
+                    <optgroup label={t('d.ph.usedRooms')}>
+                      {usedOpts.map((o) => <option key={`u-${o.value}`} value={o.value}>{o.label}</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label={t('d.ph.otherRooms')}>
+                    {restOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </optgroup>
+                  <option value="gallery">{t('d.ph.unassigned')}</option>
                 </select>
                 <Button variant="ghost" size="sm" icon={Trash2} onClick={() => remove(m)} />
               </div>
@@ -717,7 +707,7 @@ function RpaContentEditor({ propertyId, onClose }) {
   );
 }
 
-function BrochureChooser({ propertyId, onClose }) {
+export function BrochureChooser({ propertyId, onClose }) {
   const { t } = useI18n();
   const [rpaEdit, setRpaEdit] = useState(false);
   const gen = (tplId, fmt) => {

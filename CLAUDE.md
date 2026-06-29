@@ -146,7 +146,29 @@ npm run build && npm start  # build web puis sert API+UI sur :8787
   primitive de dessin doit accepter un slot** pour rester round-trippable. Garde-fou `data.draft`
   (sync → Approve/Reject/Reset) sur tous les sync PPTX. **Bibliothèque de brochures** = documents
   `brochure_variant` (cloner pour éditer, original verrouillé). Détails : *Brochure RPA.md*, *Assets
-  courtier.md*.
+  courtier.md*. **Brochures standard** : même modèle granulaire `STD::<slot>`/`STDp::<slot>`, boîtes
+  par défaut dans `server/python/brochure_slots.py` (source unique des 2 moteurs).
+- **Fiche propriété (Module 1, refonte S39)** : page **unique** `web/src/pages/PropertyEdit.jsx`
+  (`/properties/edit[/:id]`) = espace de travail à onglets (Property Overview, Buildings & Units/Rooms,
+  Rent roll, Expenses, Profitability, Transactions, Comparables, Photos, Marketing, Reports). La liste
+  `/properties` y mène ; `/properties/:id` **redirige** ; `PropertyDetail.jsx` n'est plus routé mais
+  **exporte** ses onglets (réutilisés ici, + `ComparablesEditor` d'`Evaluation.jsx`). Détails :
+  *Pages Technical Documentation/Property Edit.md*.
+- **Matrice « Attributs Ventes »** (`/properties/attributs`, *Attributs Ventes.md*) : taxonomie seed
+  `db/seeds/sales-attributes.seed.json` + surcharges `Settings['sales_attributes_matrix']` →
+  `lib/salesAttributes.js` (`formSchema(type)`) → **formulaire dynamique** de l'Overview
+  (`properties.attributes` JSON). C'est la chaîne **matrice → formulaire → (à venir) brochure**.
+- **Édition en ligne** (bâtiments/unités/rent roll/dépenses) : pattern `components/BuildingsUnits.jsx`
+  (+ exports `RentRoll`, `ExpensesEditor`) — ajout de ligne = création immédiate, cellules → PATCH
+  par champ, poubelle, scroll H. Options de pièces : `lib/roomFunctions.js` (par type, bilingue).
+- **Géo Québec** : `datasources/MUN.xlsx` (MAMH, conservé dans le repo) → seed
+  `quebec-municipalities.seed.json` (nom, région, MRC) via un générateur jetable ; `lib/quebecGeo.js`
+  ; endpoints `/geo/municipalities`, `/geo/regions`. Ville = combobox (`CityField.jsx`) → région+MRC auto (QC).
+- **Routeur** : `main.jsx` utilise un **data router** (`createBrowserRouter`) pour `useBlocker`
+  (garde-fou « quitter sans enregistrer »). App garde son shell + `<Routes>` via la route attrape-tout.
+- **CSS dark mode** : pour les menus/popovers custom, utiliser `--color-bg-card` /
+  `--color-bg-secondary` / `--color-text-primary`. ⚠️ `--color-surface*` et `--color-text` **n'existent
+  pas** (→ fond blanc en sombre).
 
 ---
 
