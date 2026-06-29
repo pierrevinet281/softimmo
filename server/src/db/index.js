@@ -61,6 +61,16 @@ const COLUMN_ADDITIONS = {
     ['foundation', 'TEXT'], ['cladding', 'TEXT'], ['windows_type', 'TEXT'], ['flooring', 'TEXT'],
     ['windows_age', 'INTEGER'], ['roof_age', 'INTEGER'],
   ],
+  // Module 1 : éditeur Bâtiments & unités/pièces (dimensions + unités pi/m, fonction)
+  buildings: [
+    ['address', 'TEXT'], ['width', 'REAL'], ['width_unit', 'TEXT'],
+    ['length', 'REAL'], ['length_unit', 'TEXT'], ['area_unit', 'TEXT'],
+  ],
+  units: [
+    ['floor', 'INTEGER'], ['room_function', 'TEXT'], ['width', 'REAL'], ['width_unit', 'TEXT'],
+    ['length', 'REAL'], ['length_unit', 'TEXT'], ['area_unit', 'TEXT'],
+    ['ceiling_height', 'REAL'], ['ceiling_unit', 'TEXT'], ['floor_covering', 'TEXT'],
+  ],
 };
 
 function ensureColumns(db) {

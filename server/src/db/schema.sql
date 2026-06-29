@@ -316,6 +316,12 @@ CREATE TABLE IF NOT EXISTS buildings (
   fenestration     TEXT,               -- type de fenestration
   roofing          TEXT,               -- type de toiture
   flooring         TEXT,               -- type de planchers
+  address          TEXT,               -- adresse du bâtiment
+  width            REAL,               -- largeur
+  width_unit       TEXT,               -- pi|m
+  length           REAL,               -- longueur
+  length_unit      TEXT,               -- pi|m
+  area_unit        TEXT,               -- pi2|m2 (unité de building_area)
   notes            TEXT,
   created_at       TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
@@ -339,6 +345,16 @@ CREATE TABLE IF NOT EXISTS units (
   is_vacant     INTEGER DEFAULT 0,     -- 0/1
   occupant      TEXT,
   other_income  REAL,                  -- stationnement, buanderie, rangement…
+  floor         INTEGER,               -- # d'étage
+  room_function TEXT,                  -- fonction (clé : cuisine|salon|chambre|… selon le type)
+  width         REAL,                  -- largeur
+  width_unit    TEXT,                  -- pi|m
+  length        REAL,                  -- longueur
+  length_unit   TEXT,                  -- pi|m
+  area_unit     TEXT,                  -- pi2|m2 (unité de area)
+  ceiling_height REAL,                 -- hauteur de plafond
+  ceiling_unit  TEXT,                  -- pi|m
+  floor_covering TEXT,                 -- recouvrement de plancher
   notes         TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))

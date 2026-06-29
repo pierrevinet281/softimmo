@@ -63,6 +63,14 @@ code, .mono { font-family: var(--font-mono); }
 .sa-typehead { background: none; border: none; cursor: pointer; font: inherit; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
 .sa-typehead:hover { color: var(--color-info, #67C8FA); }
 .sa-formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+
+/* Champ dimension + bascule d'unité (pi/m, pi²/m²) — éditeur Bâtiments & unités/pièces */
+.dim-field { display: flex; gap: 8px; align-items: stretch; }
+.dim-field .input { flex: 1; min-width: 0; }
+.unit-toggle { display: inline-flex; border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden; flex: 0 0 auto; }
+.unit-opt { background: transparent; border: none; padding: 0 10px; cursor: pointer; font: inherit; font-size: 12px; color: var(--color-text-secondary); }
+.unit-opt + .unit-opt { border-left: 1px solid var(--color-border); }
+.unit-opt.active { background: var(--color-info, #67C8FA); color: #fff; }
 .sa-colhead { display: inline-flex; align-items: center; gap: 4px; justify-content: center; }
 .sa-funnel { background: none; border: none; cursor: pointer; color: var(--color-text-secondary); padding: 2px; border-radius: 4px; line-height: 0; }
 .sa-funnel:hover, .sa-funnel.active { color: var(--color-info, #67C8FA); }

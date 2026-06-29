@@ -4,8 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, Plus, ArrowLeft } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Modal, FormField, Select, EmptyState } from '../components/ui.jsx';
-import { EntityTable } from '../components/EntityTable.jsx';
-import { buildingsConfig, unitsConfig } from '../lib/propertyConfigs.jsx';
+import BuildingsUnits from '../components/BuildingsUnits.jsx';
 import ClientModal from '../components/ClientModal.jsx';
 import { useI18n } from '../i18n/index.jsx';
 
@@ -186,7 +185,7 @@ export default function PropertyEdit() {
 
       {tab === 'buildings' && (
         isEdit ? (
-          <BuildingsTab propertyId={id} />
+          <BuildingsUnits propertyId={id} genre={base.genre} />
         ) : (
           <Card>
             <EmptyState
@@ -247,30 +246,5 @@ export default function PropertyEdit() {
         </Modal>
       )}
     </div>
-  );
-}
-
-// Onglet « Bâtiments & unités/pièces » : tableaux CRUD réutilisant EntityTable (Module 1).
-function BuildingsTab({ propertyId }) {
-  const { t } = useI18n();
-  const qc = useQueryClient();
-  const { data: bData } = useQuery({ queryKey: ['buildings', propertyId], queryFn: () => api.get(`/buildings?property_id=${propertyId}&limit=500&sort=created_at&dir=asc`) });
-  const { data: uData } = useQuery({ queryKey: ['units', propertyId], queryFn: () => api.get(`/units?property_id=${propertyId}&limit=2000&sort=created_at&dir=asc`) });
-  const buildings = bData?.rows || [];
-  const units = uData?.rows || [];
-  const refetchB = () => qc.invalidateQueries({ queryKey: ['buildings', propertyId] });
-  const refetchU = () => qc.invalidateQueries({ queryKey: ['units', propertyId] });
-
-  return (
-    <>
-      <Card>
-        <div className="section-label">{t('d.tab.buildings')}</div>
-        <EntityTable cfg={buildingsConfig(t)} propertyId={propertyId} items={buildings} onChanged={refetchB} extraInvalidate={[['units', propertyId]]} />
-      </Card>
-      <Card style={{ marginTop: 16 }}>
-        <div className="section-label">{t('pe.unitsRooms')}</div>
-        <EntityTable cfg={unitsConfig(t, buildings)} propertyId={propertyId} items={units} onChanged={refetchU} />
-      </Card>
-    </>
   );
 }
