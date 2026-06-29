@@ -78,6 +78,7 @@ function CheckboxCell({ value, onChange }) {
 }
 
 const LEASE_TYPES = ['', 'brut', 'net', 'TMI'];
+const EXPENSE_CATS = ['taxes_municipales', 'taxes_scolaires', 'assurances', 'energie', 'entretien', 'gestion', 'deneigement', 'conciergerie', 'reserve', 'autre'];
 
 // Cellule dimension : valeur (commit au blur) + bascule d'unité (commit au clic).
 function DimCell({ value, unit, options, onValue, onUnit }) {
@@ -268,6 +269,60 @@ export function RentRoll({ propertyId }) {
                   <td className="cell"><TextCell value={u.notes} onCommit={(v) => patchU(u.id, { notes: v })} /></td>
                   <td>
                     <Button variant="ghost" size="sm" icon={Trash2} onClick={() => { if (confirm(t('common.confirmDelete'))) units.remove.mutate(u.id); }} title={t('common.delete')} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// Dépenses : édition en ligne (ajout + poubelle), même style que Rent roll.
+export function ExpensesEditor({ propertyId }) {
+  const { t } = useI18n();
+  const exp = useEntity('expenses', propertyId);
+  const patchE = (id, body) => exp.patch.mutate({ id, body });
+  const addExp = () => exp.create.mutate({ property_id: propertyId, category: 'taxes_municipales', period: 'annuel' });
+  return (
+    <Card>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="section-label" style={{ margin: 0 }}>{t('d.tab.expenses')}</div>
+        <div className="spacer" />
+        <Button variant="primary" size="sm" icon={Plus} onClick={addExp}>{t('common.add')}</Button>
+      </div>
+      {exp.rows.length === 0 ? <EmptyState title={t('d.empty')} /> : (
+        <div className="table-wrap" style={{ overflowX: 'auto' }}>
+          <table className="table">
+            <thead><tr>
+              <th style={{ minWidth: 170 }}>{t('d.exp.category')}</th>
+              <th style={{ minWidth: 150 }}>{t('common.name')}</th>
+              <th>{t('d.exp.amount')}</th>
+              <th style={{ minWidth: 110 }}>{t('d.exp.period')}</th>
+              <th style={{ minWidth: 170 }}>{t('common.notes')}</th>
+              <th style={{ width: 44 }} />
+            </tr></thead>
+            <tbody>
+              {exp.rows.map((e) => (
+                <tr key={e.id}>
+                  <td className="cell">
+                    <SelectCell value={e.category} onChange={(v) => patchE(e.id, { category: v })}>
+                      {EXPENSE_CATS.map((c) => <option key={c} value={c}>{t(`d.exp.cat.${c}`)}</option>)}
+                    </SelectCell>
+                  </td>
+                  <td className="cell"><TextCell value={e.label} onCommit={(v) => patchE(e.id, { label: v })} /></td>
+                  <td className="cell"><TextCell value={e.amount} num onCommit={(v) => patchE(e.id, { amount: numOrNull(v) })} /></td>
+                  <td className="cell">
+                    <SelectCell value={e.period} onChange={(v) => patchE(e.id, { period: v })}>
+                      <option value="annuel">{t('d.exp.period.annuel')}</option>
+                      <option value="mensuel">{t('d.exp.period.mensuel')}</option>
+                    </SelectCell>
+                  </td>
+                  <td className="cell"><TextCell value={e.notes} onCommit={(v) => patchE(e.id, { notes: v })} /></td>
+                  <td>
+                    <Button variant="ghost" size="sm" icon={Trash2} onClick={() => { if (confirm(t('common.confirmDelete'))) exp.remove.mutate(e.id); }} title={t('common.delete')} />
                   </td>
                 </tr>
               ))}

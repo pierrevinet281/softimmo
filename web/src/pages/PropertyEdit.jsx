@@ -5,12 +5,12 @@ import { Save, Plus, ArrowLeft, FileText, Scale } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Modal, FormField, Select, EmptyState } from '../components/ui.jsx';
 import { EntityTable } from '../components/EntityTable.jsx';
-import BuildingsUnits, { RentRoll } from '../components/BuildingsUnits.jsx';
+import BuildingsUnits, { RentRoll, ExpensesEditor } from '../components/BuildingsUnits.jsx';
 import ClientModal from '../components/ClientModal.jsx';
 import CityField from '../components/CityField.jsx';
 import { COUNTRIES, provincesFor, ZONING_OPTIONS } from '../lib/geo.js';
 import {
-  ProfitabilityTab, ReadOnlyList, ExpensesTab, MarketingTab, PhotosTab,
+  ProfitabilityTab, ReadOnlyList, MarketingTab, PhotosTab,
   BrochureChooser, transactionsConfig,
 } from './PropertyDetail.jsx';
 import { useI18n } from '../i18n/index.jsx';
@@ -296,7 +296,7 @@ export default function PropertyEdit() {
         <>
           {tab === 'buildings' && <BuildingsUnits propertyId={id} genre={base.genre} propertyAddress={base.address} />}
           {tab === 'units' && <RentRoll propertyId={id} />}
-          {tab === 'expenses' && <ExpensesTab p={property} items={bundle.expenses} refetch={refetch} />}
+          {tab === 'expenses' && <ExpensesEditor propertyId={id} />}
           {tab === 'profit' && <ProfitabilityTab propertyId={id} />}
           {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', id]]} />}
           {tab === 'comparables' && (
