@@ -9,6 +9,35 @@ import { functionsForGenre, functionLabel } from '../lib/roomFunctions.js';
 const LIN = [{ v: 'pi', l: 'pi' }, { v: 'm', l: 'm' }];
 const SQ = [{ v: 'pi2', l: 'pi²' }, { v: 'm2', l: 'm²' }];
 const UNIT_LABEL = { pi: 'pi', m: 'm', pi2: 'pi²', m2: 'm²' };
+
+// Recouvrements de plancher — ordre par popularité, familles regroupées (bois, tuiles/pierre,
+// souple, résilient, béton). Valeur stockée = clé ; affichage selon la langue.
+const FLOOR_COVERINGS = [
+  { v: 'bois_franc', fr: 'Bois franc', en: 'Hardwood' },
+  { v: 'bois_ingenierie', fr: "Bois d'ingénierie", en: 'Engineered wood' },
+  { v: 'flottant', fr: 'Plancher flottant (stratifié)', en: 'Laminate (floating)' },
+  { v: 'vinyle_luxe', fr: 'Vinyle de luxe (LVP)', en: 'Luxury vinyl (LVP)' },
+  { v: 'vinyle', fr: 'Vinyle / Prélart', en: 'Vinyl / Sheet vinyl' },
+  { v: 'liege', fr: 'Liège', en: 'Cork' },
+  { v: 'bambou', fr: 'Bambou', en: 'Bamboo' },
+  { v: 'ceramique', fr: 'Céramique', en: 'Ceramic tile' },
+  { v: 'porcelaine', fr: 'Porcelaine', en: 'Porcelain tile' },
+  { v: 'ardoise', fr: 'Ardoise', en: 'Slate' },
+  { v: 'marbre', fr: 'Marbre', en: 'Marble' },
+  { v: 'granit', fr: 'Granit', en: 'Granite' },
+  { v: 'terrazzo', fr: 'Terrazzo', en: 'Terrazzo' },
+  { v: 'tapis', fr: 'Tapis / Moquette', en: 'Carpet' },
+  { v: 'linoleum', fr: 'Linoléum', en: 'Linoleum' },
+  { v: 'epoxy', fr: 'Époxy', en: 'Epoxy' },
+  { v: 'beton_poli', fr: 'Béton poli', en: 'Polished concrete' },
+  { v: 'beton', fr: 'Béton', en: 'Concrete' },
+  { v: 'autre', fr: 'Autre', en: 'Other' },
+];
+const covLabel = (v, lang) => {
+  if (!v) return '—';
+  const o = FLOOR_COVERINGS.find((x) => x.v === v);
+  return o ? (lang === 'en' ? o.en : o.fr) : v;
+};
 const numOrNull = (v) => (v === '' || v == null ? null : Number(v));
 
 // Champ dimension : valeur + bascule d'unité (pi/m ou pi²/m²).
@@ -130,7 +159,13 @@ function UnitForm({ propertyId, genre, buildings, row, onClose, onSaved }) {
         <DimField label={t('bu.length')} value={f.length} unit={f.length_unit} options={LIN} onValue={(v) => set('length', v)} onUnit={(u) => set('length_unit', u)} />
         <DimField label={t('bu.area')} value={f.area} unit={f.area_unit} options={SQ} onValue={(v) => set('area', v)} onUnit={(u) => set('area_unit', u)} />
         <DimField label={t('bu.ceiling')} value={f.ceiling_height} unit={f.ceiling_unit} options={LIN} onValue={(v) => set('ceiling_height', v)} onUnit={(u) => set('ceiling_unit', u)} />
-        <FormField label={t('bu.floorCovering')} value={f.floor_covering} onChange={(e) => set('floor_covering', e.target.value)} />
+        <div className="field">
+          <label>{t('bu.floorCovering')}</label>
+          <Select value={f.floor_covering} onChange={(e) => set('floor_covering', e.target.value)}>
+            <option value="">{t('bu.pick')}</option>
+            {FLOOR_COVERINGS.map((o) => <option key={o.v} value={o.v}>{lang === 'en' ? o.en : o.fr}</option>)}
+          </Select>
+        </div>
       </div>
     </Modal>
   );
@@ -212,7 +247,7 @@ export default function BuildingsUnits({ propertyId, genre, propertyAddress }) {
                   <td className="num">{floorLabel(u.floor, lang)}</td>
                   <td className="num">{dim(u.area, u.area_unit)}</td>
                   <td>{dim(u.ceiling_height, u.ceiling_unit)}</td>
-                  <td>{u.floor_covering || '—'}</td>
+                  <td>{covLabel(u.floor_covering, lang)}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setUEdit(u)} title={t('common.edit')} />
                     <Button variant="ghost" size="sm" icon={Trash2} onClick={() => { if (confirm(t('common.confirmDelete'))) units.remove.mutate(u.id); }} title={t('common.delete')} />
