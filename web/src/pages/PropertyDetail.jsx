@@ -39,7 +39,7 @@ function expensesConfig(t) {
   };
 }
 
-function transactionsConfig(t) {
+export function transactionsConfig(t) {
   return {
     path: 'transactions', titleKey: 'd.tab.transactions', icon: History,
     columns: [
@@ -62,7 +62,7 @@ function transactionsConfig(t) {
 }
 
 // ─────────────────────────── Profitability (Rentabilité) tab ───────────────────────────
-function ProfitabilityTab({ propertyId }) {
+export function ProfitabilityTab({ propertyId }) {
   const { t } = useI18n();
   const [value, setValue] = useState('');
   const [vacancy, setVacancy] = useState('');
@@ -143,7 +143,7 @@ function ProfitabilityTab({ propertyId }) {
 }
 
 // ─────────────────────────── Read-only list (comparables / reports — Module 2) ───────────────────────────
-function ReadOnlyList({ icon: Icon, items, columns, hint }) {
+export function ReadOnlyList({ icon: Icon, items, columns, hint }) {
   const { t } = useI18n();
   if (!items || items.length === 0) return <EmptyState icon={Icon} title={t('d.empty')} hint={hint} />;
   return (
@@ -183,7 +183,7 @@ function CharacterizationTab({ bundle, refetch }) {
 }
 
 // ─────────────────────────── Dépenses : tableau à édition en ligne (+ dialogue) ───────────────────────────
-function ExpensesTab({ p, items, refetch }) {
+export function ExpensesTab({ p, items, refetch }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [dialog, setDialog] = useState(false);
@@ -203,7 +203,7 @@ function ExpensesTab({ p, items, refetch }) {
 }
 
 // ─────────────────────────── Rent roll : table + import copier-coller ───────────────────────────
-function UnitsTab({ p, items, buildings, refetch }) {
+export function UnitsTab({ p, items, buildings, refetch }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [importing, setImporting] = useState(false);
@@ -245,7 +245,7 @@ function CopyField({ label, text, limit }) {
   );
 }
 
-function MarketingTab({ propertyId }) {
+export function MarketingTab({ propertyId }) {
   const { t } = useI18n();
   const [lang, setLang] = useState('fr');
   const [emoji, setEmoji] = useState(false);
@@ -300,7 +300,7 @@ const PHOTO_ROLES = [
   { id: 'gallery', key: 'd.ph.gallery' },
 ];
 
-function PhotosTab({ property, refetch }) {
+export function PhotosTab({ property, refetch }) {
   const propertyId = property.id;
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -656,7 +656,7 @@ function RpaContentEditor({ propertyId, onClose }) {
   );
 }
 
-function BrochureChooser({ propertyId, onClose }) {
+export function BrochureChooser({ propertyId, onClose }) {
   const { t } = useI18n();
   const [rpaEdit, setRpaEdit] = useState(false);
   const gen = (tplId, fmt) => {

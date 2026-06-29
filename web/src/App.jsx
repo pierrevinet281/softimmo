@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, Navigate, useParams } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Building2, Sparkles, ShieldCheck, ListChecks,
   Upload, Store, Activity as ActivityIcon, Settings as SettingsIcon, Moon, Sun, Zap,
@@ -11,9 +11,14 @@ import { useI18n } from './i18n/index.jsx';
 
 import Dashboard from './pages/Dashboard.jsx';
 import Properties from './pages/Properties.jsx';
-import PropertyDetail from './pages/PropertyDetail.jsx';
 import SalesAttributes from './pages/SalesAttributes.jsx';
 import PropertyEdit from './pages/PropertyEdit.jsx';
+
+// Ancienne page de détail fusionnée dans PropertyEdit → redirection vers l'éditeur.
+function PropertyRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/properties/edit/${id}`} replace />;
+}
 import Evaluation from './pages/Evaluation.jsx';
 import OffresList from './pages/OffresList.jsx';
 import OffreEdit from './pages/OffreEdit.jsx';
@@ -168,7 +173,7 @@ export default function App() {
           <Route path="/properties/edit" element={<PropertyEdit />} />
           <Route path="/properties/edit/:id" element={<PropertyEdit />} />
           <Route path="/properties/attributs" element={<SalesAttributes />} />
-          <Route path="/properties/:id" element={<PropertyDetail />} />
+          <Route path="/properties/:id" element={<PropertyRedirect />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/evaluation" element={<Evaluation />} />
           <Route path="/profile" element={<ProfilCourtier />} />

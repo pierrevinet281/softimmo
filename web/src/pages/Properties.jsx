@@ -59,7 +59,7 @@ export default function Properties() {
             </thead>
             <tbody>
               {rows.map((p) => (
-                <tr key={p.id} onClick={() => navigate(`/properties/${p.id}`)}>
+                <tr key={p.id} onClick={() => navigate(`/properties/edit/${p.id}`)}>
                   <td><strong>{p.name || <span className="muted">—</span>}</strong>{p.address && <div className="muted" style={{ fontSize: 12 }}>{p.address}</div>}</td>
                   <td><Badge tone="info">{GENRE_LABEL[p.genre] || p.genre}</Badge></td>
                   <td>{p.city || <span className="muted">—</span>}</td>

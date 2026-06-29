@@ -1,18 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Plus, ArrowLeft } from 'lucide-react';
+import { Save, Plus, ArrowLeft, FileText, Scale } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Modal, FormField, Select, EmptyState } from '../components/ui.jsx';
+import { EntityTable } from '../components/EntityTable.jsx';
 import BuildingsUnits from '../components/BuildingsUnits.jsx';
 import ClientModal from '../components/ClientModal.jsx';
+import {
+  ProfitabilityTab, ReadOnlyList, ExpensesTab, UnitsTab, MarketingTab, PhotosTab,
+  BrochureChooser, transactionsConfig,
+} from './PropertyDetail.jsx';
 import { useI18n } from '../i18n/index.jsx';
+import { money, num } from '../lib/format.js';
 
 const BASE_EMPTY = {
-  client_id: '', name: '', genre: '', address: '', city: '', region: '', province: 'QC', postal_code: '', country: 'Canada',
+  client_id: '', name: '', genre: '', address: '', city: '', region: '', province: 'QC',
+  postal_code: '', country: 'Canada', zoning: '', lot_number: '', mls_number: '', status: 'prospect',
 };
-// Attributs déjà couverts par les champs fixes en haut → exclus du formulaire dynamique.
-const CORE_ATTR_KEYS = new Set(['address', 'sector']);
+// Attributs déjà couverts par les champs fixes (haut de page) → exclus du formulaire dynamique.
+const CORE_ATTR_KEYS = new Set(['address', 'sector', 'genre_detail', 'zoning', 'lot_number']);
+const STATUSES = ['prospect', 'actif', 'inscrit', 'vendu', 'expire', 'archive'];
+const TABS = [
+  { id: 'details', labelKey: 'pe.tab.details' },
+  { id: 'buildings', labelKey: 'pe.tab.buildings' },
+  { id: 'units', labelKey: 'd.tab.units' },
+  { id: 'expenses', labelKey: 'd.tab.expenses' },
+  { id: 'profit', labelKey: 'd.tab.profit' },
+  { id: 'transactions', labelKey: 'd.tab.transactions' },
+  { id: 'comparables', labelKey: 'd.tab.comparables' },
+  { id: 'photos', labelKey: 'd.tab.photos' },
+  { id: 'marketing', labelKey: 'd.tab.marketing' },
+  { id: 'reports', labelKey: 'd.tab.reports' },
+];
 
 export default function PropertyEdit() {
   const { t, lang } = useI18n();
@@ -24,11 +44,11 @@ export default function PropertyEdit() {
 
   const [base, setBase] = useState(BASE_EMPTY);
   const [attrs, setAttrs] = useState({});
-  const [pendingType, setPendingType] = useState(null); // type en attente de confirmation
+  const [pendingType, setPendingType] = useState(null);
   const [newClient, setNewClient] = useState(false);
-  const [tab, setTab] = useState('details'); // details | buildings
+  const [tab, setTab] = useState('details');
+  const [brochureOpen, setBrochureOpen] = useState(false);
 
-  // Instantané « sauvegardé » (réfs lues en synchrone par les garde-fous).
   const snapBaseRef = useRef(JSON.stringify(BASE_EMPTY));
   const snapAttrsRef = useRef('{}');
   const baseRef = useRef(base); baseRef.current = base;
@@ -42,18 +62,28 @@ export default function PropertyEdit() {
   const clients = clientsData?.rows || [];
   const types = matrix?.types || [];
 
-  const { data: existing } = useQuery({ queryKey: ['property', id], queryFn: () => api.get(`/properties/${id}`), enabled: isEdit });
+  // En édition : le bundle (propriété + enfants) alimente les onglets repris du détail.
+  const { data: bundle } = useQuery({ queryKey: ['bundle', id], queryFn: () => api.get(`/properties/${id}/bundle`), enabled: isEdit });
+  const property = bundle?.property;
+  const refetch = () => qc.invalidateQueries({ queryKey: ['bundle', id] });
+
+  // Initialisation UNE SEULE FOIS par propriété (les refetch dûs aux onglets enfants ne doivent
+  // pas écraser les saisies non enregistrées des « Détails »).
+  const loadedIdRef = useRef(null);
   useEffect(() => {
-    if (!existing) return;
+    if (!property || loadedIdRef.current === property.id) return;
+    loadedIdRef.current = property.id;
     const b = {
-      client_id: existing.client_id || '', name: existing.name || '', genre: existing.genre || '',
-      address: existing.address || '', city: existing.city || '', region: existing.region || '',
-      province: existing.province || 'QC', postal_code: existing.postal_code || '', country: existing.country || 'Canada',
+      client_id: property.client_id || '', name: property.name || '', genre: property.genre || '',
+      address: property.address || '', city: property.city || '', region: property.region || '',
+      province: property.province || 'QC', postal_code: property.postal_code || '', country: property.country || 'Canada',
+      zoning: property.zoning || '', lot_number: property.lot_number || '', mls_number: property.mls_number || '',
+      status: property.status || 'prospect',
     };
-    const a = existing.attributes || {};
+    const a = property.attributes || {};
     setBase(b); setAttrs(a);
     snapBaseRef.current = JSON.stringify(b); snapAttrsRef.current = JSON.stringify(a);
-  }, [existing]);
+  }, [property]);
 
   const { data: schema } = useQuery({
     queryKey: ['sa-form', base.genre], queryFn: () => api.get(`/sales-attributes/form/${base.genre}`), enabled: !!base.genre,
@@ -70,6 +100,7 @@ export default function PropertyEdit() {
     const row = await save.mutateAsync({ ...base, attributes: attrs });
     snapBaseRef.current = JSON.stringify(base); snapAttrsRef.current = JSON.stringify(attrs);
     qc.invalidateQueries({ queryKey: ['properties'] });
+    if (isEdit) qc.invalidateQueries({ queryKey: ['bundle', id] });
     onDone?.(row);
   };
 
@@ -80,7 +111,6 @@ export default function PropertyEdit() {
   };
   const applyType = (g) => { setBase((b) => ({ ...b, genre: g })); setAttrs({}); setPendingType(null); };
 
-  // Garde-fou : navigation interne (data router) + fermeture/rafraîchissement de l'onglet.
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
     isDirty() && !save.isPending && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
@@ -93,6 +123,7 @@ export default function PropertyEdit() {
   const cats = (schema?.categories || []).map((c) => ({
     ...c, attributes: c.attributes.filter((a) => !CORE_ATTR_KEYS.has(a.key)),
   })).filter((c) => c.attributes.length);
+  const saveToEdit = () => persist((row) => { if (!isEdit && row?.id) navigate(`/properties/edit/${row.id}`); });
 
   return (
     <div className="page">
@@ -102,104 +133,133 @@ export default function PropertyEdit() {
           <div className="page-subtitle">{t('pe.subtitle')}</div>
         </div>
         <div className="spacer" />
+        {isEdit && <Button variant="outline" icon={FileText} onClick={() => setBrochureOpen(true)}>{t('d.brochure')}</Button>}
         <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/properties')}>{t('pe.back')}</Button>
-        <Button variant="primary" icon={Save} disabled={save.isPending || !base.name}
-          onClick={() => persist((row) => { if (!isEdit && row?.id) navigate(`/properties/edit/${row.id}`); })}>{t('common.save')}</Button>
+        <Button variant="primary" icon={Save} disabled={save.isPending || !base.name} onClick={saveToEdit}>{t('common.save')}</Button>
       </div>
+      {brochureOpen && <BrochureChooser propertyId={id} onClose={() => setBrochureOpen(false)} />}
 
       <div className="tab-row">
         <div className="tabs">
-          <button className={`tab ${tab === 'details' ? 'active' : ''}`} onClick={() => setTab('details')}>{t('pe.tab.details')}</button>
-          <button className={`tab ${tab === 'buildings' ? 'active' : ''}`} onClick={() => setTab('buildings')}>{t('pe.tab.buildings')}</button>
+          {TABS.map((tb) => (
+            <button key={tb.id} className={`tab ${tab === tb.id ? 'active' : ''}`} onClick={() => setTab(tb.id)}>{t(tb.labelKey)}</button>
+          ))}
         </div>
       </div>
 
       {tab === 'details' && (<>
-      <Card>
-        <div className="section-label">{t('pe.identity')}</div>
-        <div className="field-row">
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>{t('pe.client')}</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Select value={base.client_id} onChange={(e) => setBaseField('client_id', e.target.value)} style={{ flex: 1 }}>
-                <option value="">{t('pe.clientNone')}</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{clientName(c)}</option>)}
-              </Select>
-              <Button variant="outline" icon={Plus} onClick={() => setNewClient(true)}>{t('pe.newClient')}</Button>
-            </div>
-          </div>
-          <FormField label={t('pe.name')} value={base.name} onChange={(e) => setBaseField('name', e.target.value)} placeholder={t('pe.namePh')} />
-          <FormField label={t('pe.address')} value={base.address} onChange={(e) => setBaseField('address', e.target.value)} />
-          <FormField label={t('pe.city')} value={base.city} onChange={(e) => setBaseField('city', e.target.value)} />
-          <FormField label={t('pe.region')} value={base.region} onChange={(e) => setBaseField('region', e.target.value)} />
-          <FormField label={t('pe.state')} value={base.province} onChange={(e) => setBaseField('province', e.target.value)} />
-          <FormField label={t('pe.postal')} value={base.postal_code} onChange={(e) => setBaseField('postal_code', e.target.value)} />
-          <FormField label={t('pe.country')} value={base.country} onChange={(e) => setBaseField('country', e.target.value)} />
-        </div>
-
-        <div className="section-label" style={{ marginTop: 16 }}>{t('pe.propertyType')}</div>
-        <div className="field" style={{ maxWidth: 320 }}>
-          <label>{t('pe.propertyType')}</label>
-          <Select value={base.genre} onChange={(e) => onTypeSelect(e.target.value)}>
-            <option value="">{t('pe.typePick')}</option>
-            {types.map((ty) => <option key={ty.key} value={ty.key}>{lab(ty)}</option>)}
-          </Select>
-        </div>
-      </Card>
-
-      {base.genre && (
-        <Card style={{ marginTop: 16 }}>
-          <div className="section-label">{t('pe.characteristics')}</div>
-          {cats.length === 0 ? (
-            <div className="muted">{t('pe.noFields')}</div>
-          ) : cats.map((c) => (
-            <div key={c.key} style={{ marginBottom: 18 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>{lab(c)}</div>
-              <div className="sa-formgrid">
-                {c.attributes.map((a) => (
-                  <div key={a.key} className="field" style={{ margin: 0 }}>
-                    <label>{lab(a)}{a.unit ? ` (${a.unit})` : ''}</label>
-                    {a.input === 'bool' ? (
-                      <Select value={attrs[a.key] ?? ''} onChange={(e) => setAttr(a.key, e.target.value)}>
-                        <option value="">—</option>
-                        <option value="Oui">{t('sa.yes')}</option>
-                        <option value="Non">{t('sa.no')}</option>
-                      </Select>
-                    ) : (
-                      <input
-                        className="input"
-                        type={['number', 'currency', 'percent'].includes(a.input) ? 'number' : 'text'}
-                        value={attrs[a.key] ?? ''}
-                        onChange={(e) => setAttr(a.key, e.target.value)}
-                        placeholder={a.input === 'currency' ? '$' : (a.unit || '')}
-                      />
-                    )}
-                  </div>
-                ))}
+        <Card>
+          <div className="section-label">{t('pe.identity')}</div>
+          <div className="field-row">
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>{t('pe.client')}</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Select value={base.client_id} onChange={(e) => setBaseField('client_id', e.target.value)} style={{ flex: 1 }}>
+                  <option value="">{t('pe.clientNone')}</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{clientName(c)}</option>)}
+                </Select>
+                <Button variant="outline" icon={Plus} onClick={() => setNewClient(true)}>{t('pe.newClient')}</Button>
               </div>
             </div>
-          ))}
+            <FormField label={t('pe.name')} value={base.name} onChange={(e) => setBaseField('name', e.target.value)} placeholder={t('pe.namePh')} />
+            <FormField label={t('pe.address')} value={base.address} onChange={(e) => setBaseField('address', e.target.value)} />
+            <FormField label={t('pe.city')} value={base.city} onChange={(e) => setBaseField('city', e.target.value)} />
+            <FormField label={t('pe.region')} value={base.region} onChange={(e) => setBaseField('region', e.target.value)} />
+            <FormField label={t('pe.state')} value={base.province} onChange={(e) => setBaseField('province', e.target.value)} />
+            <FormField label={t('pe.postal')} value={base.postal_code} onChange={(e) => setBaseField('postal_code', e.target.value)} />
+            <FormField label={t('pe.country')} value={base.country} onChange={(e) => setBaseField('country', e.target.value)} />
+            <FormField label={t('pe.mls')} value={base.mls_number} onChange={(e) => setBaseField('mls_number', e.target.value)} />
+            <FormField label={t('pe.lot')} value={base.lot_number} onChange={(e) => setBaseField('lot_number', e.target.value)} />
+            <FormField label={t('pe.zoning')} value={base.zoning} onChange={(e) => setBaseField('zoning', e.target.value)} />
+            <div className="field">
+              <label>{t('pe.status')}</label>
+              <Select value={base.status} onChange={(e) => setBaseField('status', e.target.value)}>
+                {STATUSES.map((s) => <option key={s} value={s}>{t(`pe.st.${s}`)}</option>)}
+              </Select>
+            </div>
+          </div>
+
+          <div className="section-label" style={{ marginTop: 16 }}>{t('pe.propertyType')}</div>
+          <div className="field" style={{ maxWidth: 320 }}>
+            <label>{t('pe.propertyType')}</label>
+            <Select value={base.genre} onChange={(e) => onTypeSelect(e.target.value)}>
+              <option value="">{t('pe.typePick')}</option>
+              {types.map((ty) => <option key={ty.key} value={ty.key}>{lab(ty)}</option>)}
+            </Select>
+          </div>
         </Card>
-      )}
+
+        {base.genre && (
+          <Card style={{ marginTop: 16 }}>
+            <div className="section-label">{t('pe.characteristics')}</div>
+            {cats.length === 0 ? (
+              <div className="muted">{t('pe.noFields')}</div>
+            ) : cats.map((c) => (
+              <div key={c.key} style={{ marginBottom: 18 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{lab(c)}</div>
+                <div className="sa-formgrid">
+                  {c.attributes.map((a) => (
+                    <div key={a.key} className="field" style={{ margin: 0 }}>
+                      <label>{lab(a)}{a.unit ? ` (${a.unit})` : ''}</label>
+                      {a.input === 'bool' ? (
+                        <Select value={attrs[a.key] ?? ''} onChange={(e) => setAttr(a.key, e.target.value)}>
+                          <option value="">—</option>
+                          <option value="Oui">{t('sa.yes')}</option>
+                          <option value="Non">{t('sa.no')}</option>
+                        </Select>
+                      ) : (
+                        <input
+                          className="input"
+                          type={['number', 'currency', 'percent'].includes(a.input) ? 'number' : 'text'}
+                          value={attrs[a.key] ?? ''}
+                          onChange={(e) => setAttr(a.key, e.target.value)}
+                          placeholder={a.input === 'currency' ? '$' : (a.unit || '')}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </Card>
+        )}
       </>)}
 
-      {tab === 'buildings' && (
-        isEdit ? (
-          <BuildingsUnits propertyId={id} genre={base.genre} />
-        ) : (
-          <Card>
-            <EmptyState
-              title={t('pe.bldSaveFirst')}
-              action={(
-                <Button variant="primary" icon={Save} disabled={save.isPending || !base.name}
-                  onClick={() => persist((row) => { if (row?.id) navigate(`/properties/edit/${row.id}`); })}>
-                  {t('common.save')}
-                </Button>
-              )}
-            />
-          </Card>
-        )
+      {tab !== 'details' && !isEdit && (
+        <Card>
+          <EmptyState title={t('pe.saveFirst')} action={(
+            <Button variant="primary" icon={Save} disabled={save.isPending || !base.name} onClick={saveToEdit}>{t('common.save')}</Button>
+          )} />
+        </Card>
       )}
+
+      {isEdit && (bundle ? (
+        <>
+          {tab === 'buildings' && <BuildingsUnits propertyId={id} genre={base.genre} />}
+          {tab === 'units' && <UnitsTab p={property} items={bundle.units} buildings={bundle.buildings} refetch={refetch} />}
+          {tab === 'expenses' && <ExpensesTab p={property} items={bundle.expenses} refetch={refetch} />}
+          {tab === 'profit' && <ProfitabilityTab propertyId={id} />}
+          {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', id]]} />}
+          {tab === 'comparables' && (
+            <ReadOnlyList icon={Scale} items={bundle.comparables} hint={t('d.comp.hint')} columns={[
+              { key: 'address', label: t('pe.address') },
+              { key: 'kind', label: t('common.type') },
+              { key: 'date', label: t('d.tx.date') },
+              { key: 'price', label: t('d.tx.price'), align: 'num', render: (r) => money(r.price) },
+              { key: 'area', label: t('d.unit.area'), align: 'num', render: (r) => num(r.area) },
+            ]} />
+          )}
+          {tab === 'photos' && <PhotosTab property={property} refetch={refetch} />}
+          {tab === 'marketing' && <MarketingTab propertyId={id} />}
+          {tab === 'reports' && (
+            <ReadOnlyList icon={FileText} items={bundle.reports} hint={t('d.rep.hint')} columns={[
+              { key: 'title', label: t('common.name') },
+              { key: 'report_type', label: t('common.type') },
+              { key: 'date', label: t('d.tx.date') },
+            ]} />
+          )}
+        </>
+      ) : (tab !== 'details' && <div className="muted" style={{ padding: 16 }}>…</div>))}
 
       {newClient && (
         <ClientModal
