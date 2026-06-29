@@ -17,7 +17,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { money, num } from '../lib/format.js';
 
 const BASE_EMPTY = {
-  client_id: '', name: '', genre: '', transaction_type: '', address: '', city: '', region: '', province: 'QC',
+  client_id: '', name: '', genre: '', transaction_type: '', address: '', city: '', region: '', mrc: '', province: 'QC',
   postal_code: '', country: 'CA', zoning: '', zoning_detail: '', lot_number: '', mls_number: '', status: 'prospect',
 };
 const TX_TYPES = ['seller', 'buyer', 'landlord', 'tenant'];
@@ -82,7 +82,7 @@ export default function PropertyEdit() {
     const b = {
       client_id: property.client_id || '', name: property.name || '', genre: property.genre || '',
       transaction_type: property.transaction_type || '',
-      address: property.address || '', city: property.city || '', region: property.region || '',
+      address: property.address || '', city: property.city || '', region: property.region || '', mrc: property.mrc || '',
       province: property.province || 'QC', postal_code: property.postal_code || '', country,
       zoning: property.zoning || '', zoning_detail: property.zoning_detail || '',
       lot_number: property.lot_number || '', mls_number: property.mls_number || '',
@@ -204,7 +204,7 @@ export default function PropertyEdit() {
               <label>{t('pe.city')}</label>
               {isQC ? (
                 <CityField value={base.city} placeholder={t('pe.cityPh')}
-                  onSelect={(name, region) => setBase((b) => ({ ...b, city: name, ...(region != null ? { region } : {}) }))} />
+                  onSelect={(name, region, mrc) => setBase((b) => ({ ...b, city: name, ...(region != null ? { region } : {}), ...(mrc !== null && mrc !== undefined ? { mrc: mrc || '' } : {}) }))} />
               ) : (
                 <input className="input" value={base.city} onChange={(e) => setBaseField('city', e.target.value)} />
               )}
@@ -212,9 +212,17 @@ export default function PropertyEdit() {
             <div className="field">
               <label>{t('pe.region')}</label>
               {isQC ? (
-                <input className="input" value={base.region} readOnly placeholder={t('pe.regionAuto')} style={{ background: 'var(--color-surface-2)' }} />
+                <input className="input" value={base.region} readOnly placeholder={t('pe.regionAuto')} style={{ background: 'var(--color-bg-secondary)' }} />
               ) : (
                 <input className="input" value={base.region} onChange={(e) => setBaseField('region', e.target.value)} />
+              )}
+            </div>
+            <div className="field">
+              <label>{t('pe.mrc')}</label>
+              {isQC ? (
+                <input className="input" value={base.mrc} readOnly placeholder={t('pe.regionAuto')} style={{ background: 'var(--color-bg-secondary)' }} />
+              ) : (
+                <input className="input" value={base.mrc} onChange={(e) => setBaseField('mrc', e.target.value)} />
               )}
             </div>
             <FormField label={t('pe.address')} value={base.address} onChange={(e) => setBaseField('address', e.target.value)} />

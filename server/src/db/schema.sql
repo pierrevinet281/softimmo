@@ -287,6 +287,7 @@ CREATE TABLE IF NOT EXISTS properties (
   assessment_year INTEGER,             -- année du rôle d'évaluation
   status        TEXT NOT NULL DEFAULT 'prospect', -- prospect|actif|inscrit|vendu|expire|archive
   transaction_type TEXT,               -- vendeur|acheteur|locateur|locataire (mandat)
+  mrc           TEXT,                  -- MRC (associée à la municipalité)
   zoning_detail TEXT,                  -- zonage détaillé / code municipal (complément de zoning)
   summary       TEXT,
   notes         TEXT,

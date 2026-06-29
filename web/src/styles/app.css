@@ -57,10 +57,10 @@ code, .mono { font-family: var(--font-mono); }
 
 /* Matrice « Attributs Ventes » (attribut × type, éditable) */
 .sa-matrix th, .sa-matrix td { vertical-align: middle; }
-.sa-matrix .sa-catrow td { background: var(--color-surface-2, var(--color-border)); font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
-.sa-matrix tbody tr:hover td { background: var(--color-surface-2, rgba(0,0,0,0.02)); }
-.sa-matrix .sa-catrow:hover td { background: var(--color-surface-2, var(--color-border)); }
-.sa-typehead { background: none; border: none; cursor: pointer; font: inherit; font-weight: 600; color: var(--color-text); display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
+.sa-matrix .sa-catrow td { background: var(--color-bg-secondary); font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+.sa-matrix tbody tr:hover td { background: var(--color-bg-secondary); }
+.sa-matrix .sa-catrow:hover td { background: var(--color-bg-secondary); }
+.sa-typehead { background: none; border: none; cursor: pointer; font: inherit; font-weight: 600; color: var(--color-text-primary); display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
 .sa-typehead:hover { color: var(--color-info, #67C8FA); }
 .sa-formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
 
@@ -74,17 +74,17 @@ code, .mono { font-family: var(--font-mono); }
 
 /* Combobox de recherche (champ Ville) */
 .combo { position: relative; }
-.combo-menu { position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 50; max-height: 260px; overflow-y: auto; background: var(--color-surface, #fff); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 4px; }
-.combo-opt { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit; padding: 7px 10px; border-radius: 6px; color: var(--color-text); }
-.combo-opt:hover { background: var(--color-surface-2, rgba(0,0,0,0.05)); }
+.combo-menu { position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 50; max-height: 260px; overflow-y: auto; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 4px; }
+.combo-opt { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit; padding: 7px 10px; border-radius: 6px; color: var(--color-text-primary); }
+.combo-opt:hover { background: var(--color-bg-secondary); }
 .sa-colhead { display: inline-flex; align-items: center; gap: 4px; justify-content: center; }
 .sa-funnel { background: none; border: none; cursor: pointer; color: var(--color-text-secondary); padding: 2px; border-radius: 4px; line-height: 0; }
 .sa-funnel:hover, .sa-funnel.active { color: var(--color-info, #67C8FA); }
 .sa-matrix th { position: relative; }
 .sa-menu-backdrop { position: fixed; inset: 0; z-index: 40; }
-.sa-menu { position: absolute; top: 100%; right: 4px; z-index: 50; background: var(--color-surface, #fff); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 4px; min-width: 150px; }
-.sa-menu button { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit; padding: 6px 10px; border-radius: 6px; color: var(--color-text); }
-.sa-menu button:hover { background: var(--color-surface-2, rgba(0,0,0,0.05)); }
+.sa-menu { position: absolute; top: 100%; right: 4px; z-index: 50; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 4px; min-width: 150px; }
+.sa-menu button { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit; padding: 6px 10px; border-radius: 6px; color: var(--color-text-primary); }
+.sa-menu button:hover { background: var(--color-bg-secondary); }
 .sa-menu button.active { color: var(--color-info, #67C8FA); font-weight: 600; }
 
 .item-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-radius: 6px; }

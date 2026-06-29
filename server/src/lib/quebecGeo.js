@@ -12,7 +12,7 @@ let _data = null;
 function data() {
   if (!_data) {
     const raw = JSON.parse(fs.readFileSync(SEED_PATH, 'utf-8'));
-    const munis = (raw.municipalities || []).map(([name, region]) => ({ name, region }))
+    const munis = (raw.municipalities || []).map(([name, region, mrc]) => ({ name, region, mrc: mrc || null }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
     _data = { regions: raw.regions || [], municipalities: munis };
   }

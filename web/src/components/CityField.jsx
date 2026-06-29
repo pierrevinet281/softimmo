@@ -29,7 +29,7 @@ export default function CityField({ value, onSelect, placeholder }) {
         className="input"
         value={q}
         placeholder={placeholder}
-        onChange={(e) => { setQ(e.target.value); setOpen(true); onSelect(e.target.value, null); }}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); onSelect(e.target.value, null, null); }}
         onFocus={() => setOpen(true)}
       />
       {open && rows.length > 0 && (
@@ -39,9 +39,9 @@ export default function CityField({ value, onSelect, placeholder }) {
               type="button"
               key={m.name}
               className="combo-opt"
-              onClick={() => { onSelect(m.name, m.region); setQ(m.name); setOpen(false); }}
+              onClick={() => { onSelect(m.name, m.region, m.mrc); setQ(m.name); setOpen(false); }}
             >
-              {m.name} <span className="muted">· {m.region}</span>
+              {m.name} <span className="muted">· {m.region}{m.mrc ? ` · ${m.mrc}` : ''}</span>
             </button>
           ))}
         </div>
