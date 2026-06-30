@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  FileBarChart, Scale, Calculator, AlertTriangle, Info, ShieldAlert, Save, Upload, Plus, Trash2, Ruler,
+  FileBarChart, Scale, Calculator, AlertTriangle, Info, ShieldAlert, Save, Upload, Plus, Trash2, Ruler, Eye, EyeOff,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Select, Modal, EmptyState, Badge } from '../components/ui.jsx';
@@ -240,7 +240,7 @@ function AddressLink({ s, className }) {
 }
 
 // ─────────────────────────── Grille d'ajustements ventilée (comps en colonnes) ───────────────────────────
-function AdjustmentGrid({ sold, clientView }) {
+function AdjustmentGrid({ sold, clientView, ignored, onToggle, onToggleAll }) {
   const { t } = useI18n();
   const comps = clientView ? sold.filter((s) => !s.excluded) : sold;
   const { keys, labels } = useMemo(() => {
@@ -253,13 +253,26 @@ function AdjustmentGrid({ sold, clientView }) {
   const r = clientView ? 1000 : 1;
   const amt = (v) => (v == null ? '—' : money(Math.round(v / r) * r));
   const cell = (s, k) => { const l = s.adjustments.find((x) => x.key === k); return l ? amt(l.amount) : '—'; };
+  const ig = ignored || new Set();
+  const allIgnored = keys.length > 0 && keys.every((k) => ig.has(k));
 
   return (
     <div className="table-wrap" style={{ overflowX: 'auto' }}>
       <table className="table">
         <thead>
           <tr>
-            <th>{t('ev.characteristic')}</th>
+            <th>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {onToggleAll && (
+                  <button type="button" className="adj-eye" onClick={() => onToggleAll(keys)}
+                    title={allIgnored ? t('ev.ignoreNone') : t('ev.ignoreAll')}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', lineHeight: 0 }}>
+                    {allIgnored ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                )}
+                {t('ev.characteristic')}
+              </span>
+            </th>
             {comps.map((s) => (
               <th key={s.id} className="num" style={s.excluded ? { textDecoration: 'line-through', opacity: 0.6 } : undefined}>
                 <AddressLink s={s} />
@@ -269,9 +282,26 @@ function AdjustmentGrid({ sold, clientView }) {
         </thead>
         <tbody>
           <tr><td>{t('ev.soldPrice')}</td>{comps.map((s) => <td key={s.id} className="num">{amt(s.soldPrice)}</td>)}</tr>
-          {keys.map((k) => (
-            <tr key={k}><td>{labels[k]}</td>{comps.map((s) => <td key={s.id} className="num">{cell(s, k)}</td>)}</tr>
-          ))}
+          {keys.map((k) => {
+            const isIg = ig.has(k);
+            return (
+              <tr key={k} className={isIg ? 'adj-row-ignored' : undefined}>
+                <td>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {onToggle && (
+                      <button type="button" className="adj-eye" onClick={() => onToggle(k)}
+                        title={isIg ? t('ev.unignore') : t('ev.ignore')}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', lineHeight: 0 }}>
+                        {isIg ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    )}
+                    {labels[k]}
+                  </span>
+                </td>
+                {comps.map((s) => <td key={s.id} className="num">{cell(s, k)}</td>)}
+              </tr>
+            );
+          })}
           {!clientView && (
             <tr><td className="muted">{t('ev.adjTotal')}</td>{comps.map((s) => <td key={s.id} className="num">{amt(s.adjustmentsTotal)}</td>)}</tr>
           )}
@@ -300,7 +330,9 @@ function ExplainedBreakdown({ sold, clientView }) {
             {' '}— {money(s.soldPrice)} → <strong>{money(Math.round(s.adjustedPrice / (clientView ? 1000 : 1)) * (clientView ? 1000 : 1))}</strong>
           </summary>
           <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
-            {s.adjustments.map((l, i) => <li key={i}>{l.explanation}</li>)}
+            {s.adjustments.map((l, i) => (
+              <li key={i} className={l.ignored ? 'adj-row-ignored' : undefined}>{l.explanation}</li>
+            ))}
           </ul>
         </details>
       ))}
@@ -309,7 +341,7 @@ function ExplainedBreakdown({ sold, clientView }) {
 }
 
 // ─────────────────────────── Résultats ACM ───────────────────────────
-function AcmResults({ result, clientView, setClientView }) {
+function AcmResults({ result, clientView, setClientView, ignored, onToggle, onToggleAll }) {
   const { t } = useI18n();
   const { expected, listingPrice, corroboration: cor, warnings } = result;
   return (
@@ -343,7 +375,7 @@ function AcmResults({ result, clientView, setClientView }) {
           <button className={`tab ${clientView ? 'active' : ''}`} onClick={() => setClientView(true)}>{t('ev.client')}</button>
         </div>
       </div>
-      <AdjustmentGrid sold={result.sold} clientView={clientView} />
+      <AdjustmentGrid sold={result.sold} clientView={clientView} ignored={ignored} onToggle={onToggle} onToggleAll={onToggleAll} />
 
       <div className="section-label" style={{ marginTop: 20 }}>{t('ev.breakdown')}</div>
       <ExplainedBreakdown sold={result.sold} clientView={clientView} />
@@ -457,6 +489,7 @@ export default function Evaluation() {
   const [params, setParams] = useState(null);
   const [clientView, setClientView] = useState(false);
   const [result, setResult] = useState(null);
+  const [ignored, setIgnored] = useState(() => new Set()); // postes d'ajustement ignorés (grisés + exclus du rapport)
   const [calcOpen, setCalcOpen] = useState(false);
 
   const { data: props } = useQuery({ queryKey: ['properties', 'all'], queryFn: () => api.get('/properties?limit=500&sort=updated_at&dir=desc') });
@@ -524,11 +557,14 @@ export default function Evaluation() {
   });
 
   const compute = useMutation({
-    mutationFn: () => api.post(`/properties/${propertyId}/acm`, { subject: buildSubject(), params }),
+    mutationFn: (ig) => api.post(`/properties/${propertyId}/acm`, { subject: buildSubject(), params, ignored: [...(ig || ignored)] }),
     onSuccess: (r) => setResult(r),
   });
+  // Bascule « ignorer » d'un poste (ou de tous) : met à jour l'état puis recalcule (totaux/opinion cohérents).
+  const toggleIgnore = (key) => { const nx = new Set(ignored); nx.has(key) ? nx.delete(key) : nx.add(key); setIgnored(nx); compute.mutate(nx); };
+  const toggleIgnoreAll = (keys) => { const nx = keys.every((k) => ignored.has(k)) ? new Set() : new Set(keys); setIgnored(nx); compute.mutate(nx); };
 
-  const onSelect = (id) => { setPropertyId(id); setAttrs(null); setIncl({}); setResult(null); };
+  const onSelect = (id) => { setPropertyId(id); setAttrs(null); setIncl({}); setResult(null); setIgnored(new Set()); };
   const refetchComps = () => qc.invalidateQueries({ queryKey: ['bundle', propertyId] });
 
   const propRows = props?.rows || [];
@@ -600,7 +636,7 @@ export default function Evaluation() {
             {compute.isError && <span className="notice notice-warn" style={{ margin: 0 }}><AlertTriangle size={16} />{String(compute.error?.message)}</span>}
           </div>
 
-          {result && <AcmResults result={result} clientView={clientView} setClientView={setClientView} />}
+          {result && <AcmResults result={result} clientView={clientView} setClientView={setClientView} ignored={ignored} onToggle={toggleIgnore} onToggleAll={toggleIgnoreAll} />}
         </>
       )}
     </div>

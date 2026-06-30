@@ -78,7 +78,7 @@ function floorAreas(total, above, hasBasement) {
 }
 const truthyBsmt = (v) => !(v === 0 || v === false || v === '' || v == null || /^(non|no|aucun|false|0)$/i.test(String(v)));
 
-export function adjustComparable(subject, comp, params, asOf) {
+export function adjustComparable(subject, comp, params, asOf, ignored) {
   const lines = [];
   const c = normComp(comp);
   const price = c.soldPrice ?? 0;
@@ -204,7 +204,10 @@ export function adjustComparable(subject, comp, params, asOf) {
       explanation: `Vendu il y a ${months.toFixed(1)} mois ; à ${(apprec * 100).toFixed(2)} %/mois, on ajoute ${Math.round(amount).toLocaleString('fr-CA')} $.` });
   }
 
-  const total = lines.reduce((s, l) => s + l.amount, 0);
+  // Postes « ignorés » par le courtier : conservés (affichage grisé) mais exclus du total/prix ajusté.
+  const ig = ignored instanceof Set ? ignored : new Set(ignored || []);
+  for (const l of lines) l.ignored = ig.has(l.key);
+  const total = lines.reduce((s, l) => s + (l.ignored ? 0 : l.amount), 0);
   const adjustedPrice = price + total;
   return { lines, total, adjustedPrice };
 }
@@ -217,7 +220,7 @@ export function adjustComparable(subject, comp, params, asOf) {
  * @param {object} input.params        paramètres d'ajustement (défauts éditables)
  * @param {string} [input.asOf]        date d'analyse 'YYYY-MM-DD' (défaut : aujourd'hui)
  */
-export function computeAcm({ subject = {}, comparables = [], params = {}, asOf } = {}) {
+export function computeAcm({ subject = {}, comparables = [], params = {}, asOf, ignored } = {}) {
   const today = asOf || new Date().toISOString().slice(0, 10);
   const warnings = [];
   const outLow = n(params.outlier_low) ?? 0.5;
@@ -227,7 +230,7 @@ export function computeAcm({ subject = {}, comparables = [], params = {}, asOf }
   const soldRaw = comparables.filter((c) => (c.kind || 'sold') === 'sold');
   const sold = soldRaw.map((c) => {
     const nc = normComp(c);
-    const { lines, total, adjustedPrice } = adjustComparable(subject, c, params, today);
+    const { lines, total, adjustedPrice } = adjustComparable(subject, c, params, today, ignored);
     // Garde-fou APCIQ : exclure une transaction hors [50 %–150 %] du dernier prix inscrit.
     let excluded = false; let excludeReason = null;
     if (nc.listPrice && nc.soldPrice) {

@@ -209,6 +209,16 @@ code, .mono { font-family: var(--font-mono); }
 
 /* ── Table ── */
 .table-wrap { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+
+/* Grille d'ajustements : postes « ignorés » par le courtier (œil) — grisés à l'écran. */
+.adj-eye { display: inline-flex; align-items: center; color: var(--color-text-muted); }
+.adj-eye:hover { color: var(--color-text-primary); }
+.adj-row-ignored, .adj-row-ignored td, .adj-row-ignored * { color: var(--color-text-muted) !important; opacity: 0.55; }
+/* À l'impression du rapport : masquer les contrôles d'œil et les postes ignorés. */
+@media print {
+  .adj-eye { display: none !important; }
+  tr.adj-row-ignored, li.adj-row-ignored { display: none !important; }
+}
 table.table { width: 100%; border-collapse: collapse; }
 .table thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); font-weight: 700; padding: 12px 14px; border-bottom: 1px solid var(--color-border); white-space: nowrap; }
 .table tbody td { padding: 12px 14px; border-bottom: 1px solid var(--color-border-subtle); vertical-align: middle; }

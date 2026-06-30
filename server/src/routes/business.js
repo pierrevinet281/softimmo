@@ -123,7 +123,7 @@ export default function mountBusiness(parent = Router()) {
       ...(body.subject || {}),
     };
 
-    const result = computeAcm({ subject, comparables, params, asOf: body.asOf });
+    const result = computeAcm({ subject, comparables, params, asOf: body.asOf, ignored: body.ignored });
     res.json({ property_id: pid, subject, params, ...result });
   }));
 
