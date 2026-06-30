@@ -6,6 +6,7 @@ import {
 import api from '../api/client.js';
 import { Card, Button, Select, Modal, EmptyState, Badge } from '../components/ui.jsx';
 import { EntityTable, InclusionsField } from '../components/EntityTable.jsx';
+import AttrField from '../components/AttrField.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { money, num } from '../lib/format.js';
 
@@ -410,11 +411,14 @@ export function ComparablesEditor({ propertyId }) {
 
 // ─────────────────────────── Page ───────────────────────────
 export default function Evaluation() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const qc = useQueryClient();
   // Préselection via ?property=<id> (bouton « Évaluer » de la fiche propriété).
   const [propertyId, setPropertyId] = useState(() => new URLSearchParams(window.location.search).get('property') || '');
-  const [subject, setSubject] = useState(null);   // { living_area, year_built, inclusions, municipal_assessment }
+  // Sujet = copie du Property Overview : attributs de la propriété (édités via AttrField) +
+  // inclusions ACM. Le sujet ACM est dérivé de ces attributs au calcul (buildSubject).
+  const [attrs, setAttrs] = useState(null);
+  const [incl, setIncl] = useState({});
   const [params, setParams] = useState(null);
   const [clientView, setClientView] = useState(false);
   const [result, setResult] = useState(null);
@@ -427,22 +431,42 @@ export default function Evaluation() {
     queryFn: () => api.get(`/properties/${propertyId}/bundle`),
     enabled: !!propertyId,
   });
+  const { data: schema } = useQuery({
+    queryKey: ['sa-form', bundle?.property?.genre],
+    queryFn: () => api.get(`/sales-attributes/form/${bundle.property.genre}`),
+    enabled: !!bundle?.property?.genre,
+  });
 
   // Initialisation au rendu (TanStack Query v5 : pas d'onSuccess sur useQuery). Converge :
   // une fois params/subject définis, les conditions deviennent fausses.
   if (paramData && !params) setParams(paramData.params);
-  if (bundle && subject == null) {
-    const livable = (bundle.buildings || []).reduce((s, x) => s + (Number(x.livable_area) || 0), 0) || '';
-    const b0 = (bundle.buildings || []).find((x) => x.year_built) || (bundle.buildings || [])[0] || {};
-    setSubject({
-      living_area: livable, year_built: b0.year_built ?? '', inclusions: {},
-      municipal_assessment: bundle.property?.municipal_assessment ?? '',
-      // Caractéristiques pré-remplies depuis le bâtiment principal (éditables).
-      foundation: b0.foundation ?? '', cladding: b0.exterior_cladding ?? '',
-      windows_type: b0.fenestration ?? '', flooring: b0.flooring ?? '',
-      windows_age: '', roof_age: '',
-    });
+  if (bundle && attrs == null) {
+    // Pré-remplissage depuis les VRAIES données de la propriété (Property Overview).
+    const a = { ...(bundle.property?.attributes || {}) };
+    // Repli : superficie/année depuis les bâtiments si non saisies dans l'aperçu.
+    if (!a.living_area) { const liv = (bundle.buildings || []).reduce((s, x) => s + (Number(x.livable_area) || 0), 0); if (liv) a.living_area = String(liv); }
+    if (!a.year_built) { const b0 = (bundle.buildings || []).find((x) => x.year_built); if (b0) a.year_built = String(b0.year_built); }
+    setAttrs(a);
+    // Inclusions ACM dérivées (éditables) : garage, piscine.
+    const d = {};
+    if (Number(a.garage_count)) d.garage = Number(a.garage_count);
+    if (Array.isArray(a.pools) && a.pools.length) d.piscine = a.pools.length;
+    setIncl(d);
   }
+  const genre = bundle?.property?.genre;
+  const setAttr = (k, v) => setAttrs((s) => ({ ...(s || {}), [k]: v }));
+  const firstOf = (v) => (Array.isArray(v) ? v[0] : v);
+  const ageFrom = (y) => { const nn = Number(y); return nn ? (new Date().getFullYear() - nn) : ''; };
+  // Sujet ACM dérivé des attributs de l'aperçu (mappé pour la comparaison aux comparables).
+  const buildSubject = () => ({
+    living_area: attrs?.living_area ? Number(attrs.living_area) : '',
+    year_built: attrs?.year_built ? Number(attrs.year_built) : '',
+    municipal_assessment: attrs?.muni_assessment ? Number(attrs.muni_assessment) : (bundle?.property?.municipal_assessment ?? ''),
+    inclusions: incl,
+    foundation: attrs?.foundation, cladding: firstOf(attrs?.ext_cladding),
+    windows_type: firstOf(attrs?.windows_types), flooring: firstOf(attrs?.flooring),
+    windows_age: ageFrom(attrs?.windows_year), roof_age: ageFrom(attrs?.roofing_year),
+  });
 
   // Inclusions oui/non (case à cocher, pas de quantité). Repli local au cas où les paramètres
   // du serveur ne contiennent pas encore `boolean_inclusions` (seed mis en cache au démarrage).
@@ -456,11 +480,11 @@ export default function Evaluation() {
   });
 
   const compute = useMutation({
-    mutationFn: () => api.post(`/properties/${propertyId}/acm`, { subject, params }),
+    mutationFn: () => api.post(`/properties/${propertyId}/acm`, { subject: buildSubject(), params }),
     onSuccess: (r) => setResult(r),
   });
 
-  const onSelect = (id) => { setPropertyId(id); setSubject(null); setResult(null); };
+  const onSelect = (id) => { setPropertyId(id); setAttrs(null); setIncl({}); setResult(null); };
   const refetchComps = () => qc.invalidateQueries({ queryKey: ['bundle', propertyId] });
 
   const propRows = props?.rows || [];
@@ -475,7 +499,7 @@ export default function Evaluation() {
         <div className="spacer" style={{ flex: 1 }} />
         <Button variant="outline" icon={Ruler} onClick={() => setCalcOpen(true)}>{t('ev.calc.btn')}</Button>
       </div>
-      {calcOpen && <SurfaceCalculator onClose={() => setCalcOpen(false)} onApply={(total) => { setCalcOpen(false); if (subject) setSubject({ ...subject, living_area: total }); }} />}
+      {calcOpen && <SurfaceCalculator onClose={() => setCalcOpen(false)} onApply={(total) => { setCalcOpen(false); setAttr('living_area', String(total)); }} />}
 
       <Card style={{ marginBottom: 16 }}>
         <div className="field" style={{ marginBottom: 0, maxWidth: 480 }}>
@@ -489,35 +513,25 @@ export default function Evaluation() {
 
       {!propertyId ? (
         <EmptyState icon={FileBarChart} title={t('ev.pickFirst')} hint={t('ev.pickHint')} />
-      ) : !subject || !params ? (
+      ) : !attrs || !params ? (
         <div className="muted">…</div>
       ) : (
         <>
-          {/* 1. Sujet */}
+          {/* 1. Sujet = copie du Property Overview (pré-rempli depuis la propriété) */}
           <div className="section-label">{t('ev.subject')}</div>
           <Card style={{ marginBottom: 16 }}>
-            <div className="field-row">
-              <div className="field"><label>{t('ev.livable')} (pi²)</label><input className="input" type="number" value={subject.living_area ?? ''} onChange={(e) => setSubject({ ...subject, living_area: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
-              <div className="field"><label>{t('d.bld.year')}</label><input className="input" type="number" value={subject.year_built ?? ''} onChange={(e) => setSubject({ ...subject, year_built: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
-              <div className="field"><label>{t('ev.assessment')}</label><input className="input" type="number" value={subject.municipal_assessment ?? ''} onChange={(e) => setSubject({ ...subject, municipal_assessment: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
-            </div>
-            <div className="field-row">
-              {featureFields.map((f) => (
-                <div className="field" key={f.key}>
-                  <label>{f.label}</label>
-                  {f.type === 'select' ? (
-                    <Select value={subject[f.key] ?? ''} onChange={(e) => setSubject({ ...subject, [f.key]: e.target.value })}>
-                      {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </Select>
-                  ) : (
-                    <input className="input" type="number" value={subject[f.key] ?? ''} onChange={(e) => setSubject({ ...subject, [f.key]: e.target.value === '' ? '' : Number(e.target.value) })} />
-                  )}
+            <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t('ev.subjectHint')}</div>
+            {!schema ? <div className="muted">…</div> : schema.categories.map((c) => (
+              <div key={c.key} style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{lang === 'en' ? c.label_en : c.label_fr}</div>
+                <div className="sa-formgrid">
+                  {c.attributes.map((a) => <AttrField key={a.key} a={a} attrs={attrs} setAttr={setAttr} units={bundle?.units || []} />)}
                 </div>
-              ))}
-            </div>
-            <div className="field" style={{ marginBottom: 0 }}>
+              </div>
+            ))}
+            <div className="field" style={{ marginTop: 12 }}>
               <label>{t('ev.inclusions')} ({t('ev.inclQty')})</label>
-              <InclusionsField value={subject.inclusions} options={inclOptions} onChange={(v) => setSubject({ ...subject, inclusions: v })} />
+              <InclusionsField value={incl} options={inclOptions} onChange={setIncl} />
             </div>
           </Card>
 
