@@ -163,6 +163,34 @@
       ]
     },
     {
+      "key": "floors_above",
+      "category": "designation",
+      "label_fr": "Nombre d'étages hors-sol",
+      "label_en": "Above-ground storeys",
+      "input": "number",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "floors_basement",
+      "category": "designation",
+      "label_fr": "Nombre d'étages sous-sol",
+      "label_en": "Basement storeys",
+      "input": "number",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
       "key": "num_buildings",
       "category": "designation",
       "label_fr": "Nombre de bâtiments",
@@ -412,6 +440,32 @@
         "condo",
         "unifamilial",
         "multi"
+      ]
+    },
+    {
+      "key": "cabanon",
+      "category": "stationnement",
+      "label_fr": "Cabanon (qté)",
+      "label_en": "Shed (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "abri_auto",
+      "category": "stationnement",
+      "label_fr": "Abri d'auto (qté)",
+      "label_en": "Carport (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
       ]
     },
     {
@@ -875,6 +929,32 @@
           }
         ]
       }
+    },
+    {
+      "key": "spa",
+      "category": "interieur",
+      "label_fr": "Spa (qté)",
+      "label_en": "Spa (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "sauna",
+      "category": "interieur",
+      "label_fr": "Sauna (qté)",
+      "label_en": "Sauna (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
     },
     {
       "key": "inclusions",

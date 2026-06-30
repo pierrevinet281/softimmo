@@ -21,7 +21,9 @@
     "cabanon": 4000,
     "sous_sol_fini": 15000,
     "climatisation": 4000,
-    "thermopompe": 4000
+    "thermopompe": 4000,
+    "etages_hors_sol": 0,
+    "etages_sous_sol": 0
   },
   "boolean_inclusions": ["sous_sol_fini", "climatisation", "thermopompe"],
   "features": {

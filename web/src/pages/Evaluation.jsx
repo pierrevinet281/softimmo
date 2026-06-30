@@ -15,6 +15,26 @@ const DISCLAIMER_FR = "Le présent document constitue une opinion de la valeur m
 
 const KIND_TONE = { sold: 'success', active: 'info', expired: 'warning' };
 
+// Inclusions ACM (quantités à prix) dérivées des attributs de l'aperçu (éditables ensuite).
+function deriveIncl(a = {}) {
+  const q = (k) => Number(a[k]) || 0;
+  const out = {};
+  for (const k of ['spa', 'sauna', 'cabanon', 'abri_auto']) if (q(k)) out[k] = q(k);
+  if (q('garage_count')) out.garage = q('garage_count');
+  if (q('floors_above')) out.etages_hors_sol = q('floors_above');
+  if (q('floors_basement')) out.etages_sous_sol = q('floors_basement');
+  for (const p of (Array.isArray(a.pools) ? a.pools : [])) {
+    if (p && p.type === 'hors_terre') out.piscine_hors_terre = (out.piscine_hors_terre || 0) + 1;
+    else out.piscine_creusee = (out.piscine_creusee || 0) + 1;
+  }
+  if (a.basement === 'complete') out.sous_sol_fini = 1;
+  const heat = (Array.isArray(a.heating_systems) ? a.heating_systems : []).flatMap((g) => (g && g.systems) || []);
+  if (heat.some((s) => s.startsWith('foyer'))) out.foyer = 1;
+  if (heat.some((s) => s.includes('thermopompe'))) out.thermopompe = 1;
+  if ((Array.isArray(a.cooling) ? a.cooling : []).length) out.climatisation = 1;
+  return out;
+}
+
 // Champs des caractéristiques catégorielles (selects) + âges (nombres), dérivés des paramètres.
 function buildFeatureFields(params) {
   const fields = [];
@@ -447,11 +467,7 @@ export default function Evaluation() {
     if (!a.living_area) { const liv = (bundle.buildings || []).reduce((s, x) => s + (Number(x.livable_area) || 0), 0); if (liv) a.living_area = String(liv); }
     if (!a.year_built) { const b0 = (bundle.buildings || []).find((x) => x.year_built); if (b0) a.year_built = String(b0.year_built); }
     setAttrs(a);
-    // Inclusions ACM dérivées (éditables) : garage, piscine.
-    const d = {};
-    if (Number(a.garage_count)) d.garage = Number(a.garage_count);
-    if (Array.isArray(a.pools) && a.pools.length) d.piscine = a.pools.length;
-    setIncl(d);
+    setIncl(deriveIncl(a)); // inclusions ACM dérivées des attributs (spa, sauna, cabanon, garage, étages, piscines…)
   }
   const genre = bundle?.property?.genre;
   const setAttr = (k, v) => setAttrs((s) => ({ ...(s || {}), [k]: v }));
