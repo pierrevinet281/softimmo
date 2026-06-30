@@ -125,8 +125,11 @@ function MarketAnalysisReport({ report }) {
       <div className="muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{en ? s.detail_en : s.detail_fr}</div>
     </div>
   );
-  // Lien Google Maps pour un point d'intérêt (nom + municipalité).
-  const gmaps = (name) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([name, report.geo?.municipality].filter(Boolean).join(', '))}`;
+  // Lien Google Maps précis : coordonnées exactes du point d'intérêt (une seule destination, pas une
+  // recherche par mot-clé). Repli sur nom + municipalité si les coordonnées manquent.
+  const gmaps = (p) => (p.lat != null && p.lon != null)
+    ? `https://www.google.com/maps/search/?api=1&query=${p.lat}%2C${p.lon}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([p.name, report.geo?.municipality].filter(Boolean).join(', '))}`;
   // Tuile de voisinage : jauge + nb + top 5 (noms cliquables + distance km).
   const nbTile = (s) => {
     const Icon = CAT_ICON[s.key] || MapPin;
@@ -142,7 +145,7 @@ function MarketAnalysisReport({ report }) {
         {s.top?.length > 0 && (
           <ul className="ma-toplist">
             {s.top.map((p, i) => (
-              <li key={i}><a href={gmaps(p.name)} target="_blank" rel="noreferrer">{p.name}</a> <span className="muted">({(p.dist_m / 1000).toFixed(1)} km)</span></li>
+              <li key={i}><a href={gmaps(p)} target="_blank" rel="noreferrer">{p.name}</a> <span className="muted">({(p.dist_m / 1000).toFixed(1)} km)</span></li>
             ))}
           </ul>
         )}
@@ -242,18 +245,20 @@ function MarketAnalysisReport({ report }) {
             </>
           ) : sec.key === 'access' ? (
             <>
-              {accessScore && <div className="ma-scores" style={{ marginBottom: 12 }}>{Gauge(accessScore, Car)}</div>}
-              {report.roads?.some((r) => r.sign) && (
-                <div className="ma-signs">
-                  {report.roads.filter((r) => r.sign).map((r) => (
-                    <span className="ma-sign" key={r.name}><img src={r.sign} alt={r.name} /> <span className="muted">~{r.dist_m} m</span></span>
-                  ))}
-                </div>
-              )}
+              <div className="ma-access-row">
+                {accessScore && <div className="ma-access-gauge">{Gauge(accessScore, Car)}</div>}
+                {report.roads?.some((r) => r.sign) && (
+                  <div className="ma-signs">
+                    {report.roads.filter((r) => r.sign).map((r) => (
+                      <span className="ma-sign" key={r.name}><img src={r.sign} alt={r.name} /> <span className="muted">~{(r.dist_m / 1000).toFixed(1)} km</span></span>
+                    ))}
+                  </div>
+                )}
+              </div>
               {renderTable(sec)}
             </>
           ) : sec.key === 'municipality' ? (
-            <>{renderTable(sec)}{chartsBlock}</>
+            <>{chartsBlock}{renderTable(sec)}</>
           ) : renderTable(sec)
         );
         return (

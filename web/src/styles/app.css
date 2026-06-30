@@ -250,6 +250,10 @@ code, .mono { font-family: var(--font-mono); }
 .ma-photo figcaption { font-size: 10px; margin-top: 4px; }
 /* Écussons routiers */
 .ma-signs { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 12px; }
+/* Connectivité routière : jauge à gauche, écussons à droite (remplit l'espace) */
+.ma-access-row { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.ma-access-gauge { width: 168px; flex-shrink: 0; }
+.ma-access-row .ma-signs { flex: 1; margin-bottom: 0; }
 .ma-sign { display: inline-flex; align-items: center; gap: 5px; }
 .ma-sign img { height: 44px; width: auto; display: block; }
 /* Graphiques (âge, revenu) */

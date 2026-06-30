@@ -105,8 +105,8 @@ function buildOverview(walk, scores, geo) {
   const topFr = top.map((s) => s.label_fr.toLowerCase()).join(' et ');
   const topEn = top.map((s) => s.label_en.toLowerCase()).join(' and ');
   const where = geo.municipality || 'la propriété';
-  const summary_fr = `Le secteur de ${where} obtient un indice de marchabilité de ${walk}/100 (${r.fr.toLowerCase()}), porté notamment par ${topFr}.`;
-  const summary_en = `The ${geo.municipality || 'property'} area scores ${walk}/100 for walkability (${r.en.toLowerCase()}), driven mainly by ${topEn}.`;
+  const summary_fr = `Le secteur de ${where} se distingue surtout par ${topFr}.`;
+  const summary_en = `The ${geo.municipality || 'property'} area stands out for ${topEn}.`;
   let vi_fr; let vi_en;
   if (walk >= 70) {
     vi_fr = "Un secteur aussi bien pourvu en services soutient la valeur et la liquidité : il élargit le bassin d'acheteurs et justifie une prime de localisation.";
