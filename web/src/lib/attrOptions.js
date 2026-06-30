@@ -156,6 +156,13 @@ export const OPTION_SETS = {
     O('acier_inox', 'Acier inoxydable', 'Stainless steel'), O('corian', 'Surface solide (Corian)', 'Solid surface (Corian)'),
     O('autre', 'Autre', 'Other'),
   ],
+  driveway: [
+    O('asphalte', 'Asphalte', 'Asphalt'), O('pave', 'Pavé uni', 'Pavers'), O('gravier', 'Gravier', 'Gravel'),
+  ],
+  kitchen_cabinets: [
+    O('melamine', 'Mélamine', 'Melamine'), O('thermoplastique', 'Thermoplastique', 'Thermoplastic'),
+    O('bois_plaque', 'Bois plaqué (placage)', 'Veneer wood'), O('bois_massif', 'Bois franc massif', 'Solid hardwood'),
+  ],
   heating_zone: [
     O('living', 'Espace de vie', 'Living area'), O('garage', 'Garage', 'Garage'), O('sous_sol', 'Sous-sol', 'Basement'),
     O('whole', 'Tout le bâtiment', 'Whole building'), O('other', 'Autre', 'Other'),

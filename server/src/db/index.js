@@ -65,6 +65,10 @@ const COLUMN_ADDITIONS = {
     ['inclusions', 'TEXT'],
     ['foundation', 'TEXT'], ['cladding', 'TEXT'], ['windows_type', 'TEXT'], ['flooring', 'TEXT'],
     ['windows_age', 'INTEGER'], ['roof_age', 'INTEGER'],
+    // ACM « Tableau des ajustements » : caractéristiques alignées sur le sujet + superficie/niveaux/sous-sol
+    ['ext_cladding', 'TEXT'], ['windows_material', 'TEXT'], ['roofing_type', 'TEXT'],
+    ['driveway', 'TEXT'], ['kitchen_cabinets', 'TEXT'], ['countertops', 'TEXT'],
+    ['land_area', 'REAL'], ['storeys', 'INTEGER'], ['basement', 'TEXT'], ['basement_finished', 'INTEGER'],
   ],
   // Module 1 : éditeur Bâtiments & unités/pièces (dimensions + unités pi/m, fonction)
   buildings: [

@@ -37,16 +37,25 @@ function deriveIncl(a = {}) {
 
 // Champs des caractéristiques catégorielles (selects) + âges (nombres), dérivés des paramètres.
 function buildFeatureFields(params) {
+  // Champs comparables alignés sur le sujet : mêmes clés (cfg.attr) et mêmes valeurs d'options
+  // que l'aperçu, afin que le moteur compare option↔option. + superficies/niveaux/sous-sol/âges.
   const fields = [];
-  for (const [key, cfg] of Object.entries(params?.features || {})) {
-    fields.push({
-      key, label: cfg.label || prettyIncl(key), type: 'select', half: true,
-      options: [{ value: '', label: '—' }, ...Object.keys(cfg.options || {}).map((o) => ({ value: o, label: prettyIncl(o) }))],
-    });
-  }
-  for (const [key, cfg] of Object.entries(params?.age_features || {})) {
-    fields.push({ key, label: cfg.label || prettyIncl(key), type: 'number', half: true });
-  }
+  const addOpts = (grp) => {
+    for (const cfg of Object.values(params?.[grp] || {})) {
+      const key = cfg.attr; if (!key) continue;
+      fields.push({
+        key, label: cfg.label_fr || prettyIncl(key), type: 'select', half: true,
+        options: [{ value: '', label: '—' }, ...Object.keys(cfg.options || {}).map((o) => ({ value: o, label: prettyIncl(o) }))],
+      });
+    }
+  };
+  addOpts('features_pct'); addOpts('features_dollar');
+  fields.push({ key: 'land_area', label: 'Superficie terrain (pi²)', type: 'number', half: true });
+  fields.push({ key: 'storeys', label: "Nombre d'étages", type: 'number', half: true });
+  fields.push({ key: 'basement', label: 'Sous-sol', type: 'select', half: true, options: [{ value: '', label: '—' }, { value: 'oui', label: 'Oui' }, { value: 'non', label: 'Non' }] });
+  fields.push({ key: 'basement_finished', label: 'Sous-sol fini', type: 'checkbox', half: true });
+  fields.push({ key: 'windows_age', label: 'Âge fenêtres (ans)', type: 'number', half: true });
+  fields.push({ key: 'roof_age', label: 'Âge toiture (ans)', type: 'number', half: true });
   return fields;
 }
 
@@ -146,64 +155,70 @@ function StatsRatios({ city, genre, onRatios }) {
   );
 }
 
-function ParamsPanel({ params, onChange, onSave, saving, city, genre }) {
+function ParamsPanel({ params, onChange, onSave, onReset, saving, city, genre }) {
   const { t } = useI18n();
-  const setScalar = (k, v) => onChange({ ...params, [k]: v === '' ? null : Number(v) });
-  const setIncl = (k, v) => onChange({ ...params, inclusions: { ...params.inclusions, [k]: v === '' ? 0 : Number(v) } });
-  const setFeatPct = (feat, opt, v) => onChange({ ...params, features: { ...params.features, [feat]: { ...params.features[feat], options: { ...params.features[feat].options, [opt]: v === '' ? 0 : Number(v) / 100 } } } });
-  const setAgePct = (key, v) => onChange({ ...params, age_features: { ...params.age_features, [key]: { ...params.age_features[key], pct_per_year: v === '' ? 0 : Number(v) / 100 } } });
+  const setTop = (k, v, pct) => onChange({ ...params, [k]: v === '' ? null : (pct ? Number(v) / 100 : Number(v)) });
+  const setGroup = (grp, k, v) => onChange({ ...params, [grp]: { ...(params[grp] || {}), [k]: v === '' ? 0 : Number(v) } });
+  const setIncl = (k, v) => onChange({ ...params, inclusions: { ...(params.inclusions || {}), [k]: v === '' ? 0 : Number(v) } });
+  const setOpt = (grp, feat, opt, v, pct) => onChange({ ...params, [grp]: { ...params[grp], [feat]: { ...params[grp][feat], options: { ...params[grp][feat].options, [opt]: v === '' ? 0 : (pct ? Number(v) / 100 : Number(v)) } } } });
   const applyRatios = (r) => onChange({ ...params, sale_to_list_ratio: r.sale_to_list_ratio ?? params.sale_to_list_ratio, sale_to_assessment_ratio: r.sale_to_assessment_ratio ?? params.sale_to_assessment_ratio });
+  const dol = (label, val, onCh) => (<div className="field" key={label} style={{ marginBottom: 8 }}><label>{label} ($)</label><input className="input" type="number" value={val ?? ''} onChange={(e) => onCh(e.target.value)} /></div>);
+  const pc = (label, val, onCh) => (<div className="field" key={label} style={{ marginBottom: 8 }}><label>{label} (%)</label><input className="input" type="number" step={0.1} value={val == null ? '' : +(val * 100).toFixed(2)} onChange={(e) => onCh(e.target.value)} /></div>);
+  const area = params.area || {}; const age = params.age || {};
+  const inclLbl = params.inclusions_labels || {};
   return (
     <details className="card" style={{ marginBottom: 16 }}>
       <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('ev.params')}</summary>
       <div className="muted" style={{ fontSize: 12, margin: '8px 0 14px' }}>{t('ev.paramsNote')}</div>
       <StatsRatios city={city} genre={genre} onRatios={applyRatios} />
       <div className="field-row">
-        {SCALAR_PARAMS.map((p) => (
-          <div className="field" key={p.key}>
-            <label>{t(p.labelKey)}</label>
-            <input className="input" type="number" step={p.step || 1} value={params[p.key] ?? ''} onChange={(e) => setScalar(p.key, e.target.value)} />
-          </div>
-        ))}
-      </div>
-      <div className="section-label">{t('ev.inclPrices')}</div>
-      <div className="field-row">
-        {Object.entries(params.inclusions || {}).map(([k, v]) => (
-          <div className="field" key={k}>
-            <label>{prettyIncl(k)}</label>
-            <input className="input" type="number" value={v ?? ''} onChange={(e) => setIncl(k, e.target.value)} />
-          </div>
-        ))}
+        <div className="field"><label>{t('ev.p.saleList')}</label><input className="input" type="number" step={0.001} value={params.sale_to_list_ratio ?? ''} onChange={(e) => setTop('sale_to_list_ratio', e.target.value)} /></div>
+        <div className="field"><label>{t('ev.p.saleAssess')}</label><input className="input" type="number" step={0.001} value={params.sale_to_assessment_ratio ?? ''} onChange={(e) => setTop('sale_to_assessment_ratio', e.target.value)} /></div>
+        {pc(t('ev.p.apprec'), params.monthly_appreciation_pct, (v) => setTop('monthly_appreciation_pct', v, true))}
       </div>
 
-      {/* Caractéristiques catégorielles : valeur marché en % par option (éditable). */}
-      <div className="section-label">{t('ev.featPct')}</div>
-      {Object.entries(params.features || {}).map(([feat, cfg]) => (
-        <div key={feat} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{cfg.label || prettyIncl(feat)}</div>
-          <div className="field-row">
-            {Object.entries(cfg.options || {}).map(([opt, pct]) => (
-              <div className="field" key={opt} style={{ marginBottom: 8 }}>
-                <label>{prettyIncl(opt)} (%)</label>
-                <input className="input" type="number" step={0.1} value={pct == null ? '' : +(pct * 100).toFixed(2)} onChange={(e) => setFeatPct(feat, opt, e.target.value)} />
+      <div className="section-label">Superficie ($/pi²)</div>
+      <div className="field-row">
+        {dol('Terrain', area.land_per_sqft, (v) => setGroup('area', 'land_per_sqft', v))}
+        {dol('Construction — RDC', area.constr_rdc_per_sqft, (v) => setGroup('area', 'constr_rdc_per_sqft', v))}
+        {dol('Construction — étages', area.constr_etage_per_sqft, (v) => setGroup('area', 'constr_etage_per_sqft', v))}
+        {dol('Construction — sous-sol', area.constr_sous_sol_per_sqft, (v) => setGroup('area', 'constr_sous_sol_per_sqft', v))}
+      </div>
+
+      <div className="section-label">Âge</div>
+      <div className="field-row">
+        {pc('Construction / année', age.construction_pct_per_year, (v) => setGroup('age', 'construction_pct_per_year', v === '' ? '' : Number(v) / 100))}
+        {pc('Fenêtres (neuf↔fin)', age.windows_range_pct, (v) => setGroup('age', 'windows_range_pct', v === '' ? '' : Number(v) / 100))}
+        <div className="field"><label>Fenêtres — durée (ans)</label><input className="input" type="number" value={age.windows_lifespan ?? ''} onChange={(e) => setGroup('age', 'windows_lifespan', e.target.value)} /></div>
+        {pc('Toiture (neuf↔fin)', age.roof_range_pct, (v) => setGroup('age', 'roof_range_pct', v === '' ? '' : Number(v) / 100))}
+        <div className="field"><label>Toiture — durée (ans)</label><input className="input" type="number" value={age.roof_lifespan ?? ''} onChange={(e) => setGroup('age', 'roof_lifespan', e.target.value)} /></div>
+      </div>
+
+      {[['features_pct', 'Caractéristiques (%)', true], ['features_dollar', 'Caractéristiques ($)', false]].map(([grp, title, isPct]) => (
+        <div key={grp}>
+          <div className="section-label">{title}</div>
+          {Object.entries(params[grp] || {}).map(([feat, cfg]) => (
+            <div key={feat} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{cfg.label_fr || feat}</div>
+              <div className="field-row">
+                {Object.entries(cfg.options || {}).map(([opt, val]) => (
+                  isPct ? pc(prettyIncl(opt), val, (v) => setOpt(grp, feat, opt, v, true))
+                    : dol(prettyIncl(opt), val, (v) => setOpt(grp, feat, opt, v))))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       ))}
 
-      {/* Âges (fenêtres, toiture) : % du prix par an d'écart. */}
-      <div className="section-label">{t('ev.agePct')}</div>
+      <div className="section-label">Accessoires ($)</div>
       <div className="field-row">
-        {Object.entries(params.age_features || {}).map(([key, cfg]) => (
-          <div className="field" key={key}>
-            <label>{cfg.label || prettyIncl(key)} (%/an)</label>
-            <input className="input" type="number" step={0.1} value={cfg.pct_per_year == null ? '' : +(cfg.pct_per_year * 100).toFixed(2)} onChange={(e) => setAgePct(key, e.target.value)} />
-          </div>
-        ))}
+        {Object.entries(params.inclusions || {}).map(([k, v]) => dol(inclLbl[k] || prettyIncl(k), v, (val) => setIncl(k, val)))}
       </div>
 
-      <Button variant="outline" size="sm" icon={Save} onClick={onSave} disabled={saving}>{t('ev.saveParams')}</Button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <Button variant="outline" size="sm" icon={Save} onClick={onSave} disabled={saving}>{t('ev.saveParams')}</Button>
+        <Button variant="ghost" size="sm" onClick={onReset} disabled={saving}>{t('ev.resetParams')}</Button>
+      </div>
     </details>
   );
 }
@@ -471,28 +486,41 @@ export default function Evaluation() {
   }
   const genre = bundle?.property?.genre;
   const setAttr = (k, v) => setAttrs((s) => ({ ...(s || {}), [k]: v }));
-  const firstOf = (v) => (Array.isArray(v) ? v[0] : v);
   const ageFrom = (y) => { const nn = Number(y); return nn ? (new Date().getFullYear() - nn) : ''; };
+  const numOr = (v) => (v === '' || v == null ? undefined : Number(v));
   // Sujet ACM dérivé des attributs de l'aperçu (mappé pour la comparaison aux comparables).
-  const buildSubject = () => ({
-    living_area: attrs?.living_area ? Number(attrs.living_area) : '',
-    year_built: attrs?.year_built ? Number(attrs.year_built) : '',
-    municipal_assessment: attrs?.muni_assessment ? Number(attrs.muni_assessment) : (bundle?.property?.municipal_assessment ?? ''),
-    inclusions: incl,
-    foundation: attrs?.foundation, cladding: firstOf(attrs?.ext_cladding),
-    windows_type: firstOf(attrs?.windows_types), flooring: firstOf(attrs?.flooring),
-    windows_age: ageFrom(attrs?.windows_year), roof_age: ageFrom(attrs?.roofing_year),
-  });
+  const buildSubject = () => {
+    const a = attrs || {};
+    return {
+      living_area: numOr(a.living_area), land_area: numOr(a.land_area),
+      floors_above: numOr(a.floors_above), num_storeys: numOr(a.num_storeys),
+      has_basement: a.basement && a.basement !== 'aucun', basement: a.basement, basement_finished: a.basement === 'complete',
+      year_built: numOr(a.year_built),
+      municipal_assessment: numOr(a.muni_assessment) ?? (bundle?.property?.municipal_assessment ?? undefined),
+      windows_age: ageFrom(a.windows_year), roof_age: ageFrom(a.roofing_year),
+      foundation: a.foundation, ext_cladding: a.ext_cladding, windows_material: a.windows_material,
+      flooring: a.flooring, roofing_type: a.roofing_type, driveway: a.driveway,
+      kitchen_cabinets: a.kitchen_cabinets, countertops: a.countertops,
+      inclusions: incl,
+    };
+  };
 
   // Inclusions oui/non (case à cocher, pas de quantité). Repli local au cas où les paramètres
   // du serveur ne contiennent pas encore `boolean_inclusions` (seed mis en cache au démarrage).
-  const boolIncl = useMemo(() => new Set([...(params?.boolean_inclusions || []), 'sous_sol_fini', 'climatisation', 'thermopompe']), [params]);
-  const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).map((k) => ({ value: k, label: prettyIncl(k), boolean: boolIncl.has(k) })), [params, boolIncl]);
+  const boolIncl = useMemo(() => new Set([...(params?.boolean_inclusions || []), 'sous_sol_fini', 'thermopompe']), [params]);
+  const inclLbls = params?.inclusions_labels || {};
+  // sous_sol_fini est calculé à la superficie (moteur) — exclu de la saisie d'inclusions du sujet.
+  const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).filter((k) => k !== 'sous_sol_fini')
+    .map((k) => ({ value: k, label: inclLbls[k] || prettyIncl(k), boolean: boolIncl.has(k) })), [params, boolIncl, inclLbls]);
   const featureFields = useMemo(() => buildFeatureFields(params), [params]);
 
   const putParams = useMutation({
     mutationFn: (p) => api.put('/acm/params', p),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['acmParams'] }),
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['acmParams'] }); if (r?.params) setParams(r.params); },
+  });
+  const resetParams = useMutation({
+    mutationFn: () => api.put('/acm/params', {}),
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['acmParams'] }); if (r?.params) setParams(r.params); },
   });
 
   const compute = useMutation({
@@ -564,7 +592,7 @@ export default function Evaluation() {
 
           {/* 3. Paramètres */}
           <div className="section-label" style={{ marginTop: 20 }}>{t('ev.paramsTitle')}</div>
-          <ParamsPanel params={params} onChange={setParams} onSave={() => putParams.mutate(params)} saving={putParams.isPending} city={bundle?.property?.city} genre={bundle?.property?.genre} />
+          <ParamsPanel params={params} onChange={setParams} onSave={() => putParams.mutate(params)} onReset={() => { if (window.confirm(t('ev.resetConfirm'))) resetParams.mutate(); }} saving={putParams.isPending || resetParams.isPending} city={bundle?.property?.city} genre={bundle?.property?.genre} />
 
           {/* 4. Calcul */}
           <div className="toolbar" style={{ marginBottom: 16 }}>

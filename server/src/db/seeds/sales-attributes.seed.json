@@ -431,6 +431,19 @@
       "optset": "parking_type"
     },
     {
+      "key": "driveway",
+      "category": "stationnement",
+      "label_fr": "Entrée de stationnement",
+      "label_en": "Driveway",
+      "input": "select",
+      "optset": "driveway",
+      "types": [
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
       "key": "garage_count",
       "category": "stationnement",
       "label_fr": "Nombre de garages",
@@ -881,6 +894,20 @@
       "label_en": "Countertops",
       "input": "multiselect",
       "optset": "countertops",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "kitchen_cabinets",
+      "category": "interieur",
+      "label_fr": "Armoires de cuisine",
+      "label_en": "Kitchen cabinets",
+      "input": "select",
+      "optset": "kitchen_cabinets",
       "types": [
         "condo",
         "unifamilial",

@@ -8,6 +8,8 @@ export const Comparables = makeRepo({
     'price', 'list_price', 'sold_price', 'area', 'livable_area', 'price_per_area', 'bedrooms',
     'bathrooms', 'year_built', 'municipal_assessment', 'days_on_market', 'inclusions', 'rating',
     'foundation', 'cladding', 'windows_type', 'flooring', 'windows_age', 'roof_age',
+    'ext_cladding', 'windows_material', 'roofing_type', 'driveway', 'kitchen_cabinets', 'countertops',
+    'land_area', 'storeys', 'basement', 'basement_finished',
     'weight', 'adjustments', 'seller_redacted', 'source', 'notes',
   ],
   jsonCols: ['adjustments', 'inclusions'],
