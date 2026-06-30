@@ -65,6 +65,8 @@ function MarketAnalysisReport({ report }) {
             {report.geo?.region && <span className="ma-chip">{report.geo.region}</span>}
             {report.geo?.population != null && <span className="ma-chip">{report.geo.population.toLocaleString('fr-CA')} hab.</span>}
             {report.geo?.density != null && <span className="ma-chip">{report.geo.density.toLocaleString('fr-CA')} hab./km²</span>}
+            {report.geo?.median_age != null && <span className="ma-chip">{t('ma.medAge')} {report.geo.median_age}</span>}
+            {report.geo?.median_hh_income != null && <span className="ma-chip">{t('ma.medInc')} {report.geo.median_hh_income.toLocaleString('fr-CA')} $</span>}
           </div>
           {report.geo?.display_name && <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{report.geo.display_name}</div>}
         </div>

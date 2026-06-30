@@ -8,7 +8,7 @@
 // (workers Python aux phases suivantes — voir mémoire market-analysis-data-sources).
 
 import { lookupMunicipality, municipalitiesIn } from '../lib/quebecGeo.js';
-import { muniDemographics, mrcDemographics, regionDemographics } from '../lib/quebecDemographics.js';
+import { muniDemographics, mrcDemographics, regionDemographics, muniCensus, mrcCensus } from '../lib/quebecDemographics.js';
 
 const SRC = {
   mamh: 'MAMH — Répertoire des municipalités du Québec',
@@ -153,7 +153,11 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
   const demMuni = muniDemographics(muni?.name || city);
   const demMrc = mrcDemographics(mrc);
   const demReg = regionDemographics(region);
+  const cenMuni = muniCensus(muni?.name || city);
+  const cenMrc = mrcCensus(mrc);
   const fmtPop = (p) => (p != null ? `${Number(p).toLocaleString('fr-CA')} hab.` : null);
+  const fmtMoney = (v) => (v != null ? `${Number(v).toLocaleString('fr-CA')} $` : null);
+  const fmtAge = (v) => (v != null ? `${v} ans` : null);
   const density = (demMuni && demMuni.pop && demMuni.area) ? Math.round(demMuni.pop / demMuni.area) : null;
 
   const sections = [
@@ -173,6 +177,8 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
       items: [
         item('Emplacement géographique', 'Geographic location', mrc, SRC.donneesQc),
         item('Population (MRC)', 'Population (MRC)', fmtPop(demMrc?.pop), SRC.mamh),
+        item('Âge médian', 'Median age', fmtAge(cenMrc?.median_age), SRC.census),
+        item('Revenu médian des ménages', 'Median household income', fmtMoney(cenMrc?.median_hh_income), SRC.census),
         item('Nombre de municipalités', 'Number of municipalities', demMrc?.n_munis ?? null, SRC.mamh),
         item('Municipalités de la MRC', 'Municipalities in the MRC', geoList(inMrc), SRC.donneesQc),
         ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
@@ -187,6 +193,8 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Superficie', 'Land area', demMuni?.area != null ? `${demMuni.area} km²` : null, SRC.mamh),
         item('Densité', 'Density', density != null ? `${density.toLocaleString('fr-CA')} hab./km²` : null, SRC.mamh),
         item('Gentilé', 'Demonym', demMuni?.gentile || null, SRC.mamh),
+        item('Âge médian', 'Median age', fmtAge(cenMuni?.median_age), SRC.census),
+        item('Revenu médian des ménages', 'Median household income', fmtMoney(cenMuni?.median_hh_income), SRC.census),
         item('Nombre d’entreprises', 'Number of businesses', null, SRC.donneesQc),
         item('Principales entreprises', 'Main businesses', null, SRC.osm),
         ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
@@ -227,6 +235,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
     lat: local?.lat ?? null, lon: local?.lon ?? null, display_name: local?.display_name || null,
     radius_m: local?.radius_m ?? null,
     population: demMuni?.pop ?? null, density, area_km2: demMuni?.area ?? null, gentile: demMuni?.gentile ?? null,
+    median_age: cenMuni?.median_age ?? null, median_hh_income: cenMuni?.median_hh_income ?? null,
   };
   const { scores, walkability } = buildScores(local);
   const overview = buildOverview(walkability, scores, geoObj);
