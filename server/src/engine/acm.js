@@ -53,122 +53,151 @@ function normComp(c) {
  * Construit la ventilation d'ajustements explicable d'UN comparable vendu vs le sujet.
  * @returns {{lines:Array, total:number, adjustedPrice:number}}
  */
+const asArr = (v) => (Array.isArray(v) ? v.filter((x) => x != null && x !== '') : (v == null || v === '' ? [] : [v]));
+const pick = (o, ...keys) => { for (const k of keys) { const v = o[k]; if (v != null && v !== '') return v; } return undefined; };
+// Moyenne des valeurs d'option présentes (éléments compétitifs multiples → moyenne, pas somme).
+function avgOpt(value, opts) {
+  const vals = asArr(value).map((k) => n(opts[k])).filter((x) => x != null);
+  if (!vals.length) return null;
+  return vals.reduce((s, x) => s + x, 0) / vals.length;
+}
+// Nb d'étages hors-sol d'après le style/le nb d'étages ; défaut bungalow (1) si inconnu.
+function aboveLevels(style, storeys) {
+  const s = n(storeys);
+  if (s) return Math.max(1, Math.round(s));
+  if (style && /etage|cottage|deux|paliers|2/i.test(String(style))) return 2;
+  return 1;
+}
+// Répartition de la superficie habitable par niveau (RDC / étages / sous-sol) selon le nb de niveaux.
+function floorAreas(total, above, hasBasement) {
+  const t = n(total);
+  if (t == null) return null;
+  const lvls = above + (hasBasement ? 1 : 0);
+  const share = lvls > 0 ? t / lvls : 0;
+  return { rdc: share, etage: share * Math.max(0, above - 1), sous_sol: hasBasement ? share : 0, lvls, above, hasBasement };
+}
+const truthyBsmt = (v) => !(v === 0 || v === false || v === '' || v == null || /^(non|no|aucun|false|0)$/i.test(String(v)));
+
 export function adjustComparable(subject, comp, params, asOf) {
   const lines = [];
   const c = normComp(comp);
-  const cost = n(params.construction_cost_per_sqft) ?? 0;
-  // Ajustement d'âge exprimé en % du prix vendu par an d'écart (rétrocompat : ancien $/an).
-  const agePct = n(params.age_adjustment_pct_per_year) ?? 0;
+  const price = c.soldPrice ?? 0;
+  const A = params.area || {};
+  const AG = params.age || {};
   const apprec = n(params.monthly_appreciation_pct) ?? 0;
+  const add = (key, label, o) => lines.push({ key, label, ...o });
 
-  // 1) Superficie habitable : (sujet − comp) × coût de construction.
-  const subjArea = n(subject.living_area);
-  if (subjArea != null && c.livingArea != null && cost) {
-    const delta = subjArea - c.livingArea;
-    const amount = delta * cost;
-    lines.push({
-      key: 'living_area', label: 'Superficie habitable',
-      subject: subjArea, comp: c.livingArea, delta, unit: 'pi2', rate: cost, amount,
-      explanation: `Le sujet fait ${subjArea} pi² contre ${c.livingArea} pi² pour le comparable `
-        + `(écart ${delta > 0 ? '+' : ''}${delta} pi²) ; à ${cost} $/pi², on ${amount >= 0 ? 'ajoute' : 'retranche'} `
-        + `${Math.abs(amount).toLocaleString('fr-CA')} $ pour le ramener au sujet.`,
-    });
+  // 1) Superficie — terrain + construction par niveau (RDC / étages / sous-sol). La superficie
+  // habitable est répartie par niveau ; pour un comparable sans détail, hypothèse documentée.
+  const subjAbove = Math.max(1, Math.round(n(subject.floors_above) || n(subject.num_storeys) || (truthyBsmt(subject.has_basement) ? 1 : 1)));
+  const subjBsmt = truthyBsmt(subject.has_basement);
+  const sF = floorAreas(subject.living_area, subjAbove, subjBsmt);
+  const cAbove = aboveLevels(pick(c, 'style', 'arch_style'), pick(c, 'storeys', 'num_storeys', 'floors_above'));
+  const cBsmtKnown = c.basement !== undefined && c.basement !== null && c.basement !== '';
+  const cBsmt = cBsmtKnown ? truthyBsmt(c.basement) : true; // défaut : bungalow + sous-sol (÷2)
+  const cF = floorAreas(c.livingArea, cAbove, cBsmt);
+  const splitNote = `Comparable réparti sur ${cF ? cF.lvls : '?'} niveau(x) `
+    + `(${cAbove > 1 ? 'à étages' : 'plain-pied'}${cBsmt ? ' + sous-sol' : ''}${cBsmtKnown ? '' : ', hypothèse par défaut bungalow + sous-sol'}).`;
+  // Terrain
+  const sLand = n(subject.land_area); const cLand = n(c.land_area);
+  if (sLand != null && cLand != null && n(A.land_per_sqft) && sLand !== cLand) {
+    const amount = (sLand - cLand) * A.land_per_sqft;
+    add('land', 'Terrain', { subject: sLand, comp: cLand, delta: sLand - cLand, unit: 'pi2', rate: A.land_per_sqft, amount,
+      explanation: `Terrain : ${sLand} pi² (sujet) vs ${cLand} pi² ; à ${A.land_per_sqft} $/pi², on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
   }
-
-  // 2) Inclusions : pour chaque élément, ajustement = (qté sujet − qté comp) × prix unitaire.
-  const inclPrices = params.inclusions || {};
-  for (const [key, priceRaw] of Object.entries(inclPrices)) {
-    const price = n(priceRaw);
-    if (!price) continue;
-    const sQty = inclQty(subject.inclusions, key);
-    const cQty = inclQty(c.inclusions, key);
-    if (sQty === cQty) continue;
-    const delta = sQty - cQty; // >0 : le sujet en a plus → on ajoute ; <0 : on retranche
-    const amount = delta * price;
-    const label = prettyIncl(key);
-    lines.push({
-      key: `incl_${key}`, label,
-      subject: sQty, comp: cQty, delta, unit: '', rate: price, amount,
-      explanation: `« ${label} » : ${sQty} (sujet) vs ${cQty} (comparable), écart ${delta > 0 ? '+' : ''}${delta} ; `
-        + `à ${price.toLocaleString('fr-CA')} $/unité, on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(amount).toLocaleString('fr-CA')} $.`,
-    });
-  }
-
-  // 3) Âge du bâtiment : (âge comp − âge sujet) × % d'ajustement/an × prix vendu du comparable.
-  const asOfYear = new Date(asOf).getFullYear();
-  const subjYear = n(subject.year_built);
-  if (subjYear != null && c.yearBuilt != null && agePct && c.soldPrice) {
-    const subjAge = asOfYear - subjYear;
-    const compAge = asOfYear - c.yearBuilt;
-    const delta = compAge - subjAge; // comp plus vieux → positif → on remonte le comp
-    const amount = delta * agePct * c.soldPrice;
-    if (delta !== 0) {
-      lines.push({
-        key: 'age', label: 'Âge du bâtiment',
-        subject: subjAge, comp: compAge, delta, unit: 'an', rate: agePct, amount,
-        explanation: `Le comparable a ${Math.abs(delta)} an(s) de ${delta > 0 ? 'plus' : 'moins'} que le sujet ; `
-          + `à ${(agePct * 100).toFixed(2)} %/an du prix, on ${amount >= 0 ? 'ajoute' : 'retranche'} `
-          + `${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.`,
-      });
+  if (sF && cF) {
+    const rows = [['constr_rdc', 'rdc', A.constr_rdc_per_sqft, 'Construction — RDC'],
+      ['constr_etage', 'etage', A.constr_etage_per_sqft, 'Construction — étages'],
+      ['constr_sous_sol', 'sous_sol', A.constr_sous_sol_per_sqft, 'Construction — sous-sol']];
+    for (const [key, f, rateRaw, label] of rows) {
+      const rate = n(rateRaw); const delta = sF[f] - cF[f];
+      if (!rate || Math.round(delta) === 0) continue;
+      const amount = delta * rate;
+      add(key, label, { subject: Math.round(sF[f]), comp: Math.round(cF[f]), delta: Math.round(delta), unit: 'pi2', rate, amount,
+        explanation: `${label} : ${Math.round(sF[f])} pi² (sujet) vs ${Math.round(cF[f])} pi² ; à ${rate} $/pi², on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $. ${splitNote}` });
     }
   }
 
-  // 4) Date de vente : appréciation du marché entre la vente et la date d'analyse.
+  // 2) Caractéristiques % (option → valeur ; multi → MOYENNE) : (moy. sujet − moy. comp) × prix.
+  for (const [key, cfg] of Object.entries(params.features_pct || {})) {
+    const attr = cfg.attr || key; const opts = cfg.options || {};
+    const sPct = avgOpt(subject[attr], opts); const cPct = avgOpt(pick(c, attr) ?? c[key], opts);
+    if (sPct == null || cPct == null || sPct === cPct) continue;
+    const delta = sPct - cPct; const amount = delta * price;
+    add(`featpct_${key}`, cfg.label_fr || key, { subject: `${(sPct * 100).toFixed(1)} %`, comp: `${(cPct * 100).toFixed(1)} %`, delta, unit: '%', rate: delta, amount,
+      explanation: `${cfg.label_fr || key} : ${(sPct * 100).toFixed(1)} % (sujet) vs ${(cPct * 100).toFixed(1)} % (comparable) — moyenne des éléments sélectionnés ; on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
+  }
+
+  // 3) Caractéristiques $ (option → $ contributif ; multi → MOYENNE) : (moy. sujet − moy. comp).
+  for (const [key, cfg] of Object.entries(params.features_dollar || {})) {
+    const attr = cfg.attr || key; const opts = cfg.options || {};
+    const sVal = avgOpt(subject[attr], opts); const cVal = avgOpt(pick(c, attr) ?? c[key], opts);
+    if (sVal == null || cVal == null || sVal === cVal) continue;
+    const amount = sVal - cVal;
+    add(`featdol_${key}`, cfg.label_fr || key, { subject: `${Math.round(sVal).toLocaleString('fr-CA')} $`, comp: `${Math.round(cVal).toLocaleString('fr-CA')} $`, delta: amount, unit: '$', rate: 1, amount,
+      explanation: `${cfg.label_fr || key} : ${Math.round(sVal).toLocaleString('fr-CA')} $ (sujet) vs ${Math.round(cVal).toLocaleString('fr-CA')} $ (comparable) — moyenne ; on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
+  }
+
+  // 4) Accessoires ($ par quantité ; sous_sol_fini = $/pi² de sous-sol fini). (qté sujet − qté comp) × prix.
+  const labels = params.inclusions_labels || {};
+  for (const [key, priceRaw] of Object.entries(params.inclusions || {})) {
+    const unitPrice = n(priceRaw);
+    if (!unitPrice) continue;
+    const label = labels[key] || prettyIncl(key);
+    if (key === 'sous_sol_fini') {
+      const sArea = (subject.basement === 'complete' || truthyBsmt(subject.basement_finished)) && sF ? sF.sous_sol : 0;
+      const cArea = (cBsmt && truthyBsmt(pick(c, 'basement_finished'))) && cF ? cF.sous_sol : 0;
+      const delta = sArea - cArea;
+      if (Math.round(delta) === 0) continue;
+      const amount = delta * unitPrice;
+      add('incl_sous_sol_fini', label, { subject: Math.round(sArea), comp: Math.round(cArea), delta: Math.round(delta), unit: 'pi2', rate: unitPrice, amount,
+        explanation: `${label} : ${Math.round(sArea)} pi² (sujet) vs ${Math.round(cArea)} pi² ; à ${unitPrice} $/pi², on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
+      continue;
+    }
+    const sQty = inclQty(subject.inclusions, key); const cQty = inclQty(c.inclusions, key);
+    if (sQty === cQty) continue;
+    const delta = sQty - cQty; const amount = delta * unitPrice;
+    add(`incl_${key}`, label, { subject: sQty, comp: cQty, delta, unit: '', rate: unitPrice, amount,
+      explanation: `« ${label} » : ${sQty} (sujet) vs ${cQty} (comparable) ; à ${unitPrice.toLocaleString('fr-CA')} $/unité, on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(amount).toLocaleString('fr-CA')} $.` });
+  }
+
+  // 5) Âge construction (% par année) : (âge comp − âge sujet) × %/an × prix.
+  const asOfYear = new Date(asOf).getFullYear();
+  const subjYear = n(subject.year_built); const cYear = c.yearBuilt;
+  const cpy = n(AG.construction_pct_per_year);
+  if (subjYear != null && cYear != null && cpy && price) {
+    const delta = (asOfYear - cYear) - (asOfYear - subjYear); // = subjYear - cYear ; comp plus vieux → +
+    if (delta !== 0) {
+      const amount = delta * cpy * price;
+      add('age_construction', 'Âge — construction', { subject: asOfYear - subjYear, comp: asOfYear - cYear, delta, unit: 'an', rate: cpy, amount,
+        explanation: `Construction : le comparable a ${Math.abs(delta)} an(s) de ${delta > 0 ? 'plus' : 'moins'} ; à ${(cpy * 100).toFixed(2)} %/an, on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
+    }
+  }
+  // 5b) Âge fenêtres / toiture : plage neuf↔fin de vie répartie sur la durée de vie.
+  const ageRange = [
+    ['windows_age', 'Âge — fenêtres', n(AG.windows_range_pct), n(AG.windows_lifespan)],
+    ['roof_age', 'Âge — toiture', n(AG.roof_range_pct), n(AG.roof_lifespan)],
+  ];
+  for (const [field, label, rangePct, life] of ageRange) {
+    const sAge = n(subject[field]); const cAge = n(c[field]);
+    if (!rangePct || !life || sAge == null || cAge == null || price === 0) continue;
+    let frac = (cAge - sAge) / life; frac = Math.max(-1, Math.min(1, frac));
+    if (frac === 0) continue;
+    const amount = frac * rangePct * price;
+    add(`agef_${field}`, label, { subject: sAge, comp: cAge, delta: cAge - sAge, unit: 'an', rate: rangePct, amount,
+      explanation: `${label} : ${Math.abs(cAge - sAge)} an(s) d'écart sur une durée de vie de ${life} ans ; plage neuf↔fin ${(rangePct * 100).toFixed(1)} % ; on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
+  }
+
+  // 6) Date de vente : appréciation du marché entre la vente et la date d'analyse.
   const months = monthsBetween(c.saleDate, asOf);
-  if (months != null && months > 0 && apprec && c.soldPrice != null) {
-    const amount = c.soldPrice * apprec * months;
-    lines.push({
-      key: 'sale_date', label: 'Date de vente',
-      subject: asOf, comp: c.saleDate, delta: round(months, 0.1), unit: 'mois', rate: apprec, amount,
-      explanation: `Vendu il y a ${months.toFixed(1)} mois ; à ${(apprec * 100).toFixed(2)} %/mois d'appréciation, `
-        + `on ajoute ${Math.round(amount).toLocaleString('fr-CA')} $ pour l'amener à aujourd'hui.`,
-    });
-  }
-
-  // 5) Caractéristiques catégorielles (fondation, revêtement, fenêtres, planchers) : chaque
-  // option a une valeur marché en % ; ajustement = (% sujet − % comp) × prix vendu.
-  const features = params.features || {};
-  for (const [key, cfg] of Object.entries(features)) {
-    const opts = cfg.options || {};
-    const sOpt = subject[key];
-    const cOpt = c[key];
-    if (!sOpt || !cOpt || sOpt === cOpt) continue;
-    const sPct = n(opts[sOpt]) ?? 0;
-    const cPct = n(opts[cOpt]) ?? 0;
-    if (sPct === cPct) continue;
-    const delta = sPct - cPct;
-    const amount = delta * (c.soldPrice ?? 0);
-    lines.push({
-      key: `feat_${key}`, label: cfg.label || prettyIncl(key),
-      subject: `${prettyIncl(sOpt)} (${sPct >= 0 ? '+' : ''}${(sPct * 100).toFixed(1)} %)`,
-      comp: `${prettyIncl(cOpt)} (${cPct >= 0 ? '+' : ''}${(cPct * 100).toFixed(1)} %)`,
-      delta, unit: '%', rate: delta, amount,
-      explanation: `${cfg.label || prettyIncl(key)} : sujet « ${prettyIncl(sOpt)} » vs comparable « ${prettyIncl(cOpt)} » `
-        + `(écart ${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)} % du prix) ; on ${amount >= 0 ? 'ajoute' : 'retranche'} `
-        + `${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.`,
-    });
-  }
-
-  // 6) Âges des fenêtres / de la toiture : (âge comp − âge sujet) × %/an × prix vendu.
-  const ageFeatures = params.age_features || {};
-  for (const [key, cfg] of Object.entries(ageFeatures)) {
-    const pct = n(cfg.pct_per_year) ?? 0;
-    const sAge = n(subject[key]);
-    const cAge = n(c[key]);
-    if (!pct || sAge == null || cAge == null) continue;
-    const delta = cAge - sAge;
-    if (delta === 0) continue;
-    const amount = delta * pct * (c.soldPrice ?? 0);
-    lines.push({
-      key: `agef_${key}`, label: cfg.label || prettyIncl(key),
-      subject: sAge, comp: cAge, delta, unit: 'an', rate: pct, amount,
-      explanation: `${cfg.label || prettyIncl(key)} : ${Math.abs(delta)} an(s) de ${delta > 0 ? 'plus (comparable plus vieux)' : 'moins'} ; `
-        + `à ${(pct * 100).toFixed(2)} %/an du prix, on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.`,
-    });
+  if (months != null && months > 0 && apprec && price) {
+    const amount = price * apprec * months;
+    add('sale_date', 'Date de vente', { subject: asOf, comp: c.saleDate, delta: round(months, 0.1), unit: 'mois', rate: apprec, amount,
+      explanation: `Vendu il y a ${months.toFixed(1)} mois ; à ${(apprec * 100).toFixed(2)} %/mois, on ajoute ${Math.round(amount).toLocaleString('fr-CA')} $.` });
   }
 
   const total = lines.reduce((s, l) => s + l.amount, 0);
-  const adjustedPrice = (c.soldPrice ?? 0) + total;
+  const adjustedPrice = price + total;
   return { lines, total, adjustedPrice };
 }
 
