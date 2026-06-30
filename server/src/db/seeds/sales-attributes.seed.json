@@ -757,14 +757,32 @@
       "category": "interieur",
       "label_fr": "Climatisation",
       "label_en": "Air conditioning",
-      "input": "text",
+      "input": "group",
       "types": [
         "condo",
         "unifamilial",
         "multi",
         "commercial",
         "rpa"
-      ]
+      ],
+      "group": {
+        "fields": [
+          {
+            "key": "zone",
+            "input": "select",
+            "optset": "heating_zone",
+            "label_fr": "Zone",
+            "label_en": "Zone"
+          },
+          {
+            "key": "type",
+            "input": "select",
+            "optset": "cooling_type",
+            "label_fr": "Type",
+            "label_en": "Type"
+          }
+        ]
+      }
     },
     {
       "key": "electrical",
@@ -801,6 +819,20 @@
         "multi"
       ],
       "optset": "flooring"
+    },
+    {
+      "key": "countertops",
+      "category": "interieur",
+      "label_fr": "Comptoirs",
+      "label_en": "Countertops",
+      "input": "multiselect",
+      "optset": "countertops",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
     },
     {
       "key": "appliances",

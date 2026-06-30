@@ -142,6 +142,20 @@ export const OPTION_SETS = {
   ],
   pool_location: [O('interieur', 'Intérieur', 'Indoor'), O('exterieur', 'Extérieur', 'Outdoor'), O('solarium', 'Solarium', 'Sunroom')],
   pool_type: [O('creusee', 'Creusée', 'Inground'), O('semi_creusee', 'Semi-creusée', 'Semi-inground'), O('hors_terre', 'Hors terre', 'Above ground')],
+  cooling_type: [
+    O('thermopompe_centrale', 'Thermopompe centrale', 'Central heat pump'),
+    O('thermopompe_murale', 'Thermopompe murale', 'Wall-mounted heat pump'),
+    O('climatiseur_central', 'Climatiseur central', 'Central air conditioner'),
+    O('climatiseur_fenetre', 'Climatiseur de fenêtre', 'Window air conditioner'),
+    O('geothermie', 'Géothermie', 'Geothermal'), O('autre', 'Autre', 'Other'),
+  ],
+  countertops: [
+    O('granite', 'Granite', 'Granite'), O('quartz', 'Quartz', 'Quartz'), O('marbre', 'Marbre', 'Marble'),
+    O('bois', 'Bois (bloc boucher)', 'Wood (butcher block)'), O('stratifie', 'Stratifié', 'Laminate'),
+    O('melamine', 'Mélamine', 'Melamine'), O('beton', 'Béton', 'Concrete'), O('ceramique', 'Céramique', 'Ceramic'),
+    O('acier_inox', 'Acier inoxydable', 'Stainless steel'), O('corian', 'Surface solide (Corian)', 'Solid surface (Corian)'),
+    O('autre', 'Autre', 'Other'),
+  ],
   heating_zone: [
     O('living', 'Espace de vie', 'Living area'), O('garage', 'Garage', 'Garage'), O('sous_sol', 'Sous-sol', 'Basement'),
     O('whole', 'Tout le bâtiment', 'Whole building'), O('other', 'Autre', 'Other'),
