@@ -250,6 +250,10 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
     poi: local?.categories || null,   // commodités structurées (grille visuelle)
     roads: local?.roads || null,      // axes routiers (+ écusson `sign` si autoroute)
     images: local?.images || null,    // photos ville/région (Wikipédia, avec licence/crédit)
+    charts: {                          // distributions recensement (municipalité) pour graphiques
+      age: cenMuni?.age_buckets || null,
+      income: cenMuni?.income_brackets || null,
+    },
     sections,            // grille détaillée (région/MRC/municipalité/secteur/accès)
     summary: { data_points: dataCount, pending_points: pendingCount, local: !!local },
     sources: SRC,

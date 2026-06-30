@@ -83,6 +83,21 @@ function ScoreGauge({ score = 0, size = 72 }) {
 }
 const clamp01 = (v) => Math.max(0, Math.min(100, Number(v) || 0));
 
+// Histogramme/courbe compact (barres verticales) — déterministe, sans dépendance.
+function MiniBars({ data, color = 'var(--color-accent)' }) {
+  const max = Math.max(1, ...data.map((d) => d.count || 0));
+  return (
+    <div className="ma-bars">
+      {data.map((d, i) => (
+        <div className="ma-bar" key={i} title={`${d.label} : ${(d.count || 0).toLocaleString('fr-CA')}`}>
+          <div className="ma-bar-track"><div className="ma-bar-fill" style={{ height: `${Math.round((d.count || 0) / max * 100)}%`, background: color }} /></div>
+          <div className="ma-bar-lbl">{d.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Rendu d'un rapport d'analyse de marché — présentation professionnelle (hero + scores + synthèse
 // + commodités + détails). Inspiré d'EVALO/Local Logic, données publiques gratuites (OSM, etc.).
 function MarketAnalysisReport({ report }) {
@@ -126,6 +141,13 @@ function MarketAnalysisReport({ report }) {
       </tbody></table>
     </div>
   );
+  const ch = report.charts || {};
+  const chartsBlock = (ch.age || ch.income) ? (
+    <div className="ma-charts">
+      {ch.age && <div className="ma-chart"><div className="ma-chart-title"><Cake size={13} /> {t('ma.ageChart')}</div><MiniBars data={ch.age} /></div>}
+      {ch.income && <div className="ma-chart"><div className="ma-chart-title"><Wallet size={13} /> {t('ma.incomeChart')}</div><MiniBars data={ch.income} color="var(--color-success)" /></div>}
+    </div>
+  ) : null;
 
   return (
     <div className="ma-report">
@@ -206,6 +228,8 @@ function MarketAnalysisReport({ report }) {
               )}
               {renderTable(sec)}
             </>
+          ) : sec.key === 'municipality' ? (
+            <>{renderTable(sec)}{chartsBlock}</>
           ) : renderTable(sec)
         );
         return (
