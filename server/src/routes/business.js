@@ -175,7 +175,7 @@ export default function mountBusiness(parent = Router()) {
     let local = null;
     try {
       const addr = property.address || attrs.address || '';
-      local = await runWorker('market_local', { address: addr, city: property.city || attrs.sector || '', region: property.region || '' }, { timeoutMs: 50000 });
+      local = await runWorker('market_local', { address: addr, city: property.city || attrs.sector || '', region: property.region || '', mrc: property.mrc || '' }, { timeoutMs: 50000 });
     } catch (e) { local = null; /* hors-ligne / quota OSM : dégradation propre */ }
     const report = buildMarketAnalysis({ property, attrs, local });
     const updated = MarketAnalyses.update(a.id, {

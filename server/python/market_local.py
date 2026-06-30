@@ -232,11 +232,15 @@ def main():
             if s:
                 r["sign"] = s
     images = {}
-    city = payload.get("city"); region = payload.get("region")
+    city = payload.get("city"); region = payload.get("region"); mrc = payload.get("mrc")
     if city:
         im = wiki_image(city)
         if im:
             images["municipality"] = im
+    if mrc:
+        im = wiki_image(f"{mrc} (municipalité régionale de comté)") or wiki_image(f"MRC de {mrc}") or wiki_image(mrc)
+        if im:
+            images["mrc"] = im
     if region:
         im = wiki_image(f"{region} (région administrative)") or wiki_image(region)
         if im:

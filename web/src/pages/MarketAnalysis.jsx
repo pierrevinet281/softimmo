@@ -168,6 +168,19 @@ function MarketAnalysisReport({ report }) {
       </tbody></table>
     </div>
   );
+  // Image en tête de bloc : photo Wikipédia (libre) si disponible, sinon vue aérienne Sentinel-2
+  // au bon niveau de zoom (secteur rapproché → région large). « aérienne » accepté comme « photo ».
+  const AERIAL_SPAN = { secteur: 0.022, municipality: 0.08, mrc: 0.4, region: 1.5 };
+  const IMG_KEYS = ['secteur', 'municipality', 'mrc', 'region'];
+  const blockImage = (key) => {
+    if (!IMG_KEYS.includes(key)) return null;
+    const ph = report.images?.[key];
+    if (ph) return { url: ph.url, caption: [ph.credit, ph.license].filter(Boolean).join(' · ') };
+    if (report.geo?.lat != null && report.geo?.lon != null) {
+      return { url: aerialUrl(report.geo.lat, report.geo.lon, 600, 380, AERIAL_SPAN[key] || 0.05), caption: 'Sentinel-2 cloudless — EOX (Copernicus), CC BY 4.0', aerial: true };
+    }
+    return null;
+  };
   const ch = report.charts || {};
   const chartsBlock = (ch.age || ch.income || ch.lang) ? (
     <div className="ma-charts">
@@ -204,24 +217,6 @@ function MarketAnalysisReport({ report }) {
         )}
       </Card>
 
-      {/* CARTES : plan (OSM) + vue aérienne (satellite ESRI) */}
-      {report.geo?.lat != null && report.geo?.lon != null && (
-        <div className="ma-maps">
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="ma-map-cap"><MapIcon size={12} /> {t('ma.streetMap')}</div>
-            <iframe
-              title="map" loading="lazy" style={{ width: '100%', height: 300, border: 0, display: 'block' }}
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.geo.lon - 0.014}%2C${report.geo.lat - 0.009}%2C${report.geo.lon + 0.014}%2C${report.geo.lat + 0.009}&layer=mapnik&marker=${report.geo.lat}%2C${report.geo.lon}`}
-            />
-          </Card>
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="ma-map-cap"><Satellite size={12} /> {t('ma.aerial')}</div>
-            <img src={aerialUrl(report.geo.lat, report.geo.lon)} alt={t('ma.aerial')} loading="lazy" style={{ width: '100%', height: 300, objectFit: 'cover', display: 'block' }} />
-            <div className="muted ma-credit">Sentinel-2 cloudless 2021 — EOX (Copernicus), CC BY 4.0</div>
-          </Card>
-        </div>
-      )}
-
       {/* SYNTHÈSE + IMPACT VALEUR */}
       {ov && (
         <Card style={{ marginBottom: 16 }}>
@@ -234,10 +229,10 @@ function MarketAnalysisReport({ report }) {
       {/* BLOCS — ordre : secteur → accès → municipalité → MRC → région.
           Le bloc « Neighbourhood (proximity) » intègre les scores+commodités (combinés par tuile :
           jauge + nombre à proximité + plus proche). La connectivité routière va au bloc « Road access ». */}
-      {orderedSections.map((sec, idx) => {
+      {orderedSections.map((sec) => {
         const SIc = SECTION_ICON[sec.key] || MapPin;
-        const photo = sec.key === 'municipality' ? report.images?.municipality
-          : sec.key === 'region' ? report.images?.region : null;
+        const img = blockImage(sec.key);
+        const rev = IMG_KEYS.indexOf(sec.key) % 2 === 1; // alternance gauche/droite
         const content = (
           sec.key === 'secteur' && poiGauges.length > 0 ? (
             <>
@@ -265,11 +260,11 @@ function MarketAnalysisReport({ report }) {
         return (
           <Card key={sec.key} style={{ marginBottom: 16 }}>
             <div className="section-label" style={{ marginTop: 0 }}><SIc size={14} /> {lab(sec)}</div>
-            {photo ? (
-              <div className={`ma-split${idx % 2 ? ' rev' : ''}`}>
+            {img ? (
+              <div className={`ma-split${rev ? ' rev' : ''}`}>
                 <figure className="ma-photo">
-                  <img src={photo.url} alt={lab(sec)} loading="lazy" />
-                  {(photo.credit || photo.license) && <figcaption className="muted">{[photo.credit, photo.license].filter(Boolean).join(' · ')}</figcaption>}
+                  <img src={img.url} alt={lab(sec)} loading="lazy" />
+                  {img.caption && <figcaption className="muted">{img.caption}</figcaption>}
                 </figure>
                 <div className="ma-split-main">{content}</div>
               </div>
