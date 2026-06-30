@@ -62,8 +62,8 @@ const DIMS = [
   { key: 'dining', fr: 'Restaurants & cafés', en: 'Dining & cafés', cat: 'restaurants', target: 20, w: 0.25 },
   { key: 'parks', fr: 'Parcs & plein air', en: 'Parks & outdoors', cat: 'parks', target: 10, w: 0.20 },
   { key: 'schools', fr: 'Écoles & familles', en: 'Schools & families', cat: 'schools', target: 6, w: 0.15 },
-  { key: 'sports', fr: 'Sports & loisirs', en: 'Sports & recreation', cat: 'sports', target: 6, w: 0.10 },
   { key: 'childcare', fr: 'Garderies', en: 'Childcare', cat: 'childcare', target: 5, w: 0 },
+  { key: 'sports', fr: 'Sports & loisirs', en: 'Sports & recreation', cat: 'sports', target: 6, w: 0.10 },
   { key: 'health', fr: 'Santé', en: 'Healthcare', cat: 'hospitals', target: 2, w: 0 },
 ];
 

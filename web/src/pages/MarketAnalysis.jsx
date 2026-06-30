@@ -52,7 +52,37 @@ function MarketAnalysisReport({ report }) {
   const lab = (o) => (en ? o.label_en : o.label_fr) || o.label_fr;
   const ov = report.overview;
   const scores = report.scores || [];
-  const poi = report.poi || null;
+  const scoreByKey = Object.fromEntries(scores.map((s) => [s.key, s]));
+  // Tuiles du voisinage (score + commodité combinés) — ordre voulu : garderies avant sports.
+  const POI_ORDER = ['errands', 'dining', 'parks', 'schools', 'childcare', 'sports', 'health'];
+  const poiGauges = POI_ORDER.map((k) => scoreByKey[k]).filter(Boolean);
+  const accessScore = scoreByKey.access || null;
+  // Ordre des blocs : secteur → accès → municipalité → MRC → région (s'applique aussi aux anciens rapports).
+  const SECTION_ORDER = ['secteur', 'access', 'municipality', 'mrc', 'region'];
+  const orderedSections = [...(report.sections || [])].sort((a, b) => {
+    const ia = SECTION_ORDER.indexOf(a.key); const ib = SECTION_ORDER.indexOf(b.key);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  const Gauge = (s, Icon) => (
+    <div className="ma-score-card" key={s.key}>
+      <ScoreGauge score={s.score} size={76} />
+      <div className="ma-score-label">{Icon ? <Icon size={13} /> : null} {lab(s)}</div>
+      <div className="muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{en ? s.detail_en : s.detail_fr}</div>
+    </div>
+  );
+  const renderTable = (sec) => (
+    <div className="table-wrap" style={{ overflowX: 'auto' }}>
+      <table className="table"><tbody>
+        {sec.items.map((it, i) => (
+          <tr key={i}>
+            <td style={{ width: '38%' }}>{lab(it)}</td>
+            <td>{it.status === 'data' ? <span>{it.value}</span> : <Badge tone="neutral">{t('ma.pending')}</Badge>}</td>
+            <td className="muted" style={{ fontSize: 12 }}>{it.source || ''}</td>
+          </tr>
+        ))}
+      </tbody></table>
+    </div>
+  );
 
   return (
     <div className="ma-report">
@@ -100,76 +130,35 @@ function MarketAnalysisReport({ report }) {
         </Card>
       )}
 
-      {/* SCORES DE SECTEUR */}
-      {scores.length > 0 && (
-        <Card style={{ marginBottom: 16 }}>
-          <div className="section-label" style={{ marginTop: 0 }}>{t('ma.sectorScores')}</div>
-          <div className="ma-scores">
-            {scores.map((s) => {
-              const Icon = CAT_ICON[s.key] || MapPin;
-              return (
-                <div className="ma-score-card" key={s.key}>
-                  <ScoreGauge score={s.score} size={76} />
-                  <div className="ma-score-label"><Icon size={13} /> {lab(s)}</div>
-                  <div className="muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{en ? s.detail_en : s.detail_fr}</div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>{t('ma.scoresNote')}</div>
+      {/* BLOCS — ordre : secteur → accès → municipalité → MRC → région.
+          Le bloc « Neighbourhood (proximity) » intègre les scores+commodités (combinés par tuile :
+          jauge + nombre à proximité + plus proche). La connectivité routière va au bloc « Road access ». */}
+      {orderedSections.map((sec) => (
+        <Card key={sec.key} style={{ marginBottom: 16 }}>
+          <div className="section-label" style={{ marginTop: 0 }}>{lab(sec)}</div>
+
+          {sec.key === 'secteur' && poiGauges.length > 0 && (
+            <>
+              <div className="ma-scores">{poiGauges.map((s) => Gauge(s, CAT_ICON[s.key] || MapPin))}</div>
+              <div className="muted" style={{ fontSize: 11, margin: '10px 0 0' }}>{t('ma.scoresNote')}</div>
+            </>
+          )}
+          {sec.key === 'secteur' && poiGauges.length === 0 && renderTable(sec)}
+
+          {sec.key === 'access' && (
+            <>
+              {accessScore && <div className="ma-scores" style={{ marginBottom: 12 }}>{Gauge(accessScore, Car)}</div>}
+              {renderTable(sec)}
+            </>
+          )}
+
+          {sec.key !== 'secteur' && sec.key !== 'access' && renderTable(sec)}
         </Card>
-      )}
+      ))}
 
-      {/* COMMODITÉS DU SECTEUR */}
-      {poi && (
-        <Card style={{ marginBottom: 16 }}>
-          <div className="section-label" style={{ marginTop: 0 }}>{t('ma.amenities')}</div>
-          <div className="ma-poi">
-            {POI_META.map(([key, fr, enl]) => {
-              const c = poi[key]; if (!c) return null;
-              const Icon = CAT_ICON[key] || MapPin;
-              return (
-                <div className="ma-poi-card" key={key}>
-                  <span className="ma-poi-icon"><Icon size={18} /></span>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{en ? enl : fr}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700 }}>{c.count}</div>
-                    {c.nearest && <div className="muted" style={{ fontSize: 11 }}>{c.nearest.name} · ~{c.nearest.dist_m} m</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* DONNÉES DÉTAILLÉES (région / MRC / municipalité / accès) */}
-      <details className="card" style={{ marginBottom: 16 }} open={!ov}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('ma.detailed')}
-          <span className="muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
-            {report.summary?.data_points ?? 0} / {(report.summary?.data_points || 0) + (report.summary?.pending_points || 0)} {t('ma.coverageSub')}
-          </span>
-        </summary>
-        {(report.sections || []).map((sec) => (
-          <div key={sec.key} style={{ marginTop: 12 }}>
-            <div className="section-label">{lab(sec)}</div>
-            <div className="table-wrap" style={{ overflowX: 'auto' }}>
-              <table className="table">
-                <tbody>
-                  {sec.items.map((it, i) => (
-                    <tr key={i}>
-                      <td style={{ width: '38%' }}>{lab(it)}</td>
-                      <td>{it.status === 'data' ? <span>{it.value}</span> : <Badge tone="neutral">{t('ma.pending')}</Badge>}</td>
-                      <td className="muted" style={{ fontSize: 12 }}>{it.source || ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))}
-      </details>
-
+      <div className="muted" style={{ fontSize: 11, margin: '0 0 8px' }}>
+        {report.summary?.data_points ?? 0} / {(report.summary?.data_points || 0) + (report.summary?.pending_points || 0)} {t('ma.coverageSub')}
+      </div>
       <div className="notice notice-info" style={{ marginBottom: 8 }}><MapIcon size={16} />{t('ma.mapNote')}</div>
     </div>
   );
