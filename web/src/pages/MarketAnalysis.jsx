@@ -68,9 +68,21 @@ export function MarketAnalysisPanel({ propertyId }) {
   const rows = data?.rows || [];
   const current = rows.find((r) => r.id === selId) || rows[0] || null;
 
+  // Enrichissement secteur (OSM) — déclenché en arrière-plan après la création de base.
+  const enrich = useMutation({
+    mutationFn: (id) => api.post(`/market-analysis/${id}/enrich`, {}),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['market-analyses', propertyId] }); qc.invalidateQueries({ queryKey: ['bundle', propertyId] }); },
+    onError: () => { /* silencieux : le rapport de base reste affiché */ },
+  });
   const generate = useMutation({
     mutationFn: () => api.post(`/properties/${propertyId}/market-analysis`, {}),
-    onSuccess: (r) => { setSelId(r?.analysis?.id || null); qc.invalidateQueries({ queryKey: ['market-analyses', propertyId] }); qc.invalidateQueries({ queryKey: ['bundle', propertyId] }); },
+    onSuccess: (r) => {
+      const id = r?.analysis?.id || null;
+      setSelId(id);
+      qc.invalidateQueries({ queryKey: ['market-analyses', propertyId] });
+      qc.invalidateQueries({ queryKey: ['bundle', propertyId] });
+      if (id) enrich.mutate(id); // enrichissement OSM en arrière-plan (best-effort)
+    },
     onError: (e) => alert(String(e?.message || 'Erreur')),
   });
   const del = useMutation({
@@ -83,8 +95,8 @@ export function MarketAnalysisPanel({ propertyId }) {
   return (
     <div>
       <div className="toolbar" style={{ marginBottom: 14, gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Button variant="primary" icon={RefreshCw} onClick={() => generate.mutate()} disabled={generate.isPending}>
-          {generate.isPending ? t('ma.generating') : t('ma.generate')}
+        <Button variant="primary" icon={RefreshCw} onClick={() => generate.mutate()} disabled={generate.isPending || enrich.isPending}>
+          {generate.isPending ? t('ma.generating') : (enrich.isPending ? t('ma.enriching') : t('ma.generate'))}
         </Button>
         {rows.length > 0 && (
           <Select value={current?.id || ''} onChange={(e) => setSelId(e.target.value)} style={{ maxWidth: 320 }}>

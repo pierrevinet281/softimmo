@@ -148,25 +148,40 @@ export default function mountBusiness(parent = Router()) {
     res.json({ property_id: pid, subject, params, ...result });
   }));
 
-  // ── Analyse de marché (Module 2) : génère + enregistre une caractérisation du secteur ──
+  // ── Analyse de marché (Module 2) ──
+  const propAttrs = (p) => ((p.attributes && typeof p.attributes === 'object') ? p.attributes : {});
+
+  // 1) Génère + enregistre l'analyse de BASE (rapide, déterministe, sans réseau) → réponse immédiate.
   parent.post('/properties/:id/market-analysis', wrap(async (req, res) => {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
-    const attrs = (property.attributes && typeof property.attributes === 'object') ? property.attributes : {};
-    // Couche locale (OSM/Overpass via worker Python) — best-effort : si réseau/worker indisponible,
-    // on retombe sur l'analyse déterministe de base (identification géographique + données saisies).
-    let local = null;
-    try {
-      const addr = property.address || attrs.address || '';
-      local = await runWorker('market_local', { address: addr, city: property.city || attrs.sector || '', region: property.region || '' }, { timeoutMs: 90000 });
-    } catch (e) { local = null; /* hors-ligne / quota OSM : dégradation propre */ }
-    const report = buildMarketAnalysis({ property, attrs, local });
+    const report = buildMarketAnalysis({ property, attrs: propAttrs(property) });
     const saved = MarketAnalyses.create({
       property_id: property.id, title: report.title,
       municipality: report.geo.municipality, mrc: report.geo.mrc, region: report.geo.region, report,
     });
     Activity.log({ kind: 'create', entity_type: 'market_analysis', entity_id: property.id, summary: report.title });
     res.status(201).json({ analysis: saved });
+  }));
+
+  // 2) Enrichit une analyse avec la couche locale OSM/Overpass (best-effort, isolé de la création
+  //    pour ne jamais bloquer/faire échouer la génération). Si le réseau/quota échoue → inchangé.
+  parent.post('/market-analysis/:id/enrich', wrap(async (req, res) => {
+    const a = MarketAnalyses.get(req.params.id);
+    if (!a) throw notFound('analyse introuvable');
+    const property = Properties.get(a.property_id);
+    if (!property) throw notFound('property introuvable');
+    const attrs = propAttrs(property);
+    let local = null;
+    try {
+      const addr = property.address || attrs.address || '';
+      local = await runWorker('market_local', { address: addr, city: property.city || attrs.sector || '', region: property.region || '' }, { timeoutMs: 50000 });
+    } catch (e) { local = null; /* hors-ligne / quota OSM : dégradation propre */ }
+    const report = buildMarketAnalysis({ property, attrs, local });
+    const updated = MarketAnalyses.update(a.id, {
+      report, municipality: report.geo.municipality, mrc: report.geo.mrc, region: report.geo.region,
+    });
+    res.json({ analysis: updated, enriched: !!local });
   }));
 
   // Import d'un PDF Matrix « 4 par page courtier » → extraction (worker Python pdfplumber)
