@@ -153,7 +153,14 @@ export default function mountBusiness(parent = Router()) {
     const property = Properties.get(req.params.id);
     if (!property) throw notFound('property introuvable');
     const attrs = (property.attributes && typeof property.attributes === 'object') ? property.attributes : {};
-    const report = buildMarketAnalysis({ property, attrs });
+    // Couche locale (OSM/Overpass via worker Python) — best-effort : si réseau/worker indisponible,
+    // on retombe sur l'analyse déterministe de base (identification géographique + données saisies).
+    let local = null;
+    try {
+      const addr = property.address || attrs.address || '';
+      local = await runWorker('market_local', { address: addr, city: property.city || attrs.sector || '', region: property.region || '' }, { timeoutMs: 90000 });
+    } catch (e) { local = null; /* hors-ligne / quota OSM : dégradation propre */ }
+    const report = buildMarketAnalysis({ property, attrs, local });
     const saved = MarketAnalyses.create({
       property_id: property.id, title: report.title,
       municipality: report.geo.municipality, mrc: report.geo.mrc, region: report.geo.region, report,

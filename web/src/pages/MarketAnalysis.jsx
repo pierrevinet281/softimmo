@@ -20,6 +20,15 @@ function MarketAnalysisReport({ report }) {
         <div className="kpi"><div className="label">{t('ma.coverage')}</div><div className="value">{report.summary?.data_points ?? 0}<span className="muted" style={{ fontSize: 14 }}> / {(report.summary?.data_points || 0) + (report.summary?.pending_points || 0)}</span></div><div className="sub">{t('ma.coverageSub')}</div></div>
       </div>
 
+      {report.geo?.lat != null && report.geo?.lon != null && (
+        <Card style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+          <iframe
+            title="map" loading="lazy" style={{ width: '100%', height: 320, border: 0, display: 'block' }}
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.geo.lon - 0.012}%2C${report.geo.lat - 0.008}%2C${report.geo.lon + 0.012}%2C${report.geo.lat + 0.008}&layer=mapnik&marker=${report.geo.lat}%2C${report.geo.lon}`}
+          />
+          {report.geo.display_name && <div className="muted" style={{ fontSize: 12, padding: '6px 12px' }}><MapPin size={12} /> {report.geo.display_name}</div>}
+        </Card>
+      )}
       <div className="notice notice-info" style={{ marginBottom: 16 }}>
         <MapIcon size={16} />{t('ma.mapNote')}
       </div>
