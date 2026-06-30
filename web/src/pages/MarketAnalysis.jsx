@@ -63,6 +63,8 @@ function MarketAnalysisReport({ report }) {
           <div className="ma-chips">
             {report.geo?.mrc && <span className="ma-chip"><MapPin size={12} /> {report.geo.mrc}</span>}
             {report.geo?.region && <span className="ma-chip">{report.geo.region}</span>}
+            {report.geo?.population != null && <span className="ma-chip">{report.geo.population.toLocaleString('fr-CA')} hab.</span>}
+            {report.geo?.density != null && <span className="ma-chip">{report.geo.density.toLocaleString('fr-CA')} hab./km²</span>}
           </div>
           {report.geo?.display_name && <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{report.geo.display_name}</div>}
         </div>

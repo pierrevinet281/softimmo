@@ -8,8 +8,10 @@
 // (workers Python aux phases suivantes — voir mémoire market-analysis-data-sources).
 
 import { lookupMunicipality, municipalitiesIn } from '../lib/quebecGeo.js';
+import { muniDemographics, mrcDemographics, regionDemographics } from '../lib/quebecDemographics.js';
 
 const SRC = {
+  mamh: 'MAMH — Répertoire des municipalités du Québec',
   census: 'Statistique Canada — Recensement 2021 (api.statcan.gc.ca)',
   osm: 'OpenStreetMap / Overpass (ODbL)',
   donneesQc: 'Données Québec (CC-BY 4.0)',
@@ -18,10 +20,10 @@ const SRC = {
   isq: 'Institut de la statistique du Québec',
 };
 
-// Indicateurs socio-économiques communs (région / MRC / municipalité). value=null → à intégrer.
+// Indicateurs socio-économiques approfondis (région / MRC / municipalité) — à intégrer (census/ISQ).
+// La population est désormais fournie séparément (MAMH), donc exclue d'ici.
 function socioIndicators() {
   return [
-    { key: 'population', label_fr: 'Population', label_en: 'Population', source: SRC.census },
     { key: 'demographics', label_fr: 'Démographie (âge, ménages, scolarité, langues)', label_en: 'Demographics', source: SRC.census },
     { key: 'industries', label_fr: 'Industries / secteurs d’activité', label_en: 'Industries', source: SRC.census },
     { key: 'economic_index', label_fr: 'Indice d’activité économique', label_en: 'Economic activity index', source: SRC.isq },
@@ -147,11 +149,21 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
 
   const geoList = (names) => (names.length ? `${names.length} municipalité(s) : ${names.slice(0, 25).join(', ')}${names.length > 25 ? '…' : ''}` : null);
 
+  // Démographie MAMH (population/superficie/gentilé + agrégats MRC/région).
+  const demMuni = muniDemographics(muni?.name || city);
+  const demMrc = mrcDemographics(mrc);
+  const demReg = regionDemographics(region);
+  const fmtPop = (p) => (p != null ? `${Number(p).toLocaleString('fr-CA')} hab.` : null);
+  const density = (demMuni && demMuni.pop && demMuni.area) ? Math.round(demMuni.pop / demMuni.area) : null;
+
   const sections = [
     {
       key: 'region', label_fr: 'Région administrative', label_en: 'Administrative region',
       items: [
         item('Emplacement géographique', 'Geographic location', region, SRC.donneesQc),
+        item('Population (région)', 'Population (region)', fmtPop(demReg?.pop), SRC.mamh),
+        item('Nombre de municipalités', 'Number of municipalities', demReg?.n_munis ?? null, SRC.mamh),
+        item('Nombre de MRC', 'Number of MRCs', demReg?.n_mrc ?? null, SRC.mamh),
         item('Principales municipalités', 'Main municipalities', geoList(inRegion), SRC.donneesQc),
         ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
       ],
@@ -160,6 +172,8 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
       key: 'mrc', label_fr: 'MRC', label_en: 'Regional county municipality (MRC)',
       items: [
         item('Emplacement géographique', 'Geographic location', mrc, SRC.donneesQc),
+        item('Population (MRC)', 'Population (MRC)', fmtPop(demMrc?.pop), SRC.mamh),
+        item('Nombre de municipalités', 'Number of municipalities', demMrc?.n_munis ?? null, SRC.mamh),
         item('Municipalités de la MRC', 'Municipalities in the MRC', geoList(inMrc), SRC.donneesQc),
         ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
         item('Autres données caractérisant la MRC', 'Other MRC characteristics', null, SRC.isq),
@@ -169,6 +183,10 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
       key: 'municipality', label_fr: 'Municipalité', label_en: 'Municipality',
       items: [
         item('Nom', 'Name', muni?.name || city || null, SRC.donneesQc),
+        item('Population', 'Population', fmtPop(demMuni?.pop), SRC.mamh),
+        item('Superficie', 'Land area', demMuni?.area != null ? `${demMuni.area} km²` : null, SRC.mamh),
+        item('Densité', 'Density', density != null ? `${density.toLocaleString('fr-CA')} hab./km²` : null, SRC.mamh),
+        item('Gentilé', 'Demonym', demMuni?.gentile || null, SRC.mamh),
         item('Nombre d’entreprises', 'Number of businesses', null, SRC.donneesQc),
         item('Principales entreprises', 'Main businesses', null, SRC.osm),
         ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
@@ -197,6 +215,10 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
     },
   ];
 
+  // Ordre de présentation : du plus local au plus large (secteur → accès → municipalité → MRC → région).
+  const SECTION_ORDER = ['secteur', 'access', 'municipality', 'mrc', 'region'];
+  sections.sort((a, b) => SECTION_ORDER.indexOf(a.key) - SECTION_ORDER.indexOf(b.key));
+
   const dataCount = sections.reduce((s, sec) => s + sec.items.filter((i) => i.status === 'data').length, 0);
   const pendingCount = sections.reduce((s, sec) => s + sec.items.filter((i) => i.status === 'pending').length, 0);
 
@@ -204,6 +226,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
     municipality: muni?.name || city || null, mrc, region,
     lat: local?.lat ?? null, lon: local?.lon ?? null, display_name: local?.display_name || null,
     radius_m: local?.radius_m ?? null,
+    population: demMuni?.pop ?? null, density, area_km2: demMuni?.area ?? null, gentile: demMuni?.gentile ?? null,
   };
   const { scores, walkability } = buildScores(local);
   const overview = buildOverview(walkability, scores, geoObj);
