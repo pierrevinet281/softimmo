@@ -12,7 +12,7 @@ import { Card, Button, Select, EmptyState, Badge } from '../components/ui.jsx';
 import { useI18n } from '../i18n/index.jsx';
 
 // Icône par section.
-const SECTION_ICON = { secteur: Trees, access: Car, municipality: Landmark, mrc: Map, region: MapPin };
+const SECTION_ICON = { secteur: Trees, access: Car, municipality: Landmark, mrc: MapIcon, region: MapPin };
 
 // Icône d'un indicateur d'après son libellé (FR+EN).
 function labelIcon(it) {
@@ -34,7 +34,7 @@ function labelIcon(it) {
   if (s.includes('density') || s.includes('densité')) return Activity;
   if (s.includes('demonym') || s.includes('gentilé')) return Tag;
   if (s.includes('business') || s.includes('entreprise')) return Briefcase;
-  if (s.includes('zoning') || s.includes('zonage')) return Map;
+  if (s.includes('zoning') || s.includes('zonage')) return MapIcon;
   if (s.includes('municipal services') || s.includes('services municip')) return Wrench;
   if (s.includes('road access') || s.includes('accès rout')) return Car;
   if (s.includes('market stats') || s.includes('statistiques de marché')) return LineChart;
