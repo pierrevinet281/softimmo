@@ -118,24 +118,32 @@ export function adjustComparable(subject, comp, params, asOf) {
     }
   }
 
+  // Note de construction standard assumée (donnée catégorielle absente → option de référence à 0).
+  const stdNote = (sRaw, cRaw) => (cRaw == null ? ' (comparable : construction standard assumée)' : (sRaw == null ? ' (sujet : construction standard assumée)' : ''));
+
   // 2) Caractéristiques % (option → valeur ; multi → MOYENNE) : (moy. sujet − moy. comp) × prix.
+  // Donnée absente d'un côté = construction standard (référence à 0) pour comptabiliser la prime de l'autre.
   for (const [key, cfg] of Object.entries(params.features_pct || {})) {
     const attr = cfg.attr || key; const opts = cfg.options || {};
-    const sPct = avgOpt(subject[attr], opts); const cPct = avgOpt(pick(c, attr) ?? c[key], opts);
-    if (sPct == null || cPct == null || sPct === cPct) continue;
+    const sRaw = avgOpt(subject[attr], opts); const cRaw = avgOpt(pick(c, attr) ?? c[key], opts);
+    if (sRaw == null && cRaw == null) continue;
+    const sPct = sRaw == null ? 0 : sRaw; const cPct = cRaw == null ? 0 : cRaw;
+    if (sPct === cPct) continue;
     const delta = sPct - cPct; const amount = delta * price;
     add(`featpct_${key}`, cfg.label_fr || key, { subject: `${(sPct * 100).toFixed(1)} %`, comp: `${(cPct * 100).toFixed(1)} %`, delta, unit: '%', rate: delta, amount,
-      explanation: `${cfg.label_fr || key} : ${(sPct * 100).toFixed(1)} % (sujet) vs ${(cPct * 100).toFixed(1)} % (comparable) — moyenne des éléments sélectionnés ; on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
+      explanation: `${cfg.label_fr || key} : ${(sPct * 100).toFixed(1)} % (sujet) vs ${(cPct * 100).toFixed(1)} % (comparable) — moyenne des éléments sélectionnés ; on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.${stdNote(sRaw, cRaw)}` });
   }
 
   // 3) Caractéristiques $ (option → $ contributif ; multi → MOYENNE) : (moy. sujet − moy. comp).
   for (const [key, cfg] of Object.entries(params.features_dollar || {})) {
     const attr = cfg.attr || key; const opts = cfg.options || {};
-    const sVal = avgOpt(subject[attr], opts); const cVal = avgOpt(pick(c, attr) ?? c[key], opts);
-    if (sVal == null || cVal == null || sVal === cVal) continue;
+    const sRaw = avgOpt(subject[attr], opts); const cRaw = avgOpt(pick(c, attr) ?? c[key], opts);
+    if (sRaw == null && cRaw == null) continue;
+    const sVal = sRaw == null ? 0 : sRaw; const cVal = cRaw == null ? 0 : cRaw;
+    if (sVal === cVal) continue;
     const amount = sVal - cVal;
     add(`featdol_${key}`, cfg.label_fr || key, { subject: `${Math.round(sVal).toLocaleString('fr-CA')} $`, comp: `${Math.round(cVal).toLocaleString('fr-CA')} $`, delta: amount, unit: '$', rate: 1, amount,
-      explanation: `${cfg.label_fr || key} : ${Math.round(sVal).toLocaleString('fr-CA')} $ (sujet) vs ${Math.round(cVal).toLocaleString('fr-CA')} $ (comparable) — moyenne ; on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.` });
+      explanation: `${cfg.label_fr || key} : ${Math.round(sVal).toLocaleString('fr-CA')} $ (sujet) vs ${Math.round(cVal).toLocaleString('fr-CA')} $ (comparable) — moyenne ; on ${amount >= 0 ? 'ajoute' : 'retranche'} ${Math.abs(Math.round(amount)).toLocaleString('fr-CA')} $.${stdNote(sRaw, cRaw)}` });
   }
 
   // 4) Accessoires ($ par quantité ; sous_sol_fini = $/pi² de sous-sol fini). (qté sujet − qté comp) × prix.
