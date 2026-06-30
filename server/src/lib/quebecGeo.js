@@ -38,3 +38,16 @@ export function searchMunicipalities(q, limit = 40) {
 export function regions() {
   return data().regions;
 }
+
+/** Municipalité par nom exact (insensible casse/accents). null si absente du seed. */
+export function lookupMunicipality(name) {
+  const term = norm(name).trim();
+  if (!term) return null;
+  return data().municipalities.find((m) => norm(m.name) === term) || null;
+}
+
+/** Municipalités d'une région et/ou MRC (ordre alphabétique). */
+export function municipalitiesIn({ region, mrc } = {}) {
+  const r = norm(region); const k = norm(mrc);
+  return data().municipalities.filter((m) => (!r || norm(m.region) === r) && (!k || norm(m.mrc) === k));
+}

@@ -12,10 +12,11 @@ import config from '../lib/config.js';
 import { makeCrudRouter } from './_crud.js';
 import {
   Clients, Properties, Buildings, Units, Expenses, Transactions, Comparables, Reports, Documents, Activity, Settings,
-  PropertyMedia, BrokerAssets,
+  PropertyMedia, BrokerAssets, Evaluations, MarketAnalyses,
 } from '../db/repositories/index.js';
 import { computeProfitability, detectAreaAnomalies } from '../engine/finance.js';
 import { computeAcm } from '../engine/acm.js';
+import { buildMarketAnalysis } from '../engine/marketAnalysis.js';
 import { buildMarketingCopy } from '../engine/marketingCopy.js';
 import { buildOffreData, OFFRE_VARIANTS, OFFRE_LANGS, resolveOffreContent, applyOfferDiff } from '../engine/offre.js';
 import { buildRpaData, imagesFromMedia, rpaDefaults, rpaContent, RPA_IMAGE_SLOTS, RPA_ROLES } from '../engine/rpaBrochure.js';
@@ -35,6 +36,8 @@ const ENTITIES = [
   { path: 'expenses',     repo: Expenses,     type: 'expense',     labelField: 'label',     required: ['property_id', 'category'] },
   { path: 'transactions', repo: Transactions, type: 'transaction', labelField: 'status',    required: ['property_id'] },
   { path: 'comparables',  repo: Comparables,  type: 'comparable',  labelField: 'address',   required: ['property_id'] },
+  { path: 'evaluations',  repo: Evaluations,  type: 'evaluation',  labelField: 'title',     required: ['property_id'] },
+  { path: 'market-analyses', repo: MarketAnalyses, type: 'market_analysis', labelField: 'title', required: ['property_id'] },
   { path: 'reports',      repo: Reports,      type: 'report',      labelField: 'title',     required: ['property_id'] },
   { path: 'documents',    repo: Documents,    type: 'document',    labelField: 'title',     required: ['doc_type'] },
   { path: 'broker-assets', repo: BrokerAssets, type: 'broker_asset', labelField: 'name',     required: ['name'] },
@@ -61,6 +64,8 @@ export default function mountBusiness(parent = Router()) {
       expenses: Expenses.listBy('property_id', pid),
       transactions: Transactions.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
       comparables: Comparables.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
+      evaluations: Evaluations.listBy('property_id', pid, { sort: 'created_at', dir: 'desc' }),
+      market_analyses: MarketAnalyses.listBy('property_id', pid, { sort: 'created_at', dir: 'desc' }),
       reports: Reports.listBy('property_id', pid, { sort: 'date', dir: 'desc' }),
       documents: Documents.listBy('property_id', pid, { sort: 'updated_at', dir: 'desc' }),
     });
@@ -124,7 +129,37 @@ export default function mountBusiness(parent = Router()) {
     };
 
     const result = computeAcm({ subject, comparables, params, asOf: body.asOf, ignored: body.ignored });
+
+    // Auto-enregistrement : un calcul « final » (bouton Calculer) ajoute un instantané à la table
+    // des évaluations de la propriété. Les recalculs (bascule « ignorer ») passent save=false.
+    if (body.save) {
+      const exp = result.expected || {};
+      Evaluations.create({
+        property_id: pid,
+        title: `Évaluation — ${property.name || property.address || property.city || pid} (${(body.asOf || new Date().toISOString().slice(0, 10))})`,
+        as_of: body.asOf || new Date().toISOString().slice(0, 10),
+        expected_point: exp.point ?? null, expected_low: exp.low ?? null, expected_high: exp.high ?? null,
+        listing_price: result.listingPrice ?? null,
+        sold_count: (result.sold || []).filter((s) => !s.excluded).length,
+        subject, ignored: body.ignored || [], result,
+      });
+      Activity.log({ kind: 'create', entity_type: 'evaluation', entity_id: pid, summary: `Évaluation enregistrée (${exp.point ? Math.round(exp.point).toLocaleString('fr-CA') + ' $' : '—'})` });
+    }
     res.json({ property_id: pid, subject, params, ...result });
+  }));
+
+  // ── Analyse de marché (Module 2) : génère + enregistre une caractérisation du secteur ──
+  parent.post('/properties/:id/market-analysis', wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const attrs = (property.attributes && typeof property.attributes === 'object') ? property.attributes : {};
+    const report = buildMarketAnalysis({ property, attrs });
+    const saved = MarketAnalyses.create({
+      property_id: property.id, title: report.title,
+      municipality: report.geo.municipality, mrc: report.geo.mrc, region: report.geo.region, report,
+    });
+    Activity.log({ kind: 'create', entity_type: 'market_analysis', entity_id: property.id, summary: report.title });
+    res.status(201).json({ analysis: saved });
   }));
 
   // Import d'un PDF Matrix « 4 par page courtier » → extraction (worker Python pdfplumber)
