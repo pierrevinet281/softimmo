@@ -557,12 +557,12 @@ export default function Evaluation() {
   });
 
   const compute = useMutation({
-    mutationFn: (ig) => api.post(`/properties/${propertyId}/acm`, { subject: buildSubject(), params, ignored: [...(ig || ignored)] }),
-    onSuccess: (r) => setResult(r),
+    mutationFn: ({ ig, save } = {}) => api.post(`/properties/${propertyId}/acm`, { subject: buildSubject(), params, ignored: [...(ig || ignored)], save: !!save }),
+    onSuccess: (r, vars) => { setResult(r); if (vars?.save) qc.invalidateQueries({ queryKey: ['bundle', propertyId] }); },
   });
-  // Bascule « ignorer » d'un poste (ou de tous) : met à jour l'état puis recalcule (totaux/opinion cohérents).
-  const toggleIgnore = (key) => { const nx = new Set(ignored); nx.has(key) ? nx.delete(key) : nx.add(key); setIgnored(nx); compute.mutate(nx); };
-  const toggleIgnoreAll = (keys) => { const nx = keys.every((k) => ignored.has(k)) ? new Set() : new Set(keys); setIgnored(nx); compute.mutate(nx); };
+  // Bascule « ignorer » d'un poste (ou de tous) : recalcule sans créer de nouvelle évaluation (save=false).
+  const toggleIgnore = (key) => { const nx = new Set(ignored); nx.has(key) ? nx.delete(key) : nx.add(key); setIgnored(nx); compute.mutate({ ig: nx, save: false }); };
+  const toggleIgnoreAll = (keys) => { const nx = keys.every((k) => ignored.has(k)) ? new Set() : new Set(keys); setIgnored(nx); compute.mutate({ ig: nx, save: false }); };
 
   const onSelect = (id) => { setPropertyId(id); setAttrs(null); setIncl({}); setResult(null); setIgnored(new Set()); };
   const refetchComps = () => qc.invalidateQueries({ queryKey: ['bundle', propertyId] });
@@ -632,7 +632,7 @@ export default function Evaluation() {
 
           {/* 4. Calcul */}
           <div className="toolbar" style={{ marginBottom: 16 }}>
-            <Button variant="primary" icon={Calculator} onClick={() => compute.mutate()} disabled={compute.isPending}>{t('ev.compute')}</Button>
+            <Button variant="primary" icon={Calculator} onClick={() => compute.mutate({ save: true })} disabled={compute.isPending}>{t('ev.compute')}</Button>
             {compute.isError && <span className="notice notice-warn" style={{ margin: 0 }}><AlertTriangle size={16} />{String(compute.error?.message)}</span>}
           </div>
 

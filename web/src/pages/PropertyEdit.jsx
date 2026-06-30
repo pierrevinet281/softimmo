@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Plus, ArrowLeft, FileText, FileBarChart } from 'lucide-react';
+import { Save, Plus, ArrowLeft, FileText, FileBarChart, Map as MapIcon, Trash2, ExternalLink } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Modal, FormField, Select, EmptyState } from '../components/ui.jsx';
 import { EntityTable } from '../components/EntityTable.jsx';
 import BuildingsUnits, { RentRoll, ExpensesEditor } from '../components/BuildingsUnits.jsx';
 import { ComparablesEditor } from './Evaluation.jsx';
+import { MarketAnalysisPanel } from './MarketAnalysis.jsx';
 import ClientModal from '../components/ClientModal.jsx';
 import CityField from '../components/CityField.jsx';
 import AttrField from '../components/AttrField.jsx';
@@ -34,11 +35,49 @@ const TABS = [
   { id: 'profit', labelKey: 'd.tab.profit' },
   { id: 'transactions', labelKey: 'd.tab.transactions' },
   { id: 'comparables', labelKey: 'd.tab.comparables' },
+  { id: 'evaluations', labelKey: 'pe.tab.evaluations' },
+  { id: 'market', labelKey: 'pe.tab.market' },
   { id: 'photos', labelKey: 'd.tab.photos' },
   { id: 'plans', labelKey: 'pe.tab.plans' },
   { id: 'marketing', labelKey: 'd.tab.marketing' },
   { id: 'reports', labelKey: 'd.tab.reports' },
 ];
+
+// Onglet Évaluations : instantanés d'opinions de valeur enregistrés (auto au calcul ACM).
+function EvaluationsTab({ items, navigate, propertyId, refetch }) {
+  const { t } = useI18n();
+  const money = (v) => (v == null ? '—' : Number(v).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }));
+  const del = async (id) => { if (window.confirm(t('pe.evl.delConfirm'))) { await api.del(`/evaluations/${id}`); refetch(); } };
+  if (!items?.length) {
+    return <EmptyState icon={FileBarChart} title={t('pe.evl.none')} hint={t('pe.evl.noneHint')}
+      action={<Button variant="outline" icon={FileBarChart} onClick={() => navigate(`/evaluation?property=${propertyId}`)}>{t('pe.evaluate')}</Button>} />;
+  }
+  return (
+    <div className="table-wrap" style={{ overflowX: 'auto' }}>
+      <table className="table">
+        <thead><tr>
+          <th>{t('pe.evl.date')}</th><th className="num">{t('pe.evl.opinion')}</th><th className="num">{t('pe.evl.range')}</th>
+          <th className="num">{t('pe.evl.listing')}</th><th className="num">{t('pe.evl.comps')}</th><th></th>
+        </tr></thead>
+        <tbody>
+          {items.map((e) => (
+            <tr key={e.id}>
+              <td>{(e.created_at || e.as_of || '').slice(0, 16).replace('T', ' ')}</td>
+              <td className="num" style={{ fontWeight: 700 }}>{money(e.expected_point)}</td>
+              <td className="num muted">{e.expected_low != null ? `${money(e.expected_low)} – ${money(e.expected_high)}` : '—'}</td>
+              <td className="num">{money(e.listing_price)}</td>
+              <td className="num">{e.sold_count ?? '—'}</td>
+              <td className="num" style={{ whiteSpace: 'nowrap' }}>
+                <Button variant="ghost" size="sm" icon={ExternalLink} onClick={() => navigate(`/evaluation?property=${propertyId}`)}>{t('pe.evl.open')}</Button>
+                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => del(e.id)} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function PropertyEdit() {
   const { t, lang } = useI18n();
@@ -146,6 +185,7 @@ export default function PropertyEdit() {
         </div>
         <div className="spacer" />
         {isEdit && <Button variant="outline" icon={FileBarChart} onClick={() => navigate(`/evaluation?property=${id}`)}>{t('pe.evaluate')}</Button>}
+        {isEdit && <Button variant="outline" icon={MapIcon} onClick={() => navigate(`/market-analysis?property=${id}`)}>{t('pe.marketAnalysis')}</Button>}
         {isEdit && <Button variant="outline" icon={FileText} onClick={() => setBrochureOpen(true)}>{t('d.brochure')}</Button>}
         <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/properties')}>{t('pe.back')}</Button>
         <Button variant="primary" icon={Save} disabled={save.isPending || !base.name} onClick={saveToEdit}>{t('common.save')}</Button>
@@ -292,6 +332,8 @@ export default function PropertyEdit() {
           {tab === 'profit' && <ProfitabilityTab propertyId={id} />}
           {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', id]]} />}
           {tab === 'comparables' && <ComparablesEditor propertyId={id} />}
+          {tab === 'evaluations' && <EvaluationsTab items={bundle.evaluations} navigate={navigate} propertyId={id} refetch={refetch} />}
+          {tab === 'market' && <MarketAnalysisPanel propertyId={id} />}
           {tab === 'photos' && <PhotosTab property={property} units={bundle.units} refetch={refetch} />}
           {tab === 'plans' && <PlansTab propertyId={id} />}
           {tab === 'marketing' && <MarketingTab propertyId={id} saved={property.marketing} onSaved={refetch} />}
