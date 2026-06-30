@@ -57,14 +57,17 @@ function dimScore(cat, target) {
   const dens = clamp((n / target) * 100, 0, 100);
   return Math.round(0.6 * prox + 0.4 * dens);
 }
+// Ordre logique : commerces/services quotidiens groupés, puis familles, santé, plein air.
 const DIMS = [
-  { key: 'errands', fr: 'Services quotidiens', en: 'Daily errands', cat: 'groceries', target: 6, w: 0.30 },
-  { key: 'dining', fr: 'Restaurants & cafés', en: 'Dining & cafés', cat: 'restaurants', target: 20, w: 0.25 },
-  { key: 'parks', fr: 'Parcs & plein air', en: 'Parks & outdoors', cat: 'parks', target: 10, w: 0.20 },
+  { key: 'errands', fr: 'Épiceries & dépanneurs', en: 'Grocery & convenience', cat: 'groceries', target: 6, w: 0.26 },
+  { key: 'pharmacy', fr: 'Pharmacies', en: 'Pharmacies', cat: 'pharmacy', target: 3, w: 0.12 },
+  { key: 'gas', fr: 'Stations d’essence', en: 'Gas stations', cat: 'gas', target: 3, w: 0.05 },
+  { key: 'dining', fr: 'Restaurants & cafés', en: 'Dining & cafés', cat: 'restaurants', target: 20, w: 0.18 },
   { key: 'schools', fr: 'Écoles & familles', en: 'Schools & families', cat: 'schools', target: 6, w: 0.15 },
-  { key: 'childcare', fr: 'Garderies', en: 'Childcare', cat: 'childcare', target: 5, w: 0 },
-  { key: 'sports', fr: 'Sports & loisirs', en: 'Sports & recreation', cat: 'sports', target: 6, w: 0.10 },
-  { key: 'health', fr: 'Santé', en: 'Healthcare', cat: 'hospitals', target: 2, w: 0 },
+  { key: 'childcare', fr: 'Garderies', en: 'Childcare', cat: 'childcare', target: 5, w: 0.05 },
+  { key: 'health', fr: 'Santé', en: 'Healthcare', cat: 'hospitals', target: 2, w: 0.07 },
+  { key: 'parks', fr: 'Parcs & plein air', en: 'Parks & outdoors', cat: 'parks', target: 10, w: 0.07 },
+  { key: 'sports', fr: 'Sports & loisirs', en: 'Sports & recreation', cat: 'sports', target: 6, w: 0.05 },
 ];
 
 function buildScores(local) {
@@ -89,7 +92,7 @@ function buildScores(local) {
     const r = ratingOf(s);
     const detail_fr = c.nearest ? `${c.count} à proximité — ${c.nearest.name} (~${c.nearest.dist_m} m)` : `${c.count} à proximité`;
     const detail_en = c.nearest ? `${c.count} nearby — ${c.nearest.name} (~${c.nearest.dist_m} m)` : `${c.count} nearby`;
-    scores.push({ key: d.key, label_fr: d.fr, label_en: d.en, score: s, rating_fr: r.fr, rating_en: r.en, detail_fr, detail_en });
+    scores.push({ key: d.key, label_fr: d.fr, label_en: d.en, score: s, rating_fr: r.fr, rating_en: r.en, detail_fr, detail_en, count: c.count, top: (c.items || []).slice(0, 5) });
     if (d.w) { wsum += s * d.w; wtot += d.w; }
   }
   return { scores, walkability: wtot ? Math.round(wsum / wtot) : null };

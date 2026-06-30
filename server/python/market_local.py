@@ -23,13 +23,15 @@ OVERPASS = "https://overpass-api.de/api/interpreter"
 
 # Catégories OSM : clé interne -> liste de filtres Overpass (tag=value).
 CATS = {
-    "hospitals":   ['amenity=hospital', 'amenity=clinic'],
+    "groceries":   ['shop=supermarket', 'shop=grocery', 'shop=convenience'],
+    "pharmacy":    ['amenity=pharmacy', 'shop=chemist'],
+    "gas":         ['amenity=fuel'],
+    "restaurants": ['amenity=restaurant', 'amenity=fast_food', 'amenity=cafe'],
     "schools":     ['amenity=school', 'amenity=university', 'amenity=college'],
     "childcare":   ['amenity=kindergarten', 'amenity=childcare'],
-    "groceries":   ['shop=supermarket', 'shop=grocery', 'shop=convenience'],
-    "restaurants": ['amenity=restaurant', 'amenity=fast_food', 'amenity=cafe'],
-    "sports":      ['leisure=sports_centre', 'leisure=fitness_centre', 'amenity=gym', 'leisure=fitness_station'],
+    "hospitals":   ['amenity=hospital', 'amenity=clinic'],
     "parks":       ['leisure=park'],
+    "sports":      ['leisure=sports_centre', 'leisure=fitness_centre', 'amenity=gym', 'leisure=fitness_station'],
 }
 ROAD_TYPES = ['motorway', 'trunk', 'primary']  # axes structurants
 
@@ -189,7 +191,7 @@ def main():
         print(json.dumps({"error": f"OSM indisponible: {e}"}))
         return
 
-    cats = {c: {"count": 0, "nearest": None} for c in CATS}
+    cats = {c: {"count": 0, "items": [], "nearest": None} for c in CATS}
     roads = {}
     for el in elements:
         tags = el.get("tags", {}) or {}
@@ -213,9 +215,14 @@ def main():
             continue
         cats[cat]["count"] += 1
         nm = tags.get("name") or tags.get("operator")
-        cur = cats[cat]["nearest"]
-        if nm and (cur is None or dist < cur["dist_m"]):
-            cats[cat]["nearest"] = {"name": nm, "dist_m": dist}
+        if nm:
+            cats[cat]["items"].append({"name": nm, "dist_m": dist, "lat": round(float(plat), 6), "lon": round(float(plon), 6)})
+
+    # Top 5 par catégorie (par distance) + plus proche.
+    for c in cats.values():
+        c["items"].sort(key=lambda x: x["dist_m"])
+        c["items"] = c["items"][:5]
+        c["nearest"] = c["items"][0] if c["items"] else None
 
     road_list = sorted(roads.values(), key=lambda r: r["dist_m"])[:6]
     # Écussons d'autoroute (best-effort) + photos de ville/région (Wikipédia, best-effort).

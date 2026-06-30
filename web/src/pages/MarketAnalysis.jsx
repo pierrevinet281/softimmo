@@ -5,7 +5,7 @@ import {
   Map as MapIcon, RefreshCw, Trash2, MapPin, Database, Car, GraduationCap,
   Baby, ShoppingCart, Utensils, Dumbbell, Trees, HeartPulse, TrendingUp, Lightbulb,
   Users, Hash, BarChart3, Factory, Banknote, Shovel, Building2, Binoculars, Cake,
-  Wallet, Ruler, Tag, Landmark, Briefcase, Wrench, LineChart, Activity, Satellite,
+  Wallet, Ruler, Tag, Landmark, Briefcase, Wrench, LineChart, Activity, Satellite, Fuel, Pill,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Select, EmptyState, Badge } from '../components/ui.jsx';
@@ -51,8 +51,8 @@ function aerialUrl(lat, lon, w = 600, h = 320, span = 0.02) {
 
 // Icônes par catégorie de commodité / score.
 const CAT_ICON = {
-  access: Car, errands: ShoppingCart, dining: Utensils, parks: Trees, schools: GraduationCap,
-  sports: Dumbbell, childcare: Baby, health: HeartPulse,
+  access: Car, errands: ShoppingCart, pharmacy: Pill, gas: Fuel, dining: Utensils, parks: Trees,
+  schools: GraduationCap, sports: Dumbbell, childcare: Baby, health: HeartPulse,
   hospitals: HeartPulse, groceries: ShoppingCart, restaurants: Utensils,
 };
 const POI_META = [
@@ -109,7 +109,7 @@ function MarketAnalysisReport({ report }) {
   const scores = report.scores || [];
   const scoreByKey = Object.fromEntries(scores.map((s) => [s.key, s]));
   // Tuiles du voisinage (score + commodité combinés) — ordre voulu : garderies avant sports.
-  const POI_ORDER = ['errands', 'dining', 'parks', 'schools', 'childcare', 'sports', 'health'];
+  const POI_ORDER = ['errands', 'pharmacy', 'gas', 'dining', 'schools', 'childcare', 'health', 'parks', 'sports'];
   const poiGauges = POI_ORDER.map((k) => scoreByKey[k]).filter(Boolean);
   const accessScore = scoreByKey.access || null;
   // Ordre des blocs : secteur → accès → municipalité → MRC → région (s'applique aussi aux anciens rapports).
@@ -125,6 +125,30 @@ function MarketAnalysisReport({ report }) {
       <div className="muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{en ? s.detail_en : s.detail_fr}</div>
     </div>
   );
+  // Lien Google Maps pour un point d'intérêt (nom + municipalité).
+  const gmaps = (name) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([name, report.geo?.municipality].filter(Boolean).join(', '))}`;
+  // Tuile de voisinage : jauge + nb + top 5 (noms cliquables + distance km).
+  const nbTile = (s) => {
+    const Icon = CAT_ICON[s.key] || MapPin;
+    return (
+      <div className="ma-score-card ma-nbtile" key={s.key}>
+        <div className="ma-nbtile-head">
+          <ScoreGauge score={s.score} size={54} />
+          <div>
+            <div className="ma-score-label"><Icon size={13} /> {lab(s)}</div>
+            <div className="muted" style={{ fontSize: 11 }}>{s.count} {t('ma.nearby')}</div>
+          </div>
+        </div>
+        {s.top?.length > 0 && (
+          <ul className="ma-toplist">
+            {s.top.map((p, i) => (
+              <li key={i}><a href={gmaps(p.name)} target="_blank" rel="noreferrer">{p.name}</a> <span className="muted">({(p.dist_m / 1000).toFixed(1)} km)</span></li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  };
   const renderTable = (sec) => (
     <div className="table-wrap" style={{ overflowX: 'auto' }}>
       <table className="table"><tbody>
@@ -213,7 +237,7 @@ function MarketAnalysisReport({ report }) {
         const content = (
           sec.key === 'secteur' && poiGauges.length > 0 ? (
             <>
-              <div className="ma-scores">{poiGauges.map((s) => Gauge(s, CAT_ICON[s.key] || MapPin))}</div>
+              <div className="ma-scores ma-scores-nb">{poiGauges.map((s) => nbTile(s))}</div>
               <div className="muted" style={{ fontSize: 11, margin: '10px 0 0' }}>{t('ma.scoresNote')}</div>
             </>
           ) : sec.key === 'access' ? (
