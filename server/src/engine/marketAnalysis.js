@@ -20,17 +20,26 @@ const SRC = {
   isq: 'Institut de la statistique du Québec',
 };
 
-// Indicateurs socio-économiques approfondis (région / MRC / municipalité) — à intégrer (census/ISQ).
-// La population est désormais fournie séparément (MAMH), donc exclue d'ici.
-function socioIndicators() {
+// Indicateurs socio-économiques (région / MRC / municipalité). Remplis depuis le recensement quand
+// disponible (cen = census CSD/CD) ; sinon « à intégrer ». La population vient séparément (MAMH).
+function socioIndicators(cen) {
+  const emp = cen?.unemployment_rate != null
+    ? `Chômage ${cen.unemployment_rate} %${cen.participation_rate != null ? ` · activité ${cen.participation_rate} %` : ''}` : null;
+  const growth = cen?.pop_change_pct != null ? `${cen.pop_change_pct > 0 ? '+' : ''}${cen.pop_change_pct} % (2016→2021)` : null;
+  let lang = null;
+  if (cen?.lang) {
+    const l = cen.lang; const tot = (l.fr + l.en + l.both + l.neither) || 1; const p = (x) => Math.round((x / tot) * 100);
+    lang = `Bilingue ${p(l.both)} % · français seul. ${p(l.fr)} % · anglais seul. ${p(l.en)} %`;
+  }
   return [
-    { key: 'demographics', label_fr: 'Démographie (âge, ménages, scolarité, langues)', label_en: 'Demographics', source: SRC.census },
-    { key: 'industries', label_fr: 'Industries / secteurs d’activité', label_en: 'Industries', source: SRC.census },
-    { key: 'economic_index', label_fr: 'Indice d’activité économique', label_en: 'Economic activity index', source: SRC.isq },
-    { key: 'employment', label_fr: 'Marché de l’emploi (taux d’emploi/chômage)', label_en: 'Labour market', source: SRC.isq },
-    { key: 'vacancy', label_fr: 'Taux d’inoccupation résidentiels', label_en: 'Residential vacancy rate', source: SRC.schl },
-    { key: 'pop_growth', label_fr: 'Prédictions de croissance de population', label_en: 'Population growth outlook', source: SRC.isq },
-    { key: 'econ_growth', label_fr: 'Prédictions de croissance économique', label_en: 'Economic growth outlook', source: SRC.isq },
+    { key: 'demographics', label_fr: 'Démographie (ménages, scolarité)', label_en: 'Demographics (households, education)', value: null, source: SRC.census },
+    { key: 'languages', label_fr: 'Langues (connaissance fr/en)', label_en: 'Official languages (knowledge)', value: lang, source: SRC.census },
+    { key: 'industries', label_fr: 'Industries / secteurs d’activité', label_en: 'Industries', value: null, source: SRC.census },
+    { key: 'economic_index', label_fr: 'Indice d’activité économique', label_en: 'Economic activity index', value: null, source: SRC.isq },
+    { key: 'employment', label_fr: 'Marché de l’emploi (chômage / activité)', label_en: 'Labour market (unemployment / participation)', value: emp, source: SRC.census },
+    { key: 'vacancy', label_fr: 'Taux d’inoccupation résidentiels', label_en: 'Residential vacancy rate', value: null, source: SRC.schl },
+    { key: 'pop_growth', label_fr: 'Croissance de population (2016→2021)', label_en: 'Population change (2016→2021)', value: growth, source: SRC.census },
+    { key: 'econ_growth', label_fr: 'Prédictions de croissance économique', label_en: 'Economic growth outlook', value: null, source: SRC.isq },
   ];
 }
 
@@ -172,7 +181,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Nombre de municipalités', 'Number of municipalities', demReg?.n_munis ?? null, SRC.mamh),
         item('Nombre de MRC', 'Number of MRCs', demReg?.n_mrc ?? null, SRC.mamh),
         item('Principales municipalités', 'Main municipalities', geoList(inRegion), SRC.donneesQc),
-        ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
+        ...socioIndicators(null).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
       ],
     },
     {
@@ -184,7 +193,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Revenu médian des ménages', 'Median household income', fmtMoney(cenMrc?.median_hh_income), SRC.census),
         item('Nombre de municipalités', 'Number of municipalities', demMrc?.n_munis ?? null, SRC.mamh),
         item('Municipalités de la MRC', 'Municipalities in the MRC', geoList(inMrc), SRC.donneesQc),
-        ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
+        ...socioIndicators(cenMrc).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
         item('Autres données caractérisant la MRC', 'Other MRC characteristics', null, SRC.isq),
       ],
     },
@@ -200,7 +209,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Revenu médian des ménages', 'Median household income', fmtMoney(cenMuni?.median_hh_income), SRC.census),
         item('Nombre d’entreprises', 'Number of businesses', null, SRC.donneesQc),
         item('Principales entreprises', 'Main businesses', null, SRC.osm),
-        ...socioIndicators().map((s) => item(s.label_fr, s.label_en, null, s.source)),
+        ...socioIndicators(cenMuni).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
         item('Statistiques de marché (prix médian, ventes, délais)', 'Market stats (median price, sales, DOM)', null, SRC.apciq),
       ],
     },
@@ -256,6 +265,12 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
     charts: {                          // distributions recensement (municipalité) pour graphiques
       age: cenMuni?.age_buckets || null,
       income: cenMuni?.income_brackets || null,
+      lang: cenMuni?.lang ? [
+        { label: 'Français seul.', count: cenMuni.lang.fr },
+        { label: 'Bilingue', count: cenMuni.lang.both },
+        { label: 'Anglais seul.', count: cenMuni.lang.en },
+        { label: 'Ni l’un/l’autre', count: cenMuni.lang.neither },
+      ] : null,
     },
     sections,            // grille détaillée (région/MRC/municipalité/secteur/accès)
     summary: { data_points: dataCount, pending_points: pendingCount, local: !!local },
