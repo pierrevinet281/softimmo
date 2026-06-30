@@ -99,6 +99,64 @@ def classify(tags):
     return None
 
 
+WIKI_FR = "https://fr.wikipedia.org/w/api.php"
+COMMONS = "https://commons.wikimedia.org/w/api.php"
+
+
+def _wiki(host, params):
+    return json.loads(_get(host + "?" + urllib.parse.urlencode(params), timeout=20))
+
+
+def wiki_image(title):
+    """Image principale (RASTER) d'un article Wikipédia + licence/attribution (Wikimedia, usage
+    commercial avec attribution). Exclut SVG (cartes/blasons) et licences non commerciales."""
+    import re as _re
+    try:
+        d = _wiki(WIKI_FR, {"action": "query", "format": "json", "redirects": "1", "titles": title,
+                            "prop": "pageimages", "piprop": "original|thumbnail", "pithumbsize": "800"})
+        page = next(iter(d["query"]["pages"].values()))
+        src = (page.get("thumbnail") or {}).get("source") or (page.get("original") or {}).get("source")
+        if not src or ".svg" in src.lower():
+            return None
+        fn = _re.sub(r"^\d+px-", "", urllib.parse.unquote(src.split("/")[-1]))
+        lic = credit = None
+        try:
+            li = _wiki(COMMONS, {"action": "query", "format": "json", "titles": "File:" + fn,
+                                 "prop": "imageinfo", "iiprop": "extmetadata",
+                                 "iiextmetadatafilter": "LicenseShortName|Artist"})
+            ii = next(iter(li["query"]["pages"].values())).get("imageinfo")
+            if ii:
+                em = ii[0]["extmetadata"]
+                lic = (em.get("LicenseShortName") or {}).get("value")
+                art = (em.get("Artist") or {}).get("value")
+                if art:
+                    credit = _re.sub("<[^>]+>", "", art).strip()[:80]
+        except Exception:
+            pass
+        if lic and ("nc" in lic.lower() or "non-comm" in lic.lower()):
+            return None  # exclure usage non commercial
+        return {"url": src, "license": lic, "credit": credit}
+    except Exception:
+        return None
+
+
+def autoroute_sign(name):
+    """Écusson d'autoroute du Québec depuis Wikimedia Commons (domaine public)."""
+    import re as _re
+    m = _re.search(r"(\d+)", str(name))
+    if not m:
+        return None
+    try:
+        d = _wiki(COMMONS, {"action": "query", "format": "json", "iiprop": "url", "iiurlwidth": "96",
+                            "titles": f"File:Quebec Autoroute {m.group(1)}.svg", "prop": "imageinfo"})
+        p = next(iter(d["query"]["pages"].values()))
+        if "imageinfo" in p:
+            return p["imageinfo"][0].get("thumburl") or p["imageinfo"][0].get("url")
+    except Exception:
+        pass
+    return None
+
+
 def main():
     try:
         payload = json.loads(sys.stdin.read() or "{}")
@@ -156,10 +214,27 @@ def main():
             cats[cat]["nearest"] = {"name": nm, "dist_m": dist}
 
     road_list = sorted(roads.values(), key=lambda r: r["dist_m"])[:6]
+    # Écussons d'autoroute (best-effort) + photos de ville/région (Wikipédia, best-effort).
+    for r in road_list:
+        if r.get("type") == "motorway":
+            s = autoroute_sign(r["name"])
+            if s:
+                r["sign"] = s
+    images = {}
+    city = payload.get("city"); region = payload.get("region")
+    if city:
+        im = wiki_image(city)
+        if im:
+            images["municipality"] = im
+    if region:
+        im = wiki_image(f"{region} (région administrative)") or wiki_image(region)
+        if im:
+            images["region"] = im
+
     print(json.dumps({
         "lat": lat, "lon": lon, "display_name": display,
         "radius_m": radius_m, "road_radius_m": road_radius_m,
-        "categories": cats, "roads": road_list,
+        "categories": cats, "roads": road_list, "images": images,
     }, ensure_ascii=False))
 
 

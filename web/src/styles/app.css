@@ -224,6 +224,26 @@ code, .mono { font-family: var(--font-mono); }
 .ma-poi { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 .ma-poi-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); }
 .ma-poi-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: var(--color-accent-subtle); color: var(--color-accent); flex-shrink: 0; }
+/* Cartes (plan + aérien) */
+.ma-maps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 720px) { .ma-maps { grid-template-columns: 1fr; } }
+.ma-map-cap { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-muted); padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
+.ma-credit { font-size: 10px; padding: 4px 12px; text-align: right; }
+/* Icône en tête de cellule */
+.ma-cell { display: inline-flex; align-items: center; gap: 7px; }
+.ma-cell-ic { color: var(--color-accent); flex-shrink: 0; }
+/* Bloc avec photo (alternance gauche/droite) */
+.ma-split { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+.ma-split.rev { grid-template-columns: 1fr 300px; }
+.ma-split.rev .ma-photo { order: 2; }
+@media (max-width: 720px) { .ma-split, .ma-split.rev { grid-template-columns: 1fr; } .ma-split.rev .ma-photo { order: 0; } }
+.ma-photo { margin: 0; }
+.ma-photo img { width: 100%; border-radius: var(--radius-md); display: block; object-fit: cover; max-height: 220px; }
+.ma-photo figcaption { font-size: 10px; margin-top: 4px; }
+/* Écussons routiers */
+.ma-signs { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 12px; }
+.ma-sign { display: inline-flex; align-items: center; gap: 5px; }
+.ma-sign img { height: 44px; width: auto; display: block; }
 
 /* Grille d'ajustements : postes « ignorés » par le courtier (œil) — grisés à l'écran. */
 .adj-eye { display: inline-flex; align-items: center; color: var(--color-text-muted); }

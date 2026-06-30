@@ -248,7 +248,8 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
     scores,              // scores de secteur 0-100 (marchabilité, connectivité, services…)
     walkability,
     poi: local?.categories || null,   // commodités structurées (grille visuelle)
-    roads: local?.roads || null,
+    roads: local?.roads || null,      // axes routiers (+ écusson `sign` si autoroute)
+    images: local?.images || null,    // photos ville/région (Wikipédia, avec licence/crédit)
     sections,            // grille détaillée (région/MRC/municipalité/secteur/accès)
     summary: { data_points: dataCount, pending_points: pendingCount, local: !!local },
     sources: SRC,

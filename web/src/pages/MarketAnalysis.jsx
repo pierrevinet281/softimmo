@@ -2,12 +2,53 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Map as MapIcon, RefreshCw, Trash2, MapPin, Database, Footprints, Car, GraduationCap,
+  Map as MapIcon, RefreshCw, Trash2, MapPin, Database, Car, GraduationCap,
   Baby, ShoppingCart, Utensils, Dumbbell, Trees, HeartPulse, TrendingUp, Lightbulb,
+  Users, Hash, BarChart3, Factory, Banknote, Shovel, Building2, Binoculars, Cake,
+  Wallet, Ruler, Tag, Landmark, Briefcase, Wrench, LineChart, Activity, Satellite,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Select, EmptyState, Badge } from '../components/ui.jsx';
 import { useI18n } from '../i18n/index.jsx';
+
+// Icône par section.
+const SECTION_ICON = { secteur: Trees, access: Car, municipality: Landmark, mrc: Map, region: MapPin };
+
+// Icône d'un indicateur d'après son libellé (FR+EN).
+function labelIcon(it) {
+  if (it.label_fr === 'Nom' || it.label_en === 'Name') return Landmark;
+  const s = `${it.label_fr || ''} ${it.label_en || ''}`.toLowerCase();
+  if (s.includes('nombre') || s.includes('number')) return Hash;
+  if (s.includes('emplacement') || s.includes('geographic')) return MapPin;
+  if (s.includes('population growth') || s.includes('croissance de pop')) return TrendingUp;
+  if (s.includes('economic growth') || s.includes('croissance économ')) return Binoculars;
+  if (s.includes('population')) return Users;
+  if (s.includes('démographie') || s.includes('demographic')) return BarChart3;
+  if (s.includes('industr')) return Factory;
+  if (s.includes('economic activity') || s.includes('indice')) return Banknote;
+  if (s.includes('labour') || s.includes('emploi')) return Shovel;
+  if (s.includes('vacancy') || s.includes('inoccupation')) return Building2;
+  if (s.includes('median age') || s.includes('âge méd')) return Cake;
+  if (s.includes('income') || s.includes('revenu')) return Wallet;
+  if (s.includes('land area') || s.includes('superficie')) return Ruler;
+  if (s.includes('density') || s.includes('densité')) return Activity;
+  if (s.includes('demonym') || s.includes('gentilé')) return Tag;
+  if (s.includes('business') || s.includes('entreprise')) return Briefcase;
+  if (s.includes('zoning') || s.includes('zonage')) return Map;
+  if (s.includes('municipal services') || s.includes('services municip')) return Wrench;
+  if (s.includes('road access') || s.includes('accès rout')) return Car;
+  if (s.includes('market stats') || s.includes('statistiques de marché')) return LineChart;
+  if (s.includes('municipalit')) return Building2;
+  return MapPin;
+}
+
+// URL d'une image aérienne (satellite) ESRI World Imagery — statique, sans clé, attribution Esri.
+function esriAerial(lat, lon, w = 600, h = 320, span = 0.02) {
+  const merc = (la, lo) => [lo * 20037508.34 / 180, Math.log(Math.tan((90 + la) * Math.PI / 360)) / (Math.PI / 180) * 20037508.34 / 180];
+  const [x1, y1] = merc(lat - span / 1.7, lon - span);
+  const [x2, y2] = merc(lat + span / 1.7, lon + span);
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${x1},${y1},${x2},${y2}&bboxSR=3857&imageSR=3857&size=${w},${h}&format=jpg&f=image`;
+}
 
 // Icônes par catégorie de commodité / score.
 const CAT_ICON = {
@@ -73,13 +114,16 @@ function MarketAnalysisReport({ report }) {
   const renderTable = (sec) => (
     <div className="table-wrap" style={{ overflowX: 'auto' }}>
       <table className="table"><tbody>
-        {sec.items.map((it, i) => (
-          <tr key={i}>
-            <td style={{ width: '38%' }}>{lab(it)}</td>
-            <td>{it.status === 'data' ? <span>{it.value}</span> : <Badge tone="neutral">{t('ma.pending')}</Badge>}</td>
-            <td className="muted" style={{ fontSize: 12 }}>{it.source || ''}</td>
-          </tr>
-        ))}
+        {sec.items.map((it, i) => {
+          const Ic = labelIcon(it);
+          return (
+            <tr key={i}>
+              <td style={{ width: '40%' }}><span className="ma-cell"><Ic size={14} className="ma-cell-ic" /> {lab(it)}</span></td>
+              <td>{it.status === 'data' ? <span>{it.value}</span> : <Badge tone="neutral">{t('ma.pending')}</Badge>}</td>
+              <td className="muted" style={{ fontSize: 12 }}>{it.source || ''}</td>
+            </tr>
+          );
+        })}
       </tbody></table>
     </div>
   );
@@ -111,14 +155,22 @@ function MarketAnalysisReport({ report }) {
         )}
       </Card>
 
-      {/* CARTE */}
+      {/* CARTES : plan (OSM) + vue aérienne (satellite ESRI) */}
       {report.geo?.lat != null && report.geo?.lon != null && (
-        <Card style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
-          <iframe
-            title="map" loading="lazy" style={{ width: '100%', height: 340, border: 0, display: 'block' }}
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.geo.lon - 0.014}%2C${report.geo.lat - 0.009}%2C${report.geo.lon + 0.014}%2C${report.geo.lat + 0.009}&layer=mapnik&marker=${report.geo.lat}%2C${report.geo.lon}`}
-          />
-        </Card>
+        <div className="ma-maps">
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="ma-map-cap"><MapIcon size={12} /> {t('ma.streetMap')}</div>
+            <iframe
+              title="map" loading="lazy" style={{ width: '100%', height: 300, border: 0, display: 'block' }}
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.geo.lon - 0.014}%2C${report.geo.lat - 0.009}%2C${report.geo.lon + 0.014}%2C${report.geo.lat + 0.009}&layer=mapnik&marker=${report.geo.lat}%2C${report.geo.lon}`}
+            />
+          </Card>
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="ma-map-cap"><Satellite size={12} /> {t('ma.aerial')}</div>
+            <img src={esriAerial(report.geo.lat, report.geo.lon)} alt={t('ma.aerial')} loading="lazy" style={{ width: '100%', height: 300, objectFit: 'cover', display: 'block' }} />
+            <div className="muted ma-credit">© Esri, Maxar, Earthstar Geographics</div>
+          </Card>
+        </div>
       )}
 
       {/* SYNTHÈSE + IMPACT VALEUR */}
@@ -133,28 +185,45 @@ function MarketAnalysisReport({ report }) {
       {/* BLOCS — ordre : secteur → accès → municipalité → MRC → région.
           Le bloc « Neighbourhood (proximity) » intègre les scores+commodités (combinés par tuile :
           jauge + nombre à proximité + plus proche). La connectivité routière va au bloc « Road access ». */}
-      {orderedSections.map((sec) => (
-        <Card key={sec.key} style={{ marginBottom: 16 }}>
-          <div className="section-label" style={{ marginTop: 0 }}>{lab(sec)}</div>
-
-          {sec.key === 'secteur' && poiGauges.length > 0 && (
+      {orderedSections.map((sec, idx) => {
+        const SIc = SECTION_ICON[sec.key] || MapPin;
+        const photo = sec.key === 'municipality' ? report.images?.municipality
+          : sec.key === 'region' ? report.images?.region : null;
+        const content = (
+          sec.key === 'secteur' && poiGauges.length > 0 ? (
             <>
               <div className="ma-scores">{poiGauges.map((s) => Gauge(s, CAT_ICON[s.key] || MapPin))}</div>
               <div className="muted" style={{ fontSize: 11, margin: '10px 0 0' }}>{t('ma.scoresNote')}</div>
             </>
-          )}
-          {sec.key === 'secteur' && poiGauges.length === 0 && renderTable(sec)}
-
-          {sec.key === 'access' && (
+          ) : sec.key === 'access' ? (
             <>
               {accessScore && <div className="ma-scores" style={{ marginBottom: 12 }}>{Gauge(accessScore, Car)}</div>}
+              {report.roads?.some((r) => r.sign) && (
+                <div className="ma-signs">
+                  {report.roads.filter((r) => r.sign).map((r) => (
+                    <span className="ma-sign" key={r.name}><img src={r.sign} alt={r.name} /> <span className="muted">~{r.dist_m} m</span></span>
+                  ))}
+                </div>
+              )}
               {renderTable(sec)}
             </>
-          )}
-
-          {sec.key !== 'secteur' && sec.key !== 'access' && renderTable(sec)}
-        </Card>
-      ))}
+          ) : renderTable(sec)
+        );
+        return (
+          <Card key={sec.key} style={{ marginBottom: 16 }}>
+            <div className="section-label" style={{ marginTop: 0 }}><SIc size={14} /> {lab(sec)}</div>
+            {photo ? (
+              <div className={`ma-split${idx % 2 ? ' rev' : ''}`}>
+                <figure className="ma-photo">
+                  <img src={photo.url} alt={lab(sec)} loading="lazy" />
+                  {(photo.credit || photo.license) && <figcaption className="muted">{[photo.credit, photo.license].filter(Boolean).join(' · ')}</figcaption>}
+                </figure>
+                <div className="ma-split-main">{content}</div>
+              </div>
+            ) : content}
+          </Card>
+        );
+      })}
 
       <div className="muted" style={{ fontSize: 11, margin: '0 0 8px' }}>
         {report.summary?.data_points ?? 0} / {(report.summary?.data_points || 0) + (report.summary?.pending_points || 0)} {t('ma.coverageSub')}
