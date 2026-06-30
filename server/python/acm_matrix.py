@@ -128,7 +128,7 @@ def parse_block(block, price, centris_no, code):
         "days_on_market": dom,
         "year_built": year_built,
         "livable_area": livable_area,
-        "area": lot_area,
+        "land_area": lot_area,
         "municipal_assessment": assessment,
         "bedrooms": bedrooms,
         "inclusions": _inclusions(block),
