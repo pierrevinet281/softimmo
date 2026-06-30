@@ -42,12 +42,11 @@ function labelIcon(it) {
   return MapPin;
 }
 
-// URL d'une image aérienne (satellite) ESRI World Imagery — statique, sans clé, attribution Esri.
-function esriAerial(lat, lon, w = 600, h = 320, span = 0.02) {
-  const merc = (la, lo) => [lo * 20037508.34 / 180, Math.log(Math.tan((90 + la) * Math.PI / 360)) / (Math.PI / 180) * 20037508.34 / 180];
-  const [x1, y1] = merc(lat - span / 1.7, lon - span);
-  const [x2, y2] = merc(lat + span / 1.7, lon + span);
-  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${x1},${y1},${x2},${y2}&bboxSR=3857&imageSR=3857&size=${w},${h}&format=jpg&f=image`;
+// Vue aérienne satellite VRAIMENT LIBRE : Sentinel-2 cloudless (EOX), CC-BY-4.0 — données Copernicus
+// gratuites, usage commercial autorisé avec attribution. Aucune clé, aucun frais.
+function aerialUrl(lat, lon, w = 600, h = 320, span = 0.02) {
+  const bbox = `${lon - span},${lat - span / 1.7},${lon + span},${lat + span / 1.7}`;
+  return `https://tiles.maps.eox.at/wms?service=WMS&version=1.1.1&request=GetMap&layers=s2cloudless-2021&srs=EPSG:4326&bbox=${bbox}&width=${w}&height=${h}&format=image/jpeg`;
 }
 
 // Icônes par catégorie de commodité / score.
@@ -167,8 +166,8 @@ function MarketAnalysisReport({ report }) {
           </Card>
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div className="ma-map-cap"><Satellite size={12} /> {t('ma.aerial')}</div>
-            <img src={esriAerial(report.geo.lat, report.geo.lon)} alt={t('ma.aerial')} loading="lazy" style={{ width: '100%', height: 300, objectFit: 'cover', display: 'block' }} />
-            <div className="muted ma-credit">© Esri, Maxar, Earthstar Geographics</div>
+            <img src={aerialUrl(report.geo.lat, report.geo.lon)} alt={t('ma.aerial')} loading="lazy" style={{ width: '100%', height: 300, objectFit: 'cover', display: 'block' }} />
+            <div className="muted ma-credit">Sentinel-2 cloudless 2021 — EOX (Copernicus), CC BY 4.0</div>
           </Card>
         </div>
       )}

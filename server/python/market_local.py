@@ -133,8 +133,12 @@ def wiki_image(title):
                     credit = _re.sub("<[^>]+>", "", art).strip()[:80]
         except Exception:
             pass
-        if lic and ("nc" in lic.lower() or "non-comm" in lic.lower()):
-            return None  # exclure usage non commercial
+        # Liste blanche stricte : usage commercial autorisé uniquement (CC0/domaine public/CC-BY/
+        # CC-BY-SA). Rejet si non commercial (NC), pas de dérivés (ND) ou licence inconnue.
+        ll = (lic or "").lower()
+        allowed = any(k in ll for k in ["cc0", "public domain", "cc by", "cc-by", "attribution"])
+        if not allowed or "nc" in ll or "-nd" in ll or "noderiv" in ll:
+            return None
         return {"url": src, "license": lic, "credit": credit}
     except Exception:
         return None
