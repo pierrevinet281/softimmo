@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Plus, ArrowLeft, FileText } from 'lucide-react';
+import { Save, Plus, ArrowLeft, FileText, FileBarChart } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Modal, FormField, Select, EmptyState } from '../components/ui.jsx';
 import { EntityTable } from '../components/EntityTable.jsx';
@@ -9,6 +9,7 @@ import BuildingsUnits, { RentRoll, ExpensesEditor } from '../components/Building
 import { ComparablesEditor } from './Evaluation.jsx';
 import ClientModal from '../components/ClientModal.jsx';
 import CityField from '../components/CityField.jsx';
+import AttrField from '../components/AttrField.jsx';
 import { COUNTRIES, provincesFor, ZONING_OPTIONS } from '../lib/geo.js';
 import {
   ProfitabilityTab, ReadOnlyList, MarketingTab, PhotosTab,
@@ -142,10 +143,16 @@ export default function PropertyEdit() {
           <div className="page-subtitle">{t('pe.subtitle')}</div>
         </div>
         <div className="spacer" />
+        {isEdit && <Button variant="outline" icon={FileBarChart} onClick={() => navigate(`/evaluation?property=${id}`)}>{t('pe.evaluate')}</Button>}
         {isEdit && <Button variant="outline" icon={FileText} onClick={() => setBrochureOpen(true)}>{t('d.brochure')}</Button>}
         <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/properties')}>{t('pe.back')}</Button>
         <Button variant="primary" icon={Save} disabled={save.isPending || !base.name} onClick={saveToEdit}>{t('common.save')}</Button>
       </div>
+      {dirty && (
+        <button className="fab-save" onClick={() => persist()} disabled={save.isPending || !base.name} title={t('common.save')}>
+          <Save size={18} />{save.isPending ? t('off2.saving') : t('common.save')}
+        </button>
+      )}
       {brochureOpen && <BrochureChooser propertyId={id} onClose={() => setBrochureOpen(false)} />}
 
       <div className="tab-row">
@@ -258,24 +265,7 @@ export default function PropertyEdit() {
                 <div style={{ fontWeight: 600, marginBottom: 8 }}>{lab(c)}</div>
                 <div className="sa-formgrid">
                   {c.attributes.map((a) => (
-                    <div key={a.key} className="field" style={{ margin: 0 }}>
-                      <label>{lab(a)}{a.unit ? ` (${a.unit})` : ''}</label>
-                      {a.input === 'bool' ? (
-                        <Select value={attrs[a.key] ?? ''} onChange={(e) => setAttr(a.key, e.target.value)}>
-                          <option value="">—</option>
-                          <option value="Oui">{t('sa.yes')}</option>
-                          <option value="Non">{t('sa.no')}</option>
-                        </Select>
-                      ) : (
-                        <input
-                          className="input"
-                          type={['number', 'currency', 'percent'].includes(a.input) ? 'number' : 'text'}
-                          value={attrs[a.key] ?? ''}
-                          onChange={(e) => setAttr(a.key, e.target.value)}
-                          placeholder={a.input === 'currency' ? '$' : (a.unit || '')}
-                        />
-                      )}
-                    </div>
+                    <AttrField key={a.key} a={a} attrs={attrs} setAttr={setAttr} units={bundle?.units || []} />
                   ))}
                 </div>
               </div>

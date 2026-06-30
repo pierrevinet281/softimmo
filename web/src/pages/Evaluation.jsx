@@ -412,7 +412,8 @@ export function ComparablesEditor({ propertyId }) {
 export default function Evaluation() {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [propertyId, setPropertyId] = useState('');
+  // Préselection via ?property=<id> (bouton « Évaluer » de la fiche propriété).
+  const [propertyId, setPropertyId] = useState(() => new URLSearchParams(window.location.search).get('property') || '');
   const [subject, setSubject] = useState(null);   // { living_area, year_built, inclusions, municipal_assessment }
   const [params, setParams] = useState(null);
   const [clientView, setClientView] = useState(false);
