@@ -1,60 +1,172 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Map as MapIcon, RefreshCw, Trash2, MapPin, Database, Clock } from 'lucide-react';
+import {
+  Map as MapIcon, RefreshCw, Trash2, MapPin, Database, Footprints, Car, GraduationCap,
+  Baby, ShoppingCart, Utensils, Dumbbell, Trees, HeartPulse, TrendingUp, Lightbulb,
+} from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Select, EmptyState, Badge } from '../components/ui.jsx';
 import { useI18n } from '../i18n/index.jsx';
 
-// Rendu d'un rapport d'analyse de marché (sections + indicateurs ; valeur saisie vs source à intégrer).
+// Icônes par catégorie de commodité / score.
+const CAT_ICON = {
+  access: Car, errands: ShoppingCart, dining: Utensils, parks: Trees, schools: GraduationCap,
+  sports: Dumbbell, childcare: Baby, health: HeartPulse,
+  hospitals: HeartPulse, groceries: ShoppingCart, restaurants: Utensils,
+};
+const POI_META = [
+  ['hospitals', 'Hôpitaux / cliniques', 'Hospitals / clinics'],
+  ['schools', 'Écoles & établissements', 'Schools'],
+  ['childcare', 'Garderies / CPE', 'Childcare'],
+  ['groceries', 'Épiceries', 'Grocery'],
+  ['restaurants', 'Restaurants & cafés', 'Restaurants & cafés'],
+  ['sports', 'Sports & loisirs', 'Sports & recreation'],
+  ['parks', 'Parcs & espaces verts', 'Parks & green space'],
+];
+
+const gaugeColor = (s) => (s >= 70 ? 'var(--color-success)' : s >= 45 ? 'var(--color-accent)' : s >= 25 ? 'var(--color-warning)' : 'var(--color-danger)');
+
+// Jauge circulaire SVG (score 0-100).
+function ScoreGauge({ score = 0, size = 72 }) {
+  const r = (size - 10) / 2;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - clamp01(score) / 100);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block' }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-border)" strokeWidth="6" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={gaugeColor(score)} strokeWidth="6" strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize={size * 0.30} fontWeight="700" fill="var(--color-text-primary)">{Math.round(score)}</text>
+    </svg>
+  );
+}
+const clamp01 = (v) => Math.max(0, Math.min(100, Number(v) || 0));
+
+// Rendu d'un rapport d'analyse de marché — présentation professionnelle (hero + scores + synthèse
+// + commodités + détails). Inspiré d'EVALO/Local Logic, données publiques gratuites (OSM, etc.).
 function MarketAnalysisReport({ report }) {
   const { t, lang } = useI18n();
   if (!report) return null;
-  const lab = (o) => (lang === 'en' ? o.label_en : o.label_fr) || o.label_fr;
-  return (
-    <div>
-      <div className="kpi-grid" style={{ marginBottom: 16 }}>
-        <div className="kpi"><div className="label">{t('ma.municipality')}</div><div className="value" style={{ fontSize: 20 }}>{report.geo?.municipality || '—'}</div></div>
-        <div className="kpi"><div className="label">MRC</div><div className="value" style={{ fontSize: 20 }}>{report.geo?.mrc || '—'}</div></div>
-        <div className="kpi"><div className="label">{t('ma.region')}</div><div className="value" style={{ fontSize: 20 }}>{report.geo?.region || '—'}</div></div>
-        <div className="kpi"><div className="label">{t('ma.coverage')}</div><div className="value">{report.summary?.data_points ?? 0}<span className="muted" style={{ fontSize: 14 }}> / {(report.summary?.data_points || 0) + (report.summary?.pending_points || 0)}</span></div><div className="sub">{t('ma.coverageSub')}</div></div>
-      </div>
+  const en = lang === 'en';
+  const lab = (o) => (en ? o.label_en : o.label_fr) || o.label_fr;
+  const ov = report.overview;
+  const scores = report.scores || [];
+  const poi = report.poi || null;
 
+  return (
+    <div className="ma-report">
+      {/* HERO : localisation + indice global */}
+      <Card className="ma-hero" style={{ marginBottom: 16 }}>
+        <div>
+          <div className="ma-hero-title">{report.geo?.municipality || '—'}</div>
+          <div className="ma-chips">
+            {report.geo?.mrc && <span className="ma-chip"><MapPin size={12} /> {report.geo.mrc}</span>}
+            {report.geo?.region && <span className="ma-chip">{report.geo.region}</span>}
+          </div>
+          {report.geo?.display_name && <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{report.geo.display_name}</div>}
+        </div>
+        {ov?.walkability != null && (
+          <div className="ma-hero-score">
+            <ScoreGauge score={ov.walkability} size={110} />
+            <div>
+              <div style={{ fontWeight: 700 }}>{t('ma.walkability')}</div>
+              <Badge tone={ov.walkability >= 70 ? 'success' : ov.walkability >= 45 ? 'info' : 'warning'}>{en ? ov.rating_en : ov.rating_fr}</Badge>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* CARTE */}
       {report.geo?.lat != null && report.geo?.lon != null && (
         <Card style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
           <iframe
-            title="map" loading="lazy" style={{ width: '100%', height: 320, border: 0, display: 'block' }}
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.geo.lon - 0.012}%2C${report.geo.lat - 0.008}%2C${report.geo.lon + 0.012}%2C${report.geo.lat + 0.008}&layer=mapnik&marker=${report.geo.lat}%2C${report.geo.lon}`}
+            title="map" loading="lazy" style={{ width: '100%', height: 340, border: 0, display: 'block' }}
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.geo.lon - 0.014}%2C${report.geo.lat - 0.009}%2C${report.geo.lon + 0.014}%2C${report.geo.lat + 0.009}&layer=mapnik&marker=${report.geo.lat}%2C${report.geo.lon}`}
           />
-          {report.geo.display_name && <div className="muted" style={{ fontSize: 12, padding: '6px 12px' }}><MapPin size={12} /> {report.geo.display_name}</div>}
         </Card>
       )}
-      <div className="notice notice-info" style={{ marginBottom: 16 }}>
-        <MapIcon size={16} />{t('ma.mapNote')}
-      </div>
 
-      {(report.sections || []).map((sec) => (
-        <Card key={sec.key} style={{ marginBottom: 14 }}>
-          <div className="section-label" style={{ marginTop: 0 }}>{lab(sec)}</div>
-          <div className="table-wrap" style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <tbody>
-                {sec.items.map((it, i) => (
-                  <tr key={i}>
-                    <td style={{ width: '38%' }}>{lab(it)}</td>
-                    <td>
-                      {it.status === 'data'
-                        ? <span>{it.value}</span>
-                        : <Badge tone="neutral">{t('ma.pending')}</Badge>}
-                    </td>
-                    <td className="muted" style={{ fontSize: 12 }}>{it.source || ''}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* SYNTHÈSE + IMPACT VALEUR */}
+      {ov && (
+        <Card style={{ marginBottom: 16 }}>
+          <div className="section-label" style={{ marginTop: 0 }}><Lightbulb size={14} /> {t('ma.synthesis')}</div>
+          <p style={{ margin: '4px 0 12px', lineHeight: 1.6 }}>{en ? ov.summary_en : ov.summary_fr}</p>
+          <div className="ma-impact"><TrendingUp size={16} /><span>{en ? ov.value_impact_en : ov.value_impact_fr}</span></div>
+        </Card>
+      )}
+
+      {/* SCORES DE SECTEUR */}
+      {scores.length > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <div className="section-label" style={{ marginTop: 0 }}>{t('ma.sectorScores')}</div>
+          <div className="ma-scores">
+            {scores.map((s) => {
+              const Icon = CAT_ICON[s.key] || MapPin;
+              return (
+                <div className="ma-score-card" key={s.key}>
+                  <ScoreGauge score={s.score} size={76} />
+                  <div className="ma-score-label"><Icon size={13} /> {lab(s)}</div>
+                  <div className="muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{en ? s.detail_en : s.detail_fr}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>{t('ma.scoresNote')}</div>
+        </Card>
+      )}
+
+      {/* COMMODITÉS DU SECTEUR */}
+      {poi && (
+        <Card style={{ marginBottom: 16 }}>
+          <div className="section-label" style={{ marginTop: 0 }}>{t('ma.amenities')}</div>
+          <div className="ma-poi">
+            {POI_META.map(([key, fr, enl]) => {
+              const c = poi[key]; if (!c) return null;
+              const Icon = CAT_ICON[key] || MapPin;
+              return (
+                <div className="ma-poi-card" key={key}>
+                  <span className="ma-poi-icon"><Icon size={18} /></span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{en ? enl : fr}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>{c.count}</div>
+                    {c.nearest && <div className="muted" style={{ fontSize: 11 }}>{c.nearest.name} · ~{c.nearest.dist_m} m</div>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
-      ))}
+      )}
+
+      {/* DONNÉES DÉTAILLÉES (région / MRC / municipalité / accès) */}
+      <details className="card" style={{ marginBottom: 16 }} open={!ov}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('ma.detailed')}
+          <span className="muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
+            {report.summary?.data_points ?? 0} / {(report.summary?.data_points || 0) + (report.summary?.pending_points || 0)} {t('ma.coverageSub')}
+          </span>
+        </summary>
+        {(report.sections || []).map((sec) => (
+          <div key={sec.key} style={{ marginTop: 12 }}>
+            <div className="section-label">{lab(sec)}</div>
+            <div className="table-wrap" style={{ overflowX: 'auto' }}>
+              <table className="table">
+                <tbody>
+                  {sec.items.map((it, i) => (
+                    <tr key={i}>
+                      <td style={{ width: '38%' }}>{lab(it)}</td>
+                      <td>{it.status === 'data' ? <span>{it.value}</span> : <Badge tone="neutral">{t('ma.pending')}</Badge>}</td>
+                      <td className="muted" style={{ fontSize: 12 }}>{it.source || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </details>
+
+      <div className="notice notice-info" style={{ marginBottom: 8 }}><MapIcon size={16} />{t('ma.mapNote')}</div>
     </div>
   );
 }

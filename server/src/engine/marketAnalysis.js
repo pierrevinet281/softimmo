@@ -36,6 +36,86 @@ const item = (label_fr, label_en, value, source) => ({
   label_fr, label_en, value: value ?? null, status: value != null && value !== '' ? 'data' : 'pending', source: source || null,
 });
 
+// ── Scores de secteur (0-100) calculés depuis OSM — indicatifs, basés sur la proximité/densité
+// des commodités (pas un score propriétaire). Marchabilité façon Local Logic, 100 % gratuit. ──
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function ratingOf(s) {
+  if (s >= 80) return { fr: 'Excellent', en: 'Excellent' };
+  if (s >= 60) return { fr: 'Très bon', en: 'Very good' };
+  if (s >= 40) return { fr: 'Bon', en: 'Good' };
+  if (s >= 20) return { fr: 'Moyen', en: 'Fair' };
+  return { fr: 'Limité', en: 'Limited' };
+}
+function dimScore(cat, target) {
+  if (!cat) return null;
+  const n = cat.count || 0;
+  if (!n) return 0;
+  const d = cat.nearest?.dist_m;
+  const prox = d != null ? clamp((100 * (2500 - d)) / (2500 - 300), 0, 100) : 40;
+  const dens = clamp((n / target) * 100, 0, 100);
+  return Math.round(0.6 * prox + 0.4 * dens);
+}
+const DIMS = [
+  { key: 'errands', fr: 'Services quotidiens', en: 'Daily errands', cat: 'groceries', target: 6, w: 0.30 },
+  { key: 'dining', fr: 'Restaurants & cafés', en: 'Dining & cafés', cat: 'restaurants', target: 20, w: 0.25 },
+  { key: 'parks', fr: 'Parcs & plein air', en: 'Parks & outdoors', cat: 'parks', target: 10, w: 0.20 },
+  { key: 'schools', fr: 'Écoles & familles', en: 'Schools & families', cat: 'schools', target: 6, w: 0.15 },
+  { key: 'sports', fr: 'Sports & loisirs', en: 'Sports & recreation', cat: 'sports', target: 6, w: 0.10 },
+  { key: 'childcare', fr: 'Garderies', en: 'Childcare', cat: 'childcare', target: 5, w: 0 },
+  { key: 'health', fr: 'Santé', en: 'Healthcare', cat: 'hospitals', target: 2, w: 0 },
+];
+
+function buildScores(local) {
+  if (!local || !local.categories) return { scores: [], walkability: null };
+  const scores = [];
+  let wsum = 0; let wtot = 0;
+  // Connectivité routière (axes majeurs) en tête.
+  const roads = local.roads || [];
+  if (roads.length) {
+    const nearest = roads[0].dist_m;
+    const prox = clamp((100 * (6000 - nearest)) / (6000 - 500), 0, 100);
+    const dens = clamp((roads.length / 4) * 100, 0, 100);
+    const conn = Math.round(0.5 * prox + 0.5 * dens);
+    const r = ratingOf(conn);
+    scores.push({ key: 'access', label_fr: 'Connectivité routière', label_en: 'Road connectivity', score: conn, rating_fr: r.fr, rating_en: r.en,
+      detail_fr: `${roads.length} axe(s) majeur(s) — ${roads[0].name} à ~${roads[0].dist_m} m`, detail_en: `${roads.length} major route(s) — ${roads[0].name} ~${roads[0].dist_m} m` });
+  }
+  for (const d of DIMS) {
+    const s = dimScore(local.categories[d.cat], d.target);
+    if (s == null) continue;
+    const c = local.categories[d.cat];
+    const r = ratingOf(s);
+    const detail_fr = c.nearest ? `${c.count} à proximité — ${c.nearest.name} (~${c.nearest.dist_m} m)` : `${c.count} à proximité`;
+    const detail_en = c.nearest ? `${c.count} nearby — ${c.nearest.name} (~${c.nearest.dist_m} m)` : `${c.count} nearby`;
+    scores.push({ key: d.key, label_fr: d.fr, label_en: d.en, score: s, rating_fr: r.fr, rating_en: r.en, detail_fr, detail_en });
+    if (d.w) { wsum += s * d.w; wtot += d.w; }
+  }
+  return { scores, walkability: wtot ? Math.round(wsum / wtot) : null };
+}
+
+function buildOverview(walk, scores, geo) {
+  if (walk == null) return null;
+  const r = ratingOf(walk);
+  const top = [...scores].filter((s) => s.key !== 'access').sort((a, b) => b.score - a.score).slice(0, 2);
+  const topFr = top.map((s) => s.label_fr.toLowerCase()).join(' et ');
+  const topEn = top.map((s) => s.label_en.toLowerCase()).join(' and ');
+  const where = geo.municipality || 'la propriété';
+  const summary_fr = `Le secteur de ${where} obtient un indice de marchabilité de ${walk}/100 (${r.fr.toLowerCase()}), porté notamment par ${topFr}.`;
+  const summary_en = `The ${geo.municipality || 'property'} area scores ${walk}/100 for walkability (${r.en.toLowerCase()}), driven mainly by ${topEn}.`;
+  let vi_fr; let vi_en;
+  if (walk >= 70) {
+    vi_fr = "Un secteur aussi bien pourvu en services soutient la valeur et la liquidité : il élargit le bassin d'acheteurs et justifie une prime de localisation.";
+    vi_en = 'Such a well-serviced area supports value and liquidity: it broadens the buyer pool and justifies a location premium.';
+  } else if (walk >= 45) {
+    vi_fr = 'Un secteur correctement desservi : la localisation est un atout neutre à légèrement positif sur la valeur.';
+    vi_en = 'A reasonably serviced area: location is a neutral-to-slightly-positive factor on value.';
+  } else {
+    vi_fr = "Secteur moins dense en services : la valeur repose davantage sur les qualités propres du bien (terrain, superficie, état) que sur la localisation piétonne.";
+    vi_en = 'A less amenity-dense area: value relies more on the property itself (lot, size, condition) than on walkable location.';
+  }
+  return { walkability: walk, rating_fr: r.fr, rating_en: r.en, summary_fr, summary_en, value_impact_fr: vi_fr, value_impact_en: vi_en };
+}
+
 /**
  * Construit le squelette d'analyse de marché pour une propriété.
  * @param {{property:object, attrs?:object}} input
@@ -120,15 +200,24 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
   const dataCount = sections.reduce((s, sec) => s + sec.items.filter((i) => i.status === 'data').length, 0);
   const pendingCount = sections.reduce((s, sec) => s + sec.items.filter((i) => i.status === 'pending').length, 0);
 
+  const geoObj = {
+    municipality: muni?.name || city || null, mrc, region,
+    lat: local?.lat ?? null, lon: local?.lon ?? null, display_name: local?.display_name || null,
+    radius_m: local?.radius_m ?? null,
+  };
+  const { scores, walkability } = buildScores(local);
+  const overview = buildOverview(walkability, scores, geoObj);
+
   return {
-    version: 1,
+    version: 2,
     title: `Analyse de marché — ${muni?.name || city || property.name || 'propriété'}`,
-    geo: {
-      municipality: muni?.name || city || null, mrc, region,
-      lat: local?.lat ?? null, lon: local?.lon ?? null, display_name: local?.display_name || null,
-      radius_m: local?.radius_m ?? null,
-    },
-    sections,
+    geo: geoObj,
+    overview,            // synthèse + impact sur la valeur (null si pas de couche locale)
+    scores,              // scores de secteur 0-100 (marchabilité, connectivité, services…)
+    walkability,
+    poi: local?.categories || null,   // commodités structurées (grille visuelle)
+    roads: local?.roads || null,
+    sections,            // grille détaillée (région/MRC/municipalité/secteur/accès)
     summary: { data_points: dataCount, pending_points: pendingCount, local: !!local },
     sources: SRC,
   };
