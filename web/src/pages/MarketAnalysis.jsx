@@ -5,7 +5,7 @@ import {
   Map as MapIcon, RefreshCw, Trash2, MapPin, Database, Car, GraduationCap,
   Baby, ShoppingCart, Utensils, Dumbbell, Trees, HeartPulse, TrendingUp, Lightbulb,
   Users, Hash, BarChart3, Factory, Banknote, Shovel, Building2, Binoculars, Cake,
-  Wallet, Ruler, Tag, Landmark, Briefcase, Wrench, LineChart, Activity, Satellite, Fuel, Pill, Languages,
+  Wallet, Ruler, Tag, Landmark, Briefcase, Wrench, LineChart, Activity, Satellite, Fuel, Pill, Languages, Home,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Select, EmptyState, Badge } from '../components/ui.jsx';
@@ -182,11 +182,12 @@ function MarketAnalysisReport({ report }) {
     return null;
   };
   const ch = report.charts || {};
-  const chartsBlock = (ch.age || ch.income || ch.lang) ? (
+  const chartsBlock = (ch.age || ch.income || ch.lang || ch.dwelling) ? (
     <div className="ma-charts">
       {ch.age && <div className="ma-chart"><div className="ma-chart-title"><Cake size={13} /> {t('ma.ageChart')}</div><MiniBars data={ch.age} /></div>}
       {ch.income && <div className="ma-chart"><div className="ma-chart-title"><Wallet size={13} /> {t('ma.incomeChart')}</div><MiniBars data={ch.income} color="var(--color-success)" /></div>}
       {ch.lang && <div className="ma-chart"><div className="ma-chart-title"><Languages size={13} /> {t('ma.langChart')}</div><MiniBars data={ch.lang} color="var(--color-info)" /></div>}
+      {ch.dwelling && <div className="ma-chart"><div className="ma-chart-title"><Home size={13} /> {t('ma.dwellingChart')}</div><MiniBars data={ch.dwelling} color="var(--color-warning)" /></div>}
     </div>
   ) : null;
 

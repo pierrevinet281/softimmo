@@ -31,8 +31,10 @@ function socioIndicators(cen) {
     const l = cen.lang; const tot = (l.fr + l.en + l.both + l.neither) || 1; const p = (x) => Math.round((x / tot) * 100);
     lang = `Bilingue ${p(l.both)} % · français seul. ${p(l.fr)} % · anglais seul. ${p(l.en)} %`;
   }
+  const hh = cen?.avg_hh_size != null
+    ? `Taille moy. ${cen.avg_hh_size} pers.${cen.pct_single != null ? ` · ${cen.pct_single} % unifamiliales` : ''}` : null;
   return [
-    { key: 'demographics', label_fr: 'Démographie (ménages, scolarité)', label_en: 'Demographics (households, education)', value: null, source: SRC.census },
+    { key: 'demographics', label_fr: 'Ménages & logement', label_en: 'Households & housing', value: hh, source: SRC.census },
     { key: 'languages', label_fr: 'Langues (connaissance fr/en)', label_en: 'Official languages (knowledge)', value: lang, source: SRC.census },
     { key: 'industries', label_fr: 'Industries / secteurs d’activité', label_en: 'Industries', value: null, source: SRC.census },
     { key: 'economic_index', label_fr: 'Indice d’activité économique', label_en: 'Economic activity index', value: null, source: SRC.isq },
@@ -271,6 +273,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         { label: 'Anglais seul.', count: cenMuni.lang.en },
         { label: 'Ni l’un/l’autre', count: cenMuni.lang.neither },
       ] : null,
+      dwelling: cenMuni?.dwelling_types || null,
     },
     sections,            // grille détaillée (région/MRC/municipalité/secteur/accès)
     summary: { data_points: dataCount, pending_points: pendingCount, local: !!local },
