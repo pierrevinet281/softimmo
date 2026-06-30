@@ -10,6 +10,7 @@ import { ComparablesEditor } from './Evaluation.jsx';
 import ClientModal from '../components/ClientModal.jsx';
 import CityField from '../components/CityField.jsx';
 import AttrField from '../components/AttrField.jsx';
+import PlansTab from '../components/PlansTab.jsx';
 import { COUNTRIES, provincesFor, ZONING_OPTIONS } from '../lib/geo.js';
 import {
   ProfitabilityTab, ReadOnlyList, MarketingTab, PhotosTab,
@@ -34,6 +35,7 @@ const TABS = [
   { id: 'transactions', labelKey: 'd.tab.transactions' },
   { id: 'comparables', labelKey: 'd.tab.comparables' },
   { id: 'photos', labelKey: 'd.tab.photos' },
+  { id: 'plans', labelKey: 'pe.tab.plans' },
   { id: 'marketing', labelKey: 'd.tab.marketing' },
   { id: 'reports', labelKey: 'd.tab.reports' },
 ];
@@ -291,6 +293,7 @@ export default function PropertyEdit() {
           {tab === 'transactions' && <EntityTable cfg={transactionsConfig(t)} propertyId={id} items={bundle.transactions} onChanged={refetch} extraInvalidate={[['analysis', id]]} />}
           {tab === 'comparables' && <ComparablesEditor propertyId={id} />}
           {tab === 'photos' && <PhotosTab property={property} units={bundle.units} refetch={refetch} />}
+          {tab === 'plans' && <PlansTab propertyId={id} />}
           {tab === 'marketing' && <MarketingTab propertyId={id} saved={property.marketing} onSaved={refetch} />}
           {tab === 'reports' && (
             <ReadOnlyList icon={FileText} items={bundle.reports} hint={t('d.rep.hint')} columns={[

@@ -464,6 +464,7 @@ CREATE TABLE IF NOT EXISTS property_media (
   tenant_id     TEXT,
   property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
   role          TEXT NOT NULL DEFAULT 'gallery',
+  kind          TEXT DEFAULT 'photo',  -- photo|plan
   position      INTEGER DEFAULT 0,
   file_path     TEXT NOT NULL,
   filename      TEXT,

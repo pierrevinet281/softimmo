@@ -178,7 +178,7 @@ export default function mountBusiness(parent = Router()) {
     const summary = [beds ? `${beds} chambres` : null, baths ? `${baths} salles de bain` : null]
       .filter(Boolean).join(' + ') + (b.livable_area ? ` (${Math.round(b.livable_area)} pi²)` : '');
     // Photos téléversées → images de la brochure (rôles hero/map/interior ; gallery en repli).
-    const media = bundle.media || [];
+    const media = (bundle.media || []).filter((m) => m.kind !== 'plan');  // plans exclus des photos brochure
     const byRole = (r) => media.filter((m) => m.role === r).map((m) => m.file_path).filter(Boolean);
     // Pool d'intérieurs = toute photo non hero/carte (galerie, « interior », ou taguée par pièce).
     const pool = media.filter((m) => m.role !== 'hero' && m.role !== 'map').map((m) => m.file_path).filter(Boolean);
@@ -787,7 +787,8 @@ export default function mountBusiness(parent = Router()) {
 
   parent.get('/properties/:id/photos', wrap(async (req, res) => {
     if (!Properties.get(req.params.id)) throw notFound('property introuvable');
-    res.json(PropertyMedia.listBy('property_id', req.params.id, { sort: 'position', dir: 'asc' }).map(mediaOut));
+    res.json(PropertyMedia.listBy('property_id', req.params.id, { sort: 'position', dir: 'asc' })
+      .filter((m) => m.kind !== 'plan').map(mediaOut));
   }));
 
   parent.post('/properties/:id/photos', upload.array('files', 30), wrap(async (req, res) => {
@@ -806,7 +807,7 @@ export default function mountBusiness(parent = Router()) {
       const dest = path.join(dir, `${id}${EXT[f.mimetype] || '.img'}`);
       fs.writeFileSync(dest, f.buffer);
       created.push(PropertyMedia.create({
-        id, property_id: property.id, role, position: base + i, file_path: dest,
+        id, property_id: property.id, role, kind: 'photo', position: base + i, file_path: dest,
         filename: f.originalname || null, mime: f.mimetype || null,
       }));
     });
@@ -843,6 +844,53 @@ export default function mountBusiness(parent = Router()) {
     if (m.mime) res.setHeader('Content-Type', m.mime);
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.sendFile(m.file_path, (err) => { if (err && !res.headersSent) res.status(500).end(); });
+  }));
+
+  // ── Plans de propriété (plans d'étage/architecture/aménagement, certificat de localisation…) ──
+  // Stockés dans property_media (kind='plan') ; images OU PDF. Le `role` porte le type de plan.
+  const PLAN_EXT = { ...EXT, 'application/pdf': '.pdf' };
+  parent.get('/properties/:id/plans', wrap(async (req, res) => {
+    if (!Properties.get(req.params.id)) throw notFound('property introuvable');
+    res.json(PropertyMedia.listBy('property_id', req.params.id, { sort: 'position', dir: 'asc' })
+      .filter((m) => m.kind === 'plan').map(mediaOut));
+  }));
+  parent.post('/properties/:id/plans', upload.array('files', 30), wrap(async (req, res) => {
+    const property = Properties.get(req.params.id);
+    if (!property) throw notFound('property introuvable');
+    const files = req.files || [];
+    if (!files.length) throw badRequest('Aucun fichier téléversé');
+    const role = /^[a-z][a-z0-9_]*$/.test(String(req.body?.role || '')) ? req.body.role : 'autre';
+    const dir = path.join(config.root, 'data', 'uploads', 'properties', property.id, 'plans');
+    fs.mkdirSync(dir, { recursive: true });
+    const base = PropertyMedia.listBy('property_id', property.id).filter((m) => m.kind === 'plan').length;
+    const created = [];
+    files.forEach((f, i) => {
+      const mt = String(f.mimetype || '');
+      if (!mt.startsWith('image/') && mt !== 'application/pdf') return;
+      const id = `plan_${Date.now()}_${i}`;
+      const dest = path.join(dir, `${id}${PLAN_EXT[mt] || '.bin'}`);
+      fs.writeFileSync(dest, f.buffer);
+      created.push(PropertyMedia.create({
+        id, property_id: property.id, role, kind: 'plan', position: base + i, file_path: dest,
+        filename: f.originalname || null, mime: f.mimetype || null,
+      }));
+    });
+    if (!created.length) throw badRequest('Format non supporté (images ou PDF)');
+    res.status(201).json(created.map(mediaOut));
+  }));
+  parent.patch('/properties/:id/plans/:mediaId', wrap(async (req, res) => {
+    const m = PropertyMedia.get(req.params.mediaId);
+    if (!m || m.property_id !== req.params.id) throw notFound('plan introuvable');
+    const r = String(req.body?.role || '');
+    if (!/^[a-z][a-z0-9_]*$/.test(r)) throw badRequest(`Type de plan inconnu : ${req.body.role}`);
+    res.json(mediaOut(PropertyMedia.update(req.params.mediaId, { role: r })));
+  }));
+  parent.delete('/properties/:id/plans/:mediaId', wrap(async (req, res) => {
+    const m = PropertyMedia.get(req.params.mediaId);
+    if (!m || m.property_id !== req.params.id) throw notFound('plan introuvable');
+    try { if (m.file_path) fs.unlinkSync(m.file_path); } catch { /* ignore */ }
+    PropertyMedia.delete(req.params.mediaId);
+    res.status(204).end();
   }));
 
   // ── Stats APCIQ (ratios vente/inscrit & vente/éval) ──

@@ -56,6 +56,9 @@ const COLUMN_ADDITIONS = {
     ['transaction_type', 'TEXT'], ['zoning_detail', 'TEXT'], ['mrc', 'TEXT'],  // mandat + zonage + MRC
     ['marketing', 'TEXT'],  // textes marketing édités (JSON par langue)
   ],
+  property_media: [
+    ['kind', 'TEXT'],  // photo|plan
+  ],
   comparables: [
     ['centris_no', 'TEXT'], ['sale_date', 'TEXT'], ['list_price', 'REAL'], ['sold_price', 'REAL'],
     ['livable_area', 'REAL'], ['municipal_assessment', 'REAL'], ['days_on_market', 'INTEGER'],
