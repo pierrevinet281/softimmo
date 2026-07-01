@@ -21,6 +21,17 @@ function census() {
   return _c;
 }
 
+// Municipalités d'une région, triées par population décroissante (top n).
+export function topMunicipalitiesByPop(region, n = 10) {
+  if (!region) return [];
+  const r = norm(region);
+  return Object.values(data().municipalities)
+    .filter((m) => norm(m.region) === r && m.pop != null)
+    .sort((a, b) => (b.pop || 0) - (a.pop || 0))
+    .slice(0, n)
+    .map((m) => ({ name: m.name, pop: m.pop }));
+}
+
 export function muniDemographics(name) { return name ? (data().municipalities[norm(name)] || null) : null; }
 export function mrcDemographics(name) { return name ? (data().mrc[norm(name)] || null) : null; }
 export function regionDemographics(name) { return name ? (data().region[norm(name)] || null) : null; }

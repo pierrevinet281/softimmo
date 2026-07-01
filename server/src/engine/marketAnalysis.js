@@ -8,7 +8,7 @@
 // (workers Python aux phases suivantes — voir mémoire market-analysis-data-sources).
 
 import { lookupMunicipality, municipalitiesIn } from '../lib/quebecGeo.js';
-import { muniDemographics, mrcDemographics, regionDemographics, muniCensus, mrcCensus } from '../lib/quebecDemographics.js';
+import { muniDemographics, mrcDemographics, regionDemographics, muniCensus, mrcCensus, topMunicipalitiesByPop } from '../lib/quebecDemographics.js';
 
 const SRC = {
   mamh: 'MAMH — Répertoire des municipalités du Québec',
@@ -182,7 +182,9 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Population (région)', 'Population (region)', fmtPop(demReg?.pop), SRC.mamh),
         item('Nombre de municipalités', 'Number of municipalities', demReg?.n_munis ?? null, SRC.mamh),
         item('Nombre de MRC', 'Number of MRCs', demReg?.n_mrc ?? null, SRC.mamh),
-        item('Principales municipalités', 'Main municipalities', geoList(inRegion), SRC.donneesQc),
+        item('Principales municipalités (top 10 par population)', 'Main municipalities (top 10 by population)',
+          (() => { const top = topMunicipalitiesByPop(region, 10); return top.length ? top.map((m) => `${m.name} (${Number(m.pop).toLocaleString('fr-CA')})`).join(', ') : geoList(inRegion); })(),
+          SRC.mamh),
         ...socioIndicators(null).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
       ],
     },
