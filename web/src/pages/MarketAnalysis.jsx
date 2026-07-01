@@ -168,18 +168,23 @@ function MarketAnalysisReport({ report }) {
       </tbody></table>
     </div>
   );
-  // Image en tête de bloc : photo Wikipédia (libre) si disponible, sinon vue aérienne Sentinel-2
-  // au bon niveau de zoom (secteur rapproché → région large). « aérienne » accepté comme « photo ».
+  // Panneau latéral par bloc : [carte contour/localisation] + [vue aérienne] + [photo landmark],
+  // empilées. Sources libres usage commercial ; attribution affichée au besoin.
   const AERIAL_SPAN = { secteur: 0.022, municipality: 0.08, mrc: 0.4, region: 1.5 };
+  const MAP_SPAN = { municipality: 0.09, mrc: 0.45, region: 1.6 };
   const IMG_KEYS = ['secteur', 'municipality', 'mrc', 'region'];
-  const blockImage = (key) => {
-    if (!IMG_KEYS.includes(key)) return null;
-    const ph = report.images?.[key];
-    if (ph) return { url: ph.url, caption: [ph.credit, ph.license].filter(Boolean).join(' · ') };
-    if (report.geo?.lat != null && report.geo?.lon != null) {
-      return { url: aerialUrl(report.geo.lat, report.geo.lon, 600, 380, AERIAL_SPAN[key] || 0.05), caption: 'Sentinel-2 cloudless — EOX (Copernicus), CC BY 4.0', aerial: true };
-    }
-    return null;
+  const cap = (o) => [o.credit, o.license].filter(Boolean).join(' · ');
+  const eoxMap = (lat, lon, span) => `https://tiles.maps.eox.at/wms?service=WMS&version=1.1.1&request=GetMap&layers=terrain-light&srs=EPSG:4326&bbox=${lon - span},${lat - span / 1.7},${lon + span},${lat + span / 1.7}&width=600&height=360&format=image/jpeg`;
+  const blockImages = (key) => {
+    if (!IMG_KEYS.includes(key)) return [];
+    const wiki = report.images?.[key];
+    const hasGeo = report.geo?.lat != null && report.geo?.lon != null;
+    const out = [];
+    if (wiki?.map) out.push({ url: wiki.map.url, caption: cap(wiki.map) });
+    else if (hasGeo && key !== 'secteur') out.push({ url: eoxMap(report.geo.lat, report.geo.lon, MAP_SPAN[key] || 0.1), caption: 'Terrain-light — EOX (OpenStreetMap · Natural Earth), CC BY 4.0' });
+    if (hasGeo) out.push({ url: aerialUrl(report.geo.lat, report.geo.lon, 600, 360, AERIAL_SPAN[key] || 0.05), caption: 'Sentinel-2 cloudless — EOX (Copernicus), CC BY 4.0' });
+    if (wiki?.photo) out.push({ url: wiki.photo.url, caption: cap(wiki.photo) });
+    return out;
   };
   const ch = report.charts || {};
   const chartsBlock = (ch.age || ch.income || ch.lang || ch.dwelling) ? (
@@ -232,7 +237,7 @@ function MarketAnalysisReport({ report }) {
           jauge + nombre à proximité + plus proche). La connectivité routière va au bloc « Road access ». */}
       {orderedSections.map((sec) => {
         const SIc = SECTION_ICON[sec.key] || MapPin;
-        const img = blockImage(sec.key);
+        const imgs = blockImages(sec.key);
         const rev = IMG_KEYS.indexOf(sec.key) % 2 === 1; // alternance gauche/droite
         const content = (
           sec.key === 'secteur' && poiGauges.length > 0 ? (
@@ -261,12 +266,16 @@ function MarketAnalysisReport({ report }) {
         return (
           <Card key={sec.key} style={{ marginBottom: 16 }}>
             <div className="section-label" style={{ marginTop: 0 }}><SIc size={14} /> {lab(sec)}</div>
-            {img ? (
+            {imgs.length ? (
               <div className={`ma-split${rev ? ' rev' : ''}`}>
-                <figure className="ma-photo">
-                  <img src={img.url} alt={lab(sec)} loading="lazy" />
-                  {img.caption && <figcaption className="muted">{img.caption}</figcaption>}
-                </figure>
+                <div className="ma-photostack">
+                  {imgs.map((im, i) => (
+                    <figure className="ma-photo" key={i}>
+                      <img src={im.url} alt={lab(sec)} loading="lazy" />
+                      {im.caption && <figcaption className="muted">{im.caption}</figcaption>}
+                    </figure>
+                  ))}
+                </div>
                 <div className="ma-split-main">{content}</div>
               </div>
             ) : content}

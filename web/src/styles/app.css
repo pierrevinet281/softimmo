@@ -245,6 +245,7 @@ code, .mono { font-family: var(--font-mono); }
 .ma-split.rev { grid-template-columns: 1fr 300px; }
 .ma-split.rev .ma-photo { order: 2; }
 @media (max-width: 720px) { .ma-split, .ma-split.rev { grid-template-columns: 1fr; } .ma-split.rev .ma-photo { order: 0; } }
+.ma-photostack { display: flex; flex-direction: column; gap: 12px; }
 .ma-photo { margin: 0; }
 .ma-photo img { width: 100%; border-radius: var(--radius-md); display: block; object-fit: cover; max-height: 220px; }
 .ma-photo figcaption { font-size: 10px; margin-top: 4px; }

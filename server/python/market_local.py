@@ -109,41 +109,65 @@ def _wiki(host, params):
     return json.loads(_get(host + "?" + urllib.parse.urlencode(params), timeout=20))
 
 
-def wiki_image(title):
-    """Image principale (RASTER) d'un article Wikipédia + licence/attribution (Wikimedia, usage
-    commercial avec attribution). Exclut SVG (cartes/blasons) et licences non commerciales."""
-    import re as _re
+import re as _re
+_MAP_RX = _re.compile(r"(location|locator|_map|carte|_in_)", _re.I)
+_BAD_RX = _re.compile(r"(flag|drapeau|blason|coat|arms|logo|sceau|seal|icon|wikidata|commons|edit-|symbol|\.ogg)", _re.I)
+_RAST_RX = _re.compile(r"\.(jpg|jpeg|png)$", _re.I)
+
+
+def _imginfo(fn):
+    """Info Commons d'un fichier + filtre licence STRICT (usage commercial : CC0/domaine public/
+    CC-BY/CC-BY-SA ; rejet NC/ND/inconnu). Renvoie {url,license,credit} ou None."""
     try:
-        d = _wiki(WIKI_FR, {"action": "query", "format": "json", "redirects": "1", "titles": title,
-                            "prop": "pageimages", "piprop": "original|thumbnail", "pithumbsize": "800"})
-        page = next(iter(d["query"]["pages"].values()))
-        src = (page.get("thumbnail") or {}).get("source") or (page.get("original") or {}).get("source")
-        if not src or ".svg" in src.lower():
+        d = _wiki(COMMONS, {"action": "query", "format": "json", "titles": "File:" + fn,
+                            "prop": "imageinfo", "iiprop": "url|extmetadata", "iiurlwidth": "700",
+                            "iiextmetadatafilter": "LicenseShortName|Artist"})
+        p = next(iter(d["query"]["pages"].values()))
+        ii = p.get("imageinfo")
+        if not ii:
             return None
-        fn = _re.sub(r"^\d+px-", "", urllib.parse.unquote(src.split("/")[-1]))
-        lic = credit = None
-        try:
-            li = _wiki(COMMONS, {"action": "query", "format": "json", "titles": "File:" + fn,
-                                 "prop": "imageinfo", "iiprop": "extmetadata",
-                                 "iiextmetadatafilter": "LicenseShortName|Artist"})
-            ii = next(iter(li["query"]["pages"].values())).get("imageinfo")
-            if ii:
-                em = ii[0]["extmetadata"]
-                lic = (em.get("LicenseShortName") or {}).get("value")
-                art = (em.get("Artist") or {}).get("value")
-                if art:
-                    credit = _re.sub("<[^>]+>", "", art).strip()[:80]
-        except Exception:
-            pass
-        # Liste blanche stricte : usage commercial autorisé uniquement (CC0/domaine public/CC-BY/
-        # CC-BY-SA). Rejet si non commercial (NC), pas de dérivés (ND) ou licence inconnue.
+        info = ii[0]; em = info.get("extmetadata", {})
+        lic = (em.get("LicenseShortName") or {}).get("value")
+        art = (em.get("Artist") or {}).get("value")
+        credit = _re.sub("<[^>]+>", "", art).strip()[:80] if art else None
         ll = (lic or "").lower()
-        allowed = any(k in ll for k in ["cc0", "public domain", "cc by", "cc-by", "attribution"])
-        if not allowed or "nc" in ll or "-nd" in ll or "noderiv" in ll:
+        if not any(k in ll for k in ["cc0", "public domain", "cc by", "cc-by", "attribution"]):
             return None
-        return {"url": src, "license": lic, "credit": credit}
+        if "nc" in ll or "-nd" in ll or "noderiv" in ll:
+            return None
+        return {"url": info.get("thumburl") or info.get("url"), "license": lic, "credit": credit}
     except Exception:
         return None
+
+
+def _page_images(title):
+    for host in (WIKI_FR, "https://en.wikipedia.org/w/api.php"):
+        try:
+            d = _wiki(host, {"action": "query", "format": "json", "redirects": "1", "titles": title,
+                             "prop": "images", "imlimit": "40"})
+            p = next(iter(d["query"]["pages"].values()))
+            ims = p.get("images")
+            if ims:
+                return [i["title"].split(":", 1)[1] for i in ims if ":" in i["title"]]
+        except Exception:
+            pass
+    return []
+
+
+def entity_photo(*titles):
+    """Photo landmark (RASTER, non-carte/drapeau) d'un article Wikipédia, licence commerciale OK.
+    Borné (max ~4 vérifications) pour rester dans le budget temps."""
+    for title in titles:
+        tried = 0
+        for fn in _page_images(title):
+            if _RAST_RX.search(fn) and not _BAD_RX.search(fn) and not _MAP_RX.search(fn):
+                info = _imginfo(fn)
+                if info:
+                    return info
+                tried += 1
+                if tried >= 4:
+                    break
+    return None
 
 
 def autoroute_sign(name):
@@ -174,6 +198,7 @@ def main():
     lat = payload.get("lat")
     lon = payload.get("lon")
     display = payload.get("display_name", "")
+    # 1) Géocodage (requis) — seul échec fatal (sans coordonnées, rien n'est possible).
     try:
         if lat is None or lon is None:
             g = geocode(payload.get("address"), payload.get("city"), payload.get("region"))
@@ -183,13 +208,19 @@ def main():
             lat, lon, display = g
             time.sleep(1)  # politesse Nominatim (max 1 req/s)
         lat, lon = float(lat), float(lon)
+    except Exception as e:
+        print(json.dumps({"error": f"géocodage indisponible: {e}"}))
+        return
 
+    # 2) POI OSM/Overpass (best-effort) — un échec (504, quota) n'empêche PAS le reste (cartes/photos).
+    elements = []; osm_ok = False
+    try:
         ql = overpass_query(lat, lon, radius_m, road_radius_m)
         raw = _get(OVERPASS, data=urllib.parse.urlencode({"data": ql}).encode("utf-8"), timeout=60)
         elements = json.loads(raw).get("elements", [])
-    except Exception as e:  # réseau indisponible, quotas, etc.
-        print(json.dumps({"error": f"OSM indisponible: {e}"}))
-        return
+        osm_ok = True
+    except Exception:
+        elements = []; osm_ok = False
 
     cats = {c: {"count": 0, "items": [], "nearest": None} for c in CATS}
     roads = {}
@@ -231,25 +262,28 @@ def main():
             s = autoroute_sign(r["name"])
             if s:
                 r["sign"] = s
+    # Imagerie par entité : carte de contour/localisation (Commons) + photo landmark (Wikipédia).
     images = {}
     city = payload.get("city"); region = payload.get("region"); mrc = payload.get("mrc")
     if city:
-        im = wiki_image(city)
-        if im:
-            images["municipality"] = im
+        ph = entity_photo(city, f"{city} (Québec)")
+        if ph:
+            images["municipality"] = {"map": None, "photo": ph}
     if mrc:
-        im = wiki_image(f"{mrc} (municipalité régionale de comté)") or wiki_image(f"MRC de {mrc}") or wiki_image(mrc)
-        if im:
-            images["mrc"] = im
+        mp = _imginfo(f"Quebec MRC {mrc} location map.svg")
+        ph = entity_photo(f"{mrc} (municipalité régionale de comté)", f"MRC de {mrc}", mrc)
+        if mp or ph:
+            images["mrc"] = {"map": mp, "photo": ph}
     if region:
-        im = wiki_image(f"{region} (région administrative)") or wiki_image(region)
-        if im:
-            images["region"] = im
+        mp = _imginfo(f"{region} in Quebec.svg") or _imginfo(f"Quebec {region} location map.svg")
+        ph = entity_photo(f"{region} (région administrative)", region)
+        if mp or ph:
+            images["region"] = {"map": mp, "photo": ph}
 
     print(json.dumps({
         "lat": lat, "lon": lon, "display_name": display,
         "radius_m": radius_m, "road_radius_m": road_radius_m,
-        "categories": cats, "roads": road_list, "images": images,
+        "categories": cats if osm_ok else {}, "roads": road_list if osm_ok else [], "images": images,
     }, ensure_ascii=False))
 
 
