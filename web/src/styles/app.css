@@ -76,6 +76,20 @@ code, .mono { font-family: var(--font-mono); }
 .dim-cell .unit-toggle { flex: 0 0 auto; }
 .dim-cell .unit-opt { padding: 0 7px; }
 
+/* Save flottant (Property Overview) */
+.fab-save { position: fixed; right: 24px; bottom: 24px; z-index: 60; display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border: none; border-radius: 10px; background: var(--color-success, #07D581); color: #fff; font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+.fab-save:disabled { opacity: 0.5; cursor: default; }
+
+/* Multi-sélection (cases en ligne) */
+.ms-box { display: flex; flex-wrap: wrap; gap: 4px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 8px 10px; background: var(--color-bg-card); }
+.ms-opt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text-secondary); cursor: pointer; }
+.ms-opt.on { color: var(--color-text-primary); }
+
+/* Groupe répétable (chauffage, piscines) */
+.grp-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); margin-bottom: 8px; }
+.grp-cell { flex: 1; min-width: 0; }
+.grp-cell-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 3px; }
+
 /* Combobox de recherche (champ Ville) */
 .combo { position: relative; }
 .combo-menu { position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 50; max-height: 260px; overflow-y: auto; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 4px; }
@@ -195,6 +209,77 @@ code, .mono { font-family: var(--font-mono); }
 
 /* ── Table ── */
 .table-wrap { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+
+/* ── Analyse de marché (rapport) ── */
+.ma-hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ma-hero-title { font-family: var(--font-display, inherit); font-size: 26px; font-weight: 800; line-height: 1.1; }
+.ma-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.ma-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+.ma-hero-score { display: flex; align-items: center; gap: 12px; }
+.ma-impact { display: flex; gap: 8px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius-md); background: var(--color-success-subtle); color: var(--color-text-primary); line-height: 1.55; }
+.ma-impact svg { color: var(--color-success); flex-shrink: 0; margin-top: 2px; }
+.ma-scores { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ma-score-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 14px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); }
+/* Tuiles de voisinage avec top 5 cliquable */
+.ma-scores-nb { grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); }
+.ma-nbtile { align-items: stretch; text-align: left; }
+.ma-nbtile-head { display: flex; align-items: center; gap: 10px; }
+.ma-toplist { list-style: none; margin: 10px 0 0; padding: 0; font-size: 11.5px; line-height: 1.7; }
+.ma-toplist li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-toplist a { color: var(--color-accent); text-decoration: none; font-weight: 500; }
+.ma-toplist a:hover { text-decoration: underline; }
+.ma-score-label { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; }
+.ma-poi { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.ma-poi-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); }
+.ma-poi-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: var(--color-accent-subtle); color: var(--color-accent); flex-shrink: 0; }
+/* Cartes (plan + aérien) */
+.ma-maps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 720px) { .ma-maps { grid-template-columns: 1fr; } }
+.ma-map-cap { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-muted); padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
+.ma-credit { font-size: 10px; padding: 4px 12px; text-align: right; }
+/* Icône en tête de cellule */
+.ma-cell { display: inline-flex; align-items: center; gap: 7px; }
+.ma-cell-ic { color: var(--color-accent); flex-shrink: 0; }
+/* Bloc avec photo (alternance gauche/droite) */
+/* minmax(0,1fr) : la colonne contenu ne peut pas dépasser l'espace dispo (évite le débordement
+   qui poussait la colonne image de 300 px hors écran). */
+.ma-split { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+.ma-split.rev { grid-template-columns: minmax(0, 1fr) 300px; }
+.ma-split-main { min-width: 0; }
+.ma-split.rev .ma-photostack { order: 2; }
+@media (max-width: 720px) { .ma-split, .ma-split.rev { grid-template-columns: 1fr; } .ma-split.rev .ma-photostack { order: 0; } }
+.ma-photostack { display: flex; flex-direction: column; gap: 12px; }
+.ma-photo { margin: 0; }
+.ma-photo img { width: 100%; border-radius: var(--radius-md); display: block; object-fit: cover; max-height: 220px; }
+.ma-photo figcaption { font-size: 10px; margin-top: 4px; }
+/* Écussons routiers */
+.ma-signs { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 12px; }
+/* Connectivité routière : jauge à gauche, écussons à droite (remplit l'espace) */
+.ma-access-row { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.ma-access-gauge { width: 168px; flex-shrink: 0; }
+.ma-access-row .ma-signs { flex: 1; margin-bottom: 0; }
+.ma-sign { display: inline-flex; align-items: center; gap: 5px; }
+.ma-sign img { height: 44px; width: auto; display: block; }
+/* Graphiques (âge, revenu) */
+/* Graphiques : grille auto-adaptative — se replie de 2 à 1 colonne quand le panneau est étroit. */
+.ma-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-top: 14px; }
+.ma-chart { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); padding: 12px 14px; min-width: 0; overflow: hidden; }
+.ma-chart-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+.ma-bars { display: flex; align-items: flex-end; gap: 5px; min-width: 0; }
+.ma-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.ma-bar-track { width: 100%; height: 92px; display: flex; align-items: flex-end; }
+.ma-bar-fill { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: height var(--transition-fast); }
+.ma-bar-lbl { font-size: 8.5px; color: var(--color-text-muted); white-space: nowrap; }
+
+/* Grille d'ajustements : postes « ignorés » par le courtier (œil) — grisés à l'écran. */
+.adj-eye { display: inline-flex; align-items: center; color: var(--color-text-muted); }
+.adj-eye:hover { color: var(--color-text-primary); }
+.adj-row-ignored, .adj-row-ignored td, .adj-row-ignored * { color: var(--color-text-muted) !important; opacity: 0.55; }
+/* À l'impression du rapport : masquer les contrôles d'œil et les postes ignorés. */
+@media print {
+  .adj-eye { display: none !important; }
+  tr.adj-row-ignored, li.adj-row-ignored { display: none !important; }
+}
 table.table { width: 100%; border-collapse: collapse; }
 .table thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); font-weight: 700; padding: 12px 14px; border-bottom: 1px solid var(--color-border); white-space: nowrap; }
 .table tbody td { padding: 12px 14px; border-bottom: 1px solid var(--color-border-subtle); vertical-align: middle; }

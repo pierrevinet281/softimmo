@@ -335,6 +335,26 @@ const PHOTO_ROLES = [
   { id: 'interior', key: 'd.ph.interior' },
   { id: 'gallery', key: 'd.ph.gallery' },
 ];
+// Catégories de photos « extérieur & vues » (en plus des pièces intérieures).
+const PHOTO_AREAS = [
+  { v: 'facade', fr: 'Façade', en: 'Facade' },
+  { v: 'cour_avant', fr: 'Cour avant', en: 'Front yard' },
+  { v: 'cour_arriere', fr: 'Cour arrière', en: 'Back yard' },
+  { v: 'amenagement', fr: 'Aménagement paysager', en: 'Landscaping' },
+  { v: 'piscine', fr: 'Piscine', en: 'Pool' },
+  { v: 'spa', fr: 'Spa', en: 'Spa' },
+  { v: 'sauna', fr: 'Sauna', en: 'Sauna' },
+  { v: 'gymnase', fr: 'Gymnase', en: 'Gym' },
+  { v: 'terrasse', fr: 'Terrasse', en: 'Deck/Terrace' },
+  { v: 'terrasse_toit', fr: 'Terrasse au toit', en: 'Rooftop terrace' },
+  { v: 'garage_ext', fr: 'Garage', en: 'Garage' },
+  { v: 'vue_avant', fr: 'Vue avant du bâtiment', en: 'Front view' },
+  { v: 'vue_arriere', fr: 'Vue arrière du bâtiment', en: 'Rear view' },
+  { v: 'vue_gauche', fr: 'Vue gauche du bâtiment', en: 'Left view' },
+  { v: 'vue_droite', fr: 'Vue droite du bâtiment', en: 'Right view' },
+  { v: 'vue_aerienne', fr: 'Vue aérienne', en: 'Aerial view' },
+  { v: 'vue_eau', fr: "Vue sur l'eau", en: 'Water view' },
+];
 
 export function PhotosTab({ property, units = [], refetch }) {
   const propertyId = property.id;
@@ -429,6 +449,9 @@ export function PhotosTab({ property, units = [], refetch }) {
                   )}
                   <optgroup label={t('d.ph.otherRooms')}>
                     {restOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </optgroup>
+                  <optgroup label={t('d.ph.areas')}>
+                    {PHOTO_AREAS.map((o) => <option key={o.v} value={o.v}>{lang === 'en' ? o.en : o.fr}</option>)}
                   </optgroup>
                   <option value="gallery">{t('d.ph.unassigned')}</option>
                 </select>

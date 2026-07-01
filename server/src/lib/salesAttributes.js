@@ -40,6 +40,8 @@ export function buildMatrix(Settings) {
     return {
       key: a.key, category: a.category, label_fr: a.label_fr, label_en: a.label_en,
       input: a.input || 'text', unit: a.unit || null, enabled,
+      // Champs de présentation enrichis (rendu du formulaire) : voir lib/attrOptions (front).
+      optset: a.optset || null, group: a.group || null, computed: a.computed || null, sync: a.sync || null,
     };
   });
   return { types: tax.types, categories: tax.categories, attributes };
@@ -72,7 +74,7 @@ export function formSchema(Settings, type) {
       key: c.key, label_fr: c.label_fr, label_en: c.label_en,
       attributes: m.attributes
         .filter((a) => a.category === c.key && a.enabled[type])
-        .map((a) => ({ key: a.key, label_fr: a.label_fr, label_en: a.label_en, input: a.input, unit: a.unit })),
+        .map((a) => ({ key: a.key, label_fr: a.label_fr, label_en: a.label_en, input: a.input, unit: a.unit, optset: a.optset, group: a.group, computed: a.computed, sync: a.sync })),
     }))
     .filter((c) => c.attributes.length);
   return { type, categories };

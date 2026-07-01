@@ -456,6 +456,45 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_property ON reports(property_id);
 
+-- ───────────────────────── Évaluations (Module 2 — ACM enregistrées) ─────────────────────────
+-- Instantané d'une opinion de valeur produite via /evaluation (auto-enregistré au calcul).
+CREATE TABLE IF NOT EXISTS evaluations (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  title         TEXT,
+  as_of         TEXT,                  -- date d'analyse
+  expected_point  REAL,                -- opinion de valeur (prix de vente attendu)
+  expected_low    REAL,
+  expected_high   REAL,
+  listing_price   REAL,                -- prix d'inscription proposé
+  sold_count    INTEGER,               -- nb de comparables vendus retenus
+  subject       TEXT,                  -- JSON : sujet ACM
+  ignored       TEXT,                  -- JSON : postes d'ajustement ignorés
+  result        TEXT,                  -- JSON : instantané complet du résultat ACM
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_evaluations_property ON evaluations(property_id);
+
+-- ───────────────────────── Analyses de marché (Module 2 — secteur) ─────────────────────────
+-- Caractérisation du secteur (région/MRC/municipalité/secteur) à partir de données publiques.
+CREATE TABLE IF NOT EXISTS market_analyses (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
+  property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  title         TEXT,
+  municipality  TEXT,
+  mrc           TEXT,
+  region        TEXT,
+  report        TEXT,                  -- JSON : rapport structuré (sections + indicateurs)
+  notes         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_market_analyses_property ON market_analyses(property_id);
+
 -- ───────────────────────── Médias de propriété (photos) ─────────────────────────
 -- Photos téléversées, utilisées par les brochures et autres sorties marketing.
 -- `role` : hero (photo principale) | map (carte) | interior (intérieur) | gallery (non assigné).
@@ -464,6 +503,7 @@ CREATE TABLE IF NOT EXISTS property_media (
   tenant_id     TEXT,
   property_id   TEXT NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
   role          TEXT NOT NULL DEFAULT 'gallery',
+  kind          TEXT DEFAULT 'photo',  -- photo|plan
   position      INTEGER DEFAULT 0,
   file_path     TEXT NOT NULL,
   filename      TEXT,

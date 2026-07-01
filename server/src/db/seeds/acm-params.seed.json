@@ -1,49 +1,54 @@
 {
-  "_comment": "Paramètres d'ajustement ACM — DÉFAUTS ÉDITABLES, jamais des vérités (CLAUDE.md, docs/12 §6). Le courtier les ajuste par mandat via /acm/params (stockés dans settings). Montants en $ CA, superficies en pi².",
-  "construction_cost_per_sqft": 180,
-  "land_cost_per_sqft": 0,
-  "age_adjustment_pct_per_year": 0.005,
-  "monthly_appreciation_pct": 0.004,
-  "sale_to_list_ratio": 0.975,
-  "sale_to_assessment_ratio": null,
-  "assessment_gap_threshold": 0.15,
+  "_comment": "Paramètres d'ajustement ACM — DÉFAUTS ÉDITABLES (admin), jamais des vérités (CLAUDE.md, docs/12 §6). Reflètent le « Tableau des ajustements » (Statistiques/). Montants $ CA, superficies pi². Structure : area ($/pi²) · features_pct (% par option, multi = moyenne) · features_dollar ($ par option, multi = moyenne) · inclusions ($ par quantité ; sous_sol_fini = $/pi²) · age (% ; construction/an, fenêtres/toiture = plage neuf↔fin de vie sur une durée de vie) · date (% / mois). Sections conservées : sale_to_list_ratio, sale_to_assessment_ratio.",
   "min_transactions": 3,
   "outlier_low": 0.5,
   "outlier_high": 1.5,
+  "assessment_gap_threshold": 0.15,
+  "sale_to_list_ratio": 0.975,
+  "sale_to_assessment_ratio": null,
+  "monthly_appreciation_pct": 0.004,
+  "area": {
+    "land_per_sqft": 35,
+    "constr_rdc_per_sqft": 225,
+    "constr_etage_per_sqft": 160,
+    "constr_sous_sol_per_sqft": 80
+  },
+  "age": {
+    "construction_pct_per_year": 0.01,
+    "windows_range_pct": 0.035,
+    "windows_lifespan": 25,
+    "roof_range_pct": 0.025,
+    "roof_lifespan": 25
+  },
+  "features_pct": {
+    "fondation": { "label_fr": "Fondation", "label_en": "Foundation", "attr": "foundation", "options": { "beton": 0, "blocs": -0.03, "bois": -0.05, "pieux": -0.02 } },
+    "toiture": { "label_fr": "Toiture (type)", "label_en": "Roofing (type)", "attr": "roofing_type", "options": { "pente": 0, "plat": 0.02 } },
+    "revetement": { "label_fr": "Revêtement extérieur", "label_en": "Exterior cladding", "attr": "ext_cladding", "options": { "aluminium": 0, "vinyle": -0.01, "crepi": 0.04, "stuc": 0.04, "fibrociment": 0.03, "bois": 0.05, "acier": 0.06, "brique": 0.08, "pierre": 0.12 } },
+    "fenetres": { "label_fr": "Type de fenêtres", "label_en": "Window type", "attr": "windows_material", "options": { "pvc": 0, "hybride": 0.02, "aluminium": 0.03, "bois": 0.04 } },
+    "planchers": { "label_fr": "Type de planchers", "label_en": "Flooring type", "attr": "flooring", "options": { "flottant": 0, "beton": -0.01, "linoleum": -0.01, "vinyle": -0.01, "tapis": -0.02, "vinyle_luxe": 0.01, "liege": 0.02, "bambou": 0.03, "ceramique": 0.03, "epoxy": 0.03, "bois_franc": 0.04, "bois_ingenierie": 0.04, "beton_poli": 0.04, "porcelaine": 0.04, "ardoise": 0.05, "terrazzo": 0.06, "granit": 0.07, "marbre": 0.07 } }
+  },
+  "features_dollar": {
+    "entree": { "label_fr": "Entrée de stationnement", "label_en": "Driveway", "attr": "driveway", "options": { "asphalte": 0, "pave": 18000, "gravier": -5000 } },
+    "armoires": { "label_fr": "Armoires de cuisine", "label_en": "Kitchen cabinets", "attr": "kitchen_cabinets", "options": { "melamine": 0, "thermoplastique": 5000, "bois_plaque": 10000, "bois_massif": 15000 } },
+    "comptoirs": { "label_fr": "Comptoirs", "label_en": "Countertops", "attr": "countertops", "options": { "stratifie": 0, "melamine": 0, "ceramique": 1500, "bois": 2500, "corian": 3000, "beton": 3500, "acier_inox": 4500, "granite": 5000, "quartz": 6000, "marbre": 8000 } }
+  },
   "inclusions": {
-    "piscine_creusee": 25000,
-    "piscine_hors_terre": 8000,
-    "spa": 6000,
-    "sauna": 7000,
-    "foyer": 5000,
-    "garage": 20000,
-    "abri_auto": 8000,
+    "sous_sol_fini": 50,
+    "piscine_creusee": 35000,
+    "piscine_hors_terre": 3500,
+    "spa": 4000,
+    "sauna": 5000,
+    "foyer": 6000,
+    "garage": 45000,
+    "abri_auto": 10000,
     "cabanon": 4000,
-    "sous_sol_fini": 15000,
-    "climatisation": 4000,
-    "thermopompe": 4000
+    "climatisation": 4500,
+    "thermopompe": 18000,
+    "terrasse_toit": 20000
   },
-  "boolean_inclusions": ["sous_sol_fini", "climatisation", "thermopompe"],
-  "features": {
-    "foundation": {
-      "label": "Fondation",
-      "options": { "beton": 0, "blocs": -0.02, "pieux": -0.03, "pierre": -0.01 }
-    },
-    "cladding": {
-      "label": "Revêtement extérieur",
-      "options": { "brique": 0.03, "pierre": 0.05, "aluminium": 0, "vinyle": 0, "bois": 0.01, "fibrociment": 0.02, "crepi": 0.01 }
-    },
-    "windows_type": {
-      "label": "Type de fenêtres",
-      "options": { "pvc": 0, "hybride": 0.01, "aluminium": -0.01, "bois": 0.02 }
-    },
-    "flooring": {
-      "label": "Type de planchers",
-      "options": { "bois_franc": 0.03, "ceramique": 0.01, "lamine": 0, "vinyle": 0, "tapis": -0.01 }
-    }
-  },
-  "age_features": {
-    "windows_age": { "label": "Âge des fenêtres", "pct_per_year": 0.002 },
-    "roof_age": { "label": "Âge de la toiture", "pct_per_year": 0.003 }
+  "inclusions_labels": {
+    "sous_sol_fini": "Sous-sol fini ($/pi²)", "piscine_creusee": "Piscine creusée", "piscine_hors_terre": "Piscine hors terre",
+    "spa": "Spa", "sauna": "Sauna", "foyer": "Foyer", "garage": "Garage", "abri_auto": "Abri d'auto", "cabanon": "Cabanon",
+    "climatisation": "Climatisation (murale)", "thermopompe": "Thermopompe (centrale)", "terrasse_toit": "Terrasse au toit"
   }
 }

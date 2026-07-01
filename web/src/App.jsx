@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useLocation, Navigate, useParams } from 'react-
 import {
   LayoutDashboard, Users, Building2, Sparkles, ShieldCheck, ListChecks,
   Upload, Store, Activity as ActivityIcon, Settings as SettingsIcon, Moon, Sun, Zap,
-  Home, FileBarChart, Megaphone, FileText, LifeBuoy, Contact, Briefcase, UserCircle,
+  Home, FileBarChart, Megaphone, FileText, LifeBuoy, Contact, Briefcase, UserCircle, Map as MapIcon,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from './api/client.js';
@@ -20,6 +20,7 @@ function PropertyRedirect() {
   return <Navigate to={`/properties/edit/${id}`} replace />;
 }
 import Evaluation from './pages/Evaluation.jsx';
+import MarketAnalysis from './pages/MarketAnalysis.jsx';
 import OffresList from './pages/OffresList.jsx';
 import OffreEdit from './pages/OffreEdit.jsx';
 import OffreTemplates from './pages/OffreTemplates.jsx';
@@ -53,6 +54,7 @@ const NAV = [
   { to: '/clients', labelKey: 'nav.clients', icon: Home },
   { sectionKey: 'sec.analysis' },
   { to: '/evaluation', labelKey: 'nav.evaluation', icon: FileBarChart },
+  { to: '/market-analysis', labelKey: 'nav.marketAnalysis', icon: MapIcon },
   { sectionKey: 'sec.promo' },
   { to: '/offres', labelKey: 'nav.offers', icon: FileText, children: [
     { to: '/offres', labelKey: 'nav.off.list', end: true },
@@ -82,7 +84,7 @@ const NAV = [
 // path -> label key, for the topbar title.
 const TITLE_KEY = {
   '/': 'nav.overview', '/properties': 'nav.properties', '/properties/edit': 'pe.title', '/properties/attributs': 'sa.title', '/clients': 'nav.clients',
-  '/evaluation': 'nav.evaluation', '/profile': 'nav.profile',
+  '/evaluation': 'nav.evaluation', '/market-analysis': 'nav.marketAnalysis', '/profile': 'nav.profile',
   '/assets-courtier': 'nav.brokerAssets', '/offres': 'nav.offers',
   '/trousse-demarrage': 'nav.startKit', '/trousse-marketing': 'nav.marketingKit',
   '/contacts': 'nav.contacts', '/companies': 'nav.companies',
@@ -176,6 +178,7 @@ export default function App() {
           <Route path="/properties/:id" element={<PropertyRedirect />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/evaluation" element={<Evaluation />} />
+          <Route path="/market-analysis" element={<MarketAnalysis />} />
           <Route path="/profile" element={<ProfilCourtier />} />
           <Route path="/offres" element={<OffresList />} />
           <Route path="/offres/edit" element={<OffreEdit />} />

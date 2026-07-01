@@ -1,143 +1,1638 @@
 {
   "_comment": "Taxonomie des attributs de vente (Module 1/4). Source de vérité de la matrice « Attributs Ventes » : catégories ordonnées + attributs ordonnés par importance (ordre des tableaux). `types` = colonnes activées PAR DÉFAUT (l'admin peut basculer ; les surcharges vivent dans Settings['sales_attributes_matrix']). `input`/`unit` servent à générer le formulaire par type, puis la brochure. Bilingue FR/EN (Loi 96 : FR prééminent).",
   "types": [
-    { "key": "condo", "label_fr": "Condo", "label_en": "Condo" },
-    { "key": "unifamilial", "label_fr": "Unifamiliale", "label_en": "Single-family" },
-    { "key": "multi", "label_fr": "Multi-logements", "label_en": "Multi-unit" },
-    { "key": "commercial", "label_fr": "Commercial", "label_en": "Commercial" },
-    { "key": "industriel", "label_fr": "Industriel", "label_en": "Industrial" },
-    { "key": "rpa", "label_fr": "RPA", "label_en": "Senior residence" }
+    {
+      "key": "condo",
+      "label_fr": "Condo",
+      "label_en": "Condo"
+    },
+    {
+      "key": "unifamilial",
+      "label_fr": "Unifamiliale",
+      "label_en": "Single-family"
+    },
+    {
+      "key": "multi",
+      "label_fr": "Multi-logements",
+      "label_en": "Multi-unit"
+    },
+    {
+      "key": "commercial",
+      "label_fr": "Commercial",
+      "label_en": "Commercial"
+    },
+    {
+      "key": "industriel",
+      "label_fr": "Industriel",
+      "label_en": "Industrial"
+    },
+    {
+      "key": "rpa",
+      "label_fr": "RPA",
+      "label_en": "Senior residence"
+    }
   ],
   "categories": [
-    { "key": "designation", "label_fr": "Désignation", "label_en": "Designation" },
-    { "key": "localisation", "label_fr": "Localisation & zonage", "label_en": "Location & zoning" },
-    { "key": "terrain", "label_fr": "Terrain", "label_en": "Lot" },
-    { "key": "stationnement", "label_fr": "Stationnement & accès", "label_en": "Parking & access" },
-    { "key": "batiment", "label_fr": "Bâtiment", "label_en": "Building" },
-    { "key": "interieur", "label_fr": "Intérieur & équipements", "label_en": "Interior & equipment" },
-    { "key": "industriel", "label_fr": "Spécifications industrielles", "label_en": "Industrial specs" },
-    { "key": "commercial", "label_fr": "Spécifications commerciales", "label_en": "Commercial specs" },
-    { "key": "revenus", "label_fr": "Revenus & baux", "label_en": "Income & leases" },
-    { "key": "rpa", "label_fr": "Résidence pour aînés (RPA)", "label_en": "Senior residence" },
-    { "key": "financier", "label_fr": "Évaluation & taxes", "label_en": "Valuation & taxes" }
+    {
+      "key": "designation",
+      "label_fr": "Désignation",
+      "label_en": "Designation"
+    },
+    {
+      "key": "localisation",
+      "label_fr": "Localisation & zonage",
+      "label_en": "Location & zoning"
+    },
+    {
+      "key": "terrain",
+      "label_fr": "Terrain",
+      "label_en": "Lot"
+    },
+    {
+      "key": "stationnement",
+      "label_fr": "Stationnement & accès",
+      "label_en": "Parking & access"
+    },
+    {
+      "key": "batiment",
+      "label_fr": "Bâtiment",
+      "label_en": "Building"
+    },
+    {
+      "key": "interieur",
+      "label_fr": "Intérieur & équipements",
+      "label_en": "Interior & equipment"
+    },
+    {
+      "key": "industriel",
+      "label_fr": "Spécifications industrielles",
+      "label_en": "Industrial specs"
+    },
+    {
+      "key": "commercial",
+      "label_fr": "Spécifications commerciales",
+      "label_en": "Commercial specs"
+    },
+    {
+      "key": "revenus",
+      "label_fr": "Revenus & baux",
+      "label_en": "Income & leases"
+    },
+    {
+      "key": "rpa",
+      "label_fr": "Résidence pour aînés (RPA)",
+      "label_en": "Senior residence"
+    },
+    {
+      "key": "financier",
+      "label_fr": "Évaluation & taxes",
+      "label_en": "Valuation & taxes"
+    }
   ],
   "attributes": [
-    { "key": "genre_detail", "category": "designation", "label_fr": "Type / sous-type de propriété", "label_en": "Property type / subtype", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "year_built", "category": "designation", "label_fr": "Année de construction", "label_en": "Year built", "input": "number", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "year_reno", "category": "designation", "label_fr": "Année de rénovation", "label_en": "Year renovated", "input": "number", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "arch_style", "category": "designation", "label_fr": "Style architectural", "label_en": "Architectural style", "input": "text", "types": ["condo", "unifamilial"] },
-    { "key": "num_storeys", "category": "designation", "label_fr": "Nombre d'étages", "label_en": "Number of storeys", "input": "number", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "num_buildings", "category": "designation", "label_fr": "Nombre de bâtiments", "label_en": "Number of buildings", "input": "number", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "lot_number", "category": "designation", "label_fr": "Numéro de lot (cadastre)", "label_en": "Lot number (cadastre)", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "occupancy_avail", "category": "designation", "label_fr": "Disponibilité / occupation", "label_en": "Availability / occupancy", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-
-    { "key": "address", "category": "localisation", "label_fr": "Adresse", "label_en": "Address", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "sector", "category": "localisation", "label_fr": "Ville / Secteur", "label_en": "City / Sector", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "zoning", "category": "localisation", "label_fr": "Zonage", "label_en": "Zoning", "input": "text", "types": ["unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "permitted_use", "category": "localisation", "label_fr": "Usages autorisés", "label_en": "Permitted uses", "input": "text", "types": ["commercial", "industriel"] },
-    { "key": "highway_access", "category": "localisation", "label_fr": "Accès autoroutier", "label_en": "Highway access", "input": "text", "types": ["commercial", "industriel"] },
-    { "key": "proximity", "category": "localisation", "label_fr": "Proximité (services, transport)", "label_en": "Proximity (services, transit)", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-
-    { "key": "land_area", "category": "terrain", "label_fr": "Superficie du terrain", "label_en": "Lot area", "input": "number", "unit": "pi²", "types": ["unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "land_dimensions", "category": "terrain", "label_fr": "Dimensions du terrain", "label_en": "Lot dimensions", "input": "text", "types": ["unifamilial", "multi", "commercial", "industriel"] },
-    { "key": "frontage", "category": "terrain", "label_fr": "Façade (frontage)", "label_en": "Frontage", "input": "number", "unit": "pi", "types": ["unifamilial", "commercial", "industriel"] },
-    { "key": "topography", "category": "terrain", "label_fr": "Topographie", "label_en": "Topography", "input": "text", "types": ["commercial", "industriel"] },
-    { "key": "services_muni", "category": "terrain", "label_fr": "Services municipaux (aqueduc/égout)", "label_en": "Municipal services (water/sewer)", "input": "text", "types": ["unifamilial", "multi", "commercial", "industriel"] },
-    { "key": "outdoor_storage", "category": "terrain", "label_fr": "Entreposage extérieur / cour", "label_en": "Outdoor storage / yard", "input": "text", "types": ["industriel"] },
-    { "key": "fenced_yard", "category": "terrain", "label_fr": "Cour clôturée", "label_en": "Fenced yard", "input": "bool", "types": ["industriel"] },
-
-    { "key": "parking_total", "category": "stationnement", "label_fr": "Nombre de stationnements", "label_en": "Number of parking spaces", "input": "number", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "parking_type", "category": "stationnement", "label_fr": "Type de stationnement (intérieur/extérieur)", "label_en": "Parking type (indoor/outdoor)", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "rpa"] },
-    { "key": "garage_count", "category": "stationnement", "label_fr": "Nombre de garages", "label_en": "Number of garages", "input": "number", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "parking_ratio", "category": "stationnement", "label_fr": "Ratio de stationnement (/1000 pi²)", "label_en": "Parking ratio (per 1000 sq ft)", "input": "number", "types": ["commercial", "industriel"] },
-    { "key": "truck_access", "category": "stationnement", "label_fr": "Accès camions / aire de manœuvre", "label_en": "Truck access / maneuvering area", "input": "text", "types": ["commercial", "industriel"] },
-
-    { "key": "living_area", "category": "batiment", "label_fr": "Superficie habitable", "label_en": "Living area", "input": "number", "unit": "pi²", "types": ["condo", "unifamilial", "multi", "rpa"] },
-    { "key": "gross_building_area", "category": "batiment", "label_fr": "Superficie brute du bâtiment", "label_en": "Gross building area", "input": "number", "unit": "pi²", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "leasable_area", "category": "batiment", "label_fr": "Superficie locative nette", "label_en": "Net leasable area", "input": "number", "unit": "pi²", "types": ["commercial", "industriel", "multi"] },
-    { "key": "num_units", "category": "batiment", "label_fr": "Nombre de logements / unités", "label_en": "Number of units", "input": "number", "types": ["multi", "commercial", "rpa"] },
-    { "key": "num_rooms", "category": "batiment", "label_fr": "Nombre de pièces", "label_en": "Number of rooms", "input": "number", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "num_bedrooms", "category": "batiment", "label_fr": "Nombre de chambres", "label_en": "Number of bedrooms", "input": "number", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "num_bathrooms", "category": "batiment", "label_fr": "Nombre de salles de bain", "label_en": "Number of bathrooms", "input": "number", "types": ["condo", "unifamilial", "multi", "rpa"] },
-    { "key": "num_powder", "category": "batiment", "label_fr": "Nombre de salles d'eau", "label_en": "Number of powder rooms", "input": "number", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "structure", "category": "batiment", "label_fr": "Structure", "label_en": "Structure", "input": "text", "types": ["unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "foundation", "category": "batiment", "label_fr": "Fondation", "label_en": "Foundation", "input": "text", "types": ["unifamilial", "multi"] },
-    { "key": "ext_cladding", "category": "batiment", "label_fr": "Revêtement extérieur", "label_en": "Exterior cladding", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "roof", "category": "batiment", "label_fr": "Toiture", "label_en": "Roofing", "input": "text", "types": ["unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "windows", "category": "batiment", "label_fr": "Fenestration", "label_en": "Windows", "input": "text", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "basement", "category": "batiment", "label_fr": "Sous-sol", "label_en": "Basement", "input": "text", "types": ["unifamilial", "multi"] },
-    { "key": "elevator", "category": "batiment", "label_fr": "Ascenseur", "label_en": "Elevator", "input": "bool", "types": ["condo", "multi", "commercial", "rpa"] },
-
-    { "key": "heating_type", "category": "interieur", "label_fr": "Type de chauffage", "label_en": "Heating type", "input": "text", "types": ["condo", "unifamilial", "multi", "rpa"] },
-    { "key": "heating_energy", "category": "interieur", "label_fr": "Énergie de chauffage", "label_en": "Heating energy", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "cooling", "category": "interieur", "label_fr": "Climatisation", "label_en": "Air conditioning", "input": "text", "types": ["condo", "unifamilial", "multi", "commercial", "rpa"] },
-    { "key": "electrical", "category": "interieur", "label_fr": "Système électrique (ampérage)", "label_en": "Electrical (amperage)", "input": "text", "types": ["unifamilial", "multi"] },
-    { "key": "fireplace", "category": "interieur", "label_fr": "Foyer / poêle", "label_en": "Fireplace / stove", "input": "bool", "types": ["condo", "unifamilial"] },
-    { "key": "flooring", "category": "interieur", "label_fr": "Revêtements de sol", "label_en": "Flooring", "input": "text", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "appliances", "category": "interieur", "label_fr": "Électroménagers inclus", "label_en": "Included appliances", "input": "text", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "pool", "category": "interieur", "label_fr": "Piscine", "label_en": "Pool", "input": "bool", "types": ["unifamilial", "multi", "rpa"] },
-    { "key": "inclusions", "category": "interieur", "label_fr": "Inclusions", "label_en": "Inclusions", "input": "text", "types": ["condo", "unifamilial", "multi"] },
-    { "key": "exclusions", "category": "interieur", "label_fr": "Exclusions", "label_en": "Exclusions", "input": "text", "types": ["condo", "unifamilial", "multi"] },
-
-    { "key": "warehouse_area", "category": "industriel", "label_fr": "Superficie d'entrepôt", "label_en": "Warehouse area", "input": "number", "unit": "pi²", "types": ["industriel"] },
-    { "key": "office_area", "category": "industriel", "label_fr": "Superficie de bureau", "label_en": "Office area", "input": "number", "unit": "pi²", "types": ["industriel", "commercial"] },
-    { "key": "office_pct", "category": "industriel", "label_fr": "Proportion bureau (%)", "label_en": "Office proportion (%)", "input": "percent", "types": ["industriel"] },
-    { "key": "clear_height", "category": "industriel", "label_fr": "Hauteur libre (clear height)", "label_en": "Clear height", "input": "number", "unit": "pi", "types": ["industriel"] },
-    { "key": "loading_docks", "category": "industriel", "label_fr": "Nombre de quais de chargement", "label_en": "Number of loading docks", "input": "number", "types": ["industriel", "commercial"] },
-    { "key": "dock_levelers", "category": "industriel", "label_fr": "Niveleurs de quai", "label_en": "Dock levelers", "input": "number", "types": ["industriel"] },
-    { "key": "drive_in_doors", "category": "industriel", "label_fr": "Portes au niveau du sol (drive-in)", "label_en": "Drive-in doors (grade level)", "input": "number", "types": ["industriel"] },
-    { "key": "garage_doors", "category": "industriel", "label_fr": "Nombre de portes de garage", "label_en": "Number of garage doors", "input": "number", "types": ["industriel", "commercial"] },
-    { "key": "door_dimensions", "category": "industriel", "label_fr": "Dimensions des portes", "label_en": "Door dimensions", "input": "text", "types": ["industriel"] },
-    { "key": "column_spacing", "category": "industriel", "label_fr": "Espacement des colonnes", "label_en": "Column spacing", "input": "text", "types": ["industriel"] },
-    { "key": "floor_load", "category": "industriel", "label_fr": "Capacité portante du plancher (lb/pi²)", "label_en": "Floor load capacity (lb/sq ft)", "input": "number", "types": ["industriel"] },
-    { "key": "crane", "category": "industriel", "label_fr": "Pont roulant (présence)", "label_en": "Overhead crane (present)", "input": "bool", "types": ["industriel"] },
-    { "key": "crane_capacity", "category": "industriel", "label_fr": "Capacité du pont roulant (tonnes)", "label_en": "Crane capacity (tons)", "input": "number", "types": ["industriel"] },
-    { "key": "mezzanine_area", "category": "industriel", "label_fr": "Superficie de mezzanine", "label_en": "Mezzanine area", "input": "number", "unit": "pi²", "types": ["industriel"] },
-    { "key": "power_service", "category": "industriel", "label_fr": "Service électrique (voltage/ampérage/phase)", "label_en": "Power service (voltage/amperage/phase)", "input": "text", "types": ["industriel", "commercial"] },
-    { "key": "sprinklers", "category": "industriel", "label_fr": "Gicleurs (type, ESFR)", "label_en": "Sprinklers (type, ESFR)", "input": "text", "types": ["industriel", "commercial", "multi", "rpa"] },
-    { "key": "warehouse_heating", "category": "industriel", "label_fr": "Chauffage de l'entrepôt", "label_en": "Warehouse heating", "input": "text", "types": ["industriel"] },
-
-    { "key": "commercial_area", "category": "commercial", "label_fr": "Superficie commerciale", "label_en": "Commercial area", "input": "number", "unit": "pi²", "types": ["commercial"] },
-    { "key": "num_commercial_units", "category": "commercial", "label_fr": "Nombre de locaux commerciaux", "label_en": "Number of commercial units", "input": "number", "types": ["commercial"] },
-    { "key": "storefront", "category": "commercial", "label_fr": "Vitrine / frontage commercial", "label_en": "Storefront / commercial frontage", "input": "text", "types": ["commercial"] },
-    { "key": "signage", "category": "commercial", "label_fr": "Affichage / pylône", "label_en": "Signage / pylon", "input": "text", "types": ["commercial"] },
-    { "key": "common_area", "category": "commercial", "label_fr": "Aire commune (CAM)", "label_en": "Common area (CAM)", "input": "number", "unit": "pi²", "types": ["commercial"] },
-    { "key": "anchor_tenant", "category": "commercial", "label_fr": "Locataire d'ancrage", "label_en": "Anchor tenant", "input": "text", "types": ["commercial"] },
-    { "key": "foot_traffic", "category": "commercial", "label_fr": "Achalandage / débit de circulation", "label_en": "Foot traffic / vehicle count", "input": "text", "types": ["commercial"] },
-
-    { "key": "num_rental_units", "category": "revenus", "label_fr": "Nombre d'unités locatives", "label_en": "Number of rental units", "input": "number", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "unit_mix", "category": "revenus", "label_fr": "Répartition des logements (3½, 4½…)", "label_en": "Unit mix", "input": "text", "types": ["multi", "rpa"] },
-    { "key": "gross_revenue", "category": "revenus", "label_fr": "Revenus bruts potentiels", "label_en": "Potential gross revenue", "input": "currency", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "effective_revenue", "category": "revenus", "label_fr": "Revenus effectifs", "label_en": "Effective revenue", "input": "currency", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "operating_expenses", "category": "revenus", "label_fr": "Dépenses d'exploitation", "label_en": "Operating expenses", "input": "currency", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "noi", "category": "revenus", "label_fr": "Revenu net d'exploitation (RNE)", "label_en": "Net operating income (NOI)", "input": "currency", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "cap_rate", "category": "revenus", "label_fr": "Taux global d'actualisation (TGA)", "label_en": "Capitalization rate", "input": "percent", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "grm", "category": "revenus", "label_fr": "Multiplicateur de revenu brut (MRB)", "label_en": "Gross revenue multiplier", "input": "number", "types": ["multi", "commercial"] },
-    { "key": "price_per_door", "category": "revenus", "label_fr": "Prix par porte", "label_en": "Price per door", "input": "currency", "types": ["multi"] },
-    { "key": "vacancy", "category": "revenus", "label_fr": "Taux d'inoccupation", "label_en": "Vacancy rate", "input": "percent", "types": ["multi", "commercial", "industriel", "rpa"] },
-    { "key": "lease_type", "category": "revenus", "label_fr": "Type de baux (brut/net/TMI)", "label_en": "Lease type (gross/net/NNN)", "input": "text", "types": ["commercial", "industriel"] },
-    { "key": "lease_term", "category": "revenus", "label_fr": "Échéances des baux", "label_en": "Lease terms / expiries", "input": "text", "types": ["commercial", "industriel"] },
-    { "key": "separate_meters", "category": "revenus", "label_fr": "Compteurs séparés", "label_en": "Separate meters", "input": "bool", "types": ["multi"] },
-    { "key": "laundry", "category": "revenus", "label_fr": "Buanderie commune", "label_en": "Common laundry", "input": "bool", "types": ["multi"] },
-
-    { "key": "care_level", "category": "rpa", "label_fr": "Niveau de soins", "label_en": "Level of care", "input": "text", "types": ["rpa"] },
-    { "key": "licensed_beds", "category": "rpa", "label_fr": "Nombre de places autorisées", "label_en": "Licensed beds", "input": "number", "types": ["rpa"] },
-    { "key": "num_residents", "category": "rpa", "label_fr": "Nombre de chambres / résidents", "label_en": "Number of rooms / residents", "input": "number", "types": ["rpa"] },
-    { "key": "certification", "category": "rpa", "label_fr": "Certification RPA", "label_en": "Senior-residence certification", "input": "text", "types": ["rpa"] },
-    { "key": "services_included", "category": "rpa", "label_fr": "Services inclus (repas/soins/loisirs)", "label_en": "Included services (meals/care/activities)", "input": "text", "types": ["rpa"] },
-    { "key": "staff", "category": "rpa", "label_fr": "Personnel (ÉTP)", "label_en": "Staff (FTE)", "input": "number", "types": ["rpa"] },
-    { "key": "occupancy_rate", "category": "rpa", "label_fr": "Taux d'occupation", "label_en": "Occupancy rate", "input": "percent", "types": ["rpa"] },
-    { "key": "ebitda", "category": "rpa", "label_fr": "BAIIA (EBITDA)", "label_en": "EBITDA", "input": "currency", "types": ["rpa"] },
-    { "key": "common_rooms", "category": "rpa", "label_fr": "Salles communes / salle à manger", "label_en": "Common rooms / dining", "input": "text", "types": ["rpa"] },
-    { "key": "nurse_call", "category": "rpa", "label_fr": "Système d'appel de garde", "label_en": "Nurse-call system", "input": "bool", "types": ["rpa"] },
-    { "key": "generator", "category": "rpa", "label_fr": "Génératrice d'urgence", "label_en": "Emergency generator", "input": "bool", "types": ["rpa", "commercial", "industriel"] },
-
-    { "key": "asking_price", "category": "financier", "label_fr": "Prix demandé", "label_en": "Asking price", "input": "currency", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "price_per_sqft", "category": "financier", "label_fr": "Prix au pi²", "label_en": "Price per sq ft", "input": "currency", "types": ["commercial", "industriel", "multi"] },
-    { "key": "muni_assessment", "category": "financier", "label_fr": "Évaluation municipale", "label_en": "Municipal assessment", "input": "currency", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "assessment_year", "category": "financier", "label_fr": "Année d'évaluation", "label_en": "Assessment year", "input": "number", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "muni_taxes", "category": "financier", "label_fr": "Taxes municipales", "label_en": "Municipal taxes", "input": "currency", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "school_taxes", "category": "financier", "label_fr": "Taxes scolaires", "label_en": "School taxes", "input": "currency", "types": ["condo", "unifamilial", "multi", "commercial", "industriel", "rpa"] },
-    { "key": "condo_fees", "category": "financier", "label_fr": "Frais de copropriété", "label_en": "Condo fees", "input": "currency", "types": ["condo"] }
+    {
+      "key": "genre_detail",
+      "category": "designation",
+      "label_fr": "Type / sous-type de propriété",
+      "label_en": "Property type / subtype",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "year_built",
+      "category": "designation",
+      "label_fr": "Année de construction",
+      "label_en": "Year built",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "year_reno",
+      "category": "designation",
+      "label_fr": "Année de rénovation",
+      "label_en": "Year renovated",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "arch_style",
+      "category": "designation",
+      "label_fr": "Style architectural",
+      "label_en": "Architectural style",
+      "input": "select",
+      "types": [
+        "condo",
+        "unifamilial"
+      ],
+      "optset": "arch_style"
+    },
+    {
+      "key": "num_storeys",
+      "category": "designation",
+      "label_fr": "Nombre d'étages",
+      "label_en": "Number of storeys",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "floors_above",
+      "category": "designation",
+      "label_fr": "Nombre d'étages hors-sol",
+      "label_en": "Above-ground storeys",
+      "input": "number",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "floors_basement",
+      "category": "designation",
+      "label_fr": "Nombre d'étages sous-sol",
+      "label_en": "Basement storeys",
+      "input": "number",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "num_buildings",
+      "category": "designation",
+      "label_fr": "Nombre de bâtiments",
+      "label_en": "Number of buildings",
+      "input": "number",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "lot_number",
+      "category": "designation",
+      "label_fr": "Numéro de lot (cadastre)",
+      "label_en": "Lot number (cadastre)",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "occupancy_avail",
+      "category": "designation",
+      "label_fr": "Disponibilité / occupation",
+      "label_en": "Availability / occupancy",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "address",
+      "category": "localisation",
+      "label_fr": "Adresse",
+      "label_en": "Address",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "sector",
+      "category": "localisation",
+      "label_fr": "Ville / Secteur",
+      "label_en": "City / Sector",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "zoning",
+      "category": "localisation",
+      "label_fr": "Zonage",
+      "label_en": "Zoning",
+      "input": "text",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "permitted_use",
+      "category": "localisation",
+      "label_fr": "Usages autorisés",
+      "label_en": "Permitted uses",
+      "input": "text",
+      "types": [
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "highway_access",
+      "category": "localisation",
+      "label_fr": "Accès autoroutier",
+      "label_en": "Highway access",
+      "input": "text",
+      "types": [
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "proximity",
+      "category": "localisation",
+      "label_fr": "Proximité (services, transport)",
+      "label_en": "Proximity (services, transit)",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "land_area",
+      "category": "terrain",
+      "label_fr": "Superficie du terrain",
+      "label_en": "Lot area",
+      "input": "dim",
+      "unit": "area",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "frontage",
+      "category": "terrain",
+      "label_fr": "Façade",
+      "label_en": "Frontage",
+      "input": "dim",
+      "unit": "lin",
+      "types": [
+        "unifamilial",
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "depth",
+      "category": "terrain",
+      "label_fr": "Profondeur",
+      "label_en": "Depth",
+      "input": "dim",
+      "unit": "lin",
+      "types": [
+        "unifamilial",
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "topography",
+      "category": "terrain",
+      "label_fr": "Topographie",
+      "label_en": "Topography",
+      "input": "text",
+      "types": [
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "services_muni",
+      "category": "terrain",
+      "label_fr": "Services municipaux (aqueduc/égout)",
+      "label_en": "Municipal services (water/sewer)",
+      "input": "multiselect",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel"
+      ],
+      "optset": "services_muni"
+    },
+    {
+      "key": "outdoor_storage",
+      "category": "terrain",
+      "label_fr": "Entreposage extérieur / cour",
+      "label_en": "Outdoor storage / yard",
+      "input": "text",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "fenced_yard",
+      "category": "terrain",
+      "label_fr": "Cour clôturée",
+      "label_en": "Fenced yard",
+      "input": "bool",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "parking_total",
+      "category": "stationnement",
+      "label_fr": "Nombre de stationnements",
+      "label_en": "Number of parking spaces",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "parking_type",
+      "category": "stationnement",
+      "label_fr": "Type de stationnement (intérieur/extérieur)",
+      "label_en": "Parking type (indoor/outdoor)",
+      "input": "select",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "rpa"
+      ],
+      "optset": "parking_type"
+    },
+    {
+      "key": "driveway",
+      "category": "stationnement",
+      "label_fr": "Entrée de stationnement",
+      "label_en": "Driveway",
+      "input": "select",
+      "optset": "driveway",
+      "types": [
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "garage_count",
+      "category": "stationnement",
+      "label_fr": "Nombre de garages",
+      "label_en": "Number of garages",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "cabanon",
+      "category": "stationnement",
+      "label_fr": "Cabanon (qté)",
+      "label_en": "Shed (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "abri_auto",
+      "category": "stationnement",
+      "label_fr": "Abri d'auto (qté)",
+      "label_en": "Carport (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "parking_ratio",
+      "category": "stationnement",
+      "label_fr": "Ratio de stationnement (/1000 pi²)",
+      "label_en": "Parking ratio (per 1000 sq ft)",
+      "input": "number",
+      "types": [
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "truck_access",
+      "category": "stationnement",
+      "label_fr": "Accès camions / aire de manœuvre",
+      "label_en": "Truck access / maneuvering area",
+      "input": "text",
+      "types": [
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "living_area",
+      "category": "batiment",
+      "label_fr": "Superficie habitable",
+      "label_en": "Living area",
+      "input": "dim",
+      "unit": "area",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "gross_building_area",
+      "category": "batiment",
+      "label_fr": "Superficie brute du bâtiment",
+      "label_en": "Gross building area",
+      "input": "number",
+      "unit": "pi²",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "leasable_area",
+      "category": "batiment",
+      "label_fr": "Superficie locative nette",
+      "label_en": "Net leasable area",
+      "input": "number",
+      "unit": "pi²",
+      "types": [
+        "commercial",
+        "industriel",
+        "multi"
+      ]
+    },
+    {
+      "key": "num_units",
+      "category": "batiment",
+      "label_fr": "Nombre de logements / unités",
+      "label_en": "Number of units",
+      "input": "number",
+      "types": [
+        "multi",
+        "commercial",
+        "rpa"
+      ]
+    },
+    {
+      "key": "num_rooms",
+      "category": "batiment",
+      "label_fr": "Nombre de pièces",
+      "label_en": "Number of rooms",
+      "input": "sync",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ],
+      "sync": "rooms"
+    },
+    {
+      "key": "num_bedrooms",
+      "category": "batiment",
+      "label_fr": "Nombre de chambres",
+      "label_en": "Number of bedrooms",
+      "input": "sync",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ],
+      "sync": "bedrooms"
+    },
+    {
+      "key": "num_bathrooms",
+      "category": "batiment",
+      "label_fr": "Nombre de salles de bain",
+      "label_en": "Number of bathrooms",
+      "input": "sync",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ],
+      "sync": "bathrooms"
+    },
+    {
+      "key": "num_powder",
+      "category": "batiment",
+      "label_fr": "Nombre de salles d'eau",
+      "label_en": "Number of powder rooms",
+      "input": "sync",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ],
+      "sync": "powder"
+    },
+    {
+      "key": "structure",
+      "category": "batiment",
+      "label_fr": "Structure",
+      "label_en": "Structure",
+      "input": "select",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ],
+      "optset": "structure"
+    },
+    {
+      "key": "foundation",
+      "category": "batiment",
+      "label_fr": "Fondation",
+      "label_en": "Foundation",
+      "input": "select",
+      "types": [
+        "unifamilial",
+        "multi"
+      ],
+      "optset": "foundation"
+    },
+    {
+      "key": "ext_cladding",
+      "category": "batiment",
+      "label_fr": "Revêtement extérieur",
+      "label_en": "Exterior cladding",
+      "input": "multiselect",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ],
+      "optset": "ext_cladding"
+    },
+    {
+      "key": "roofing_type",
+      "category": "batiment",
+      "label_fr": "Type de toiture",
+      "label_en": "Roofing type",
+      "input": "select",
+      "optset": "roofing_type",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "roofing_material",
+      "category": "batiment",
+      "label_fr": "Matériau de toiture",
+      "label_en": "Roofing material",
+      "input": "select",
+      "optset": "roofing_material",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "roofing_year",
+      "category": "batiment",
+      "label_fr": "Année de toiture",
+      "label_en": "Roofing year",
+      "input": "year",
+      "types": [
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "windows_types",
+      "category": "batiment",
+      "label_fr": "Types de fenêtres",
+      "label_en": "Window types",
+      "input": "multiselect",
+      "optset": "windows_types",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "windows_material",
+      "category": "batiment",
+      "label_fr": "Matériau des fenêtres",
+      "label_en": "Window material",
+      "input": "multiselect",
+      "optset": "windows_material",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "windows_glass",
+      "category": "batiment",
+      "label_fr": "Vitrage",
+      "label_en": "Window glazing",
+      "input": "multiselect",
+      "optset": "windows_glass",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "windows_year",
+      "category": "batiment",
+      "label_fr": "Année des fenêtres",
+      "label_en": "Window year",
+      "input": "year",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "basement",
+      "category": "batiment",
+      "label_fr": "Sous-sol",
+      "label_en": "Basement",
+      "input": "select",
+      "types": [
+        "unifamilial",
+        "multi"
+      ],
+      "optset": "basement"
+    },
+    {
+      "key": "elevator",
+      "category": "batiment",
+      "label_fr": "Ascenseur",
+      "label_en": "Elevator",
+      "input": "bool",
+      "types": [
+        "condo",
+        "multi",
+        "commercial",
+        "rpa"
+      ]
+    },
+    {
+      "key": "heating_systems",
+      "category": "interieur",
+      "label_fr": "Système de chauffage",
+      "label_en": "Heating system",
+      "input": "group",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ],
+      "group": {
+        "fields": [
+          {
+            "key": "zone",
+            "input": "select",
+            "optset": "heating_zone",
+            "label_fr": "Zone",
+            "label_en": "Zone"
+          },
+          {
+            "key": "systems",
+            "input": "multiselect",
+            "optset": "heating_system",
+            "label_fr": "Systèmes",
+            "label_en": "Systems"
+          }
+        ]
+      }
+    },
+    {
+      "key": "heating_energy",
+      "category": "interieur",
+      "label_fr": "Énergie de chauffage",
+      "label_en": "Heating energy",
+      "input": "computed",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ],
+      "computed": "heating_energy"
+    },
+    {
+      "key": "cooling",
+      "category": "interieur",
+      "label_fr": "Climatisation",
+      "label_en": "Air conditioning",
+      "input": "group",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "rpa"
+      ],
+      "group": {
+        "fields": [
+          {
+            "key": "zone",
+            "input": "select",
+            "optset": "heating_zone",
+            "label_fr": "Zone",
+            "label_en": "Zone"
+          },
+          {
+            "key": "type",
+            "input": "select",
+            "optset": "cooling_type",
+            "label_fr": "Type",
+            "label_en": "Type"
+          }
+        ]
+      }
+    },
+    {
+      "key": "electrical",
+      "category": "interieur",
+      "label_fr": "Système électrique (ampérage)",
+      "label_en": "Electrical (amperage)",
+      "input": "text",
+      "types": [
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "stove",
+      "category": "interieur",
+      "label_fr": "Poêle",
+      "label_en": "Stove",
+      "input": "select",
+      "optset": "stove",
+      "types": [
+        "condo",
+        "unifamilial"
+      ]
+    },
+    {
+      "key": "flooring",
+      "category": "interieur",
+      "label_fr": "Revêtements de sol",
+      "label_en": "Flooring",
+      "input": "multiselect",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ],
+      "optset": "flooring"
+    },
+    {
+      "key": "countertops",
+      "category": "interieur",
+      "label_fr": "Comptoirs",
+      "label_en": "Countertops",
+      "input": "multiselect",
+      "optset": "countertops",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "kitchen_cabinets",
+      "category": "interieur",
+      "label_fr": "Armoires de cuisine",
+      "label_en": "Kitchen cabinets",
+      "input": "select",
+      "optset": "kitchen_cabinets",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "appliances",
+      "category": "interieur",
+      "label_fr": "Électroménagers inclus",
+      "label_en": "Included appliances",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "pools",
+      "category": "interieur",
+      "label_fr": "Piscine",
+      "label_en": "Pool",
+      "input": "group",
+      "types": [
+        "unifamilial",
+        "multi",
+        "rpa"
+      ],
+      "group": {
+        "fields": [
+          {
+            "key": "location",
+            "input": "select",
+            "optset": "pool_location",
+            "label_fr": "Emplacement",
+            "label_en": "Location"
+          },
+          {
+            "key": "type",
+            "input": "select",
+            "optset": "pool_type",
+            "label_fr": "Type",
+            "label_en": "Type"
+          }
+        ]
+      }
+    },
+    {
+      "key": "spa",
+      "category": "interieur",
+      "label_fr": "Spa (qté)",
+      "label_en": "Spa (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "sauna",
+      "category": "interieur",
+      "label_fr": "Sauna (qté)",
+      "label_en": "Sauna (qty)",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "inclusions",
+      "category": "interieur",
+      "label_fr": "Inclusions",
+      "label_en": "Inclusions",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "exclusions",
+      "category": "interieur",
+      "label_fr": "Exclusions",
+      "label_en": "Exclusions",
+      "input": "text",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi"
+      ]
+    },
+    {
+      "key": "warehouse_area",
+      "category": "industriel",
+      "label_fr": "Superficie d'entrepôt",
+      "label_en": "Warehouse area",
+      "input": "number",
+      "unit": "pi²",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "office_area",
+      "category": "industriel",
+      "label_fr": "Superficie de bureau",
+      "label_en": "Office area",
+      "input": "number",
+      "unit": "pi²",
+      "types": [
+        "industriel",
+        "commercial"
+      ]
+    },
+    {
+      "key": "office_pct",
+      "category": "industriel",
+      "label_fr": "Proportion bureau (%)",
+      "label_en": "Office proportion (%)",
+      "input": "percent",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "clear_height",
+      "category": "industriel",
+      "label_fr": "Hauteur libre (clear height)",
+      "label_en": "Clear height",
+      "input": "number",
+      "unit": "pi",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "loading_docks",
+      "category": "industriel",
+      "label_fr": "Nombre de quais de chargement",
+      "label_en": "Number of loading docks",
+      "input": "number",
+      "types": [
+        "industriel",
+        "commercial"
+      ]
+    },
+    {
+      "key": "dock_levelers",
+      "category": "industriel",
+      "label_fr": "Niveleurs de quai",
+      "label_en": "Dock levelers",
+      "input": "number",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "drive_in_doors",
+      "category": "industriel",
+      "label_fr": "Portes au niveau du sol (drive-in)",
+      "label_en": "Drive-in doors (grade level)",
+      "input": "number",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "garage_doors",
+      "category": "industriel",
+      "label_fr": "Nombre de portes de garage",
+      "label_en": "Number of garage doors",
+      "input": "number",
+      "types": [
+        "industriel",
+        "commercial"
+      ]
+    },
+    {
+      "key": "door_dimensions",
+      "category": "industriel",
+      "label_fr": "Dimensions des portes",
+      "label_en": "Door dimensions",
+      "input": "text",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "column_spacing",
+      "category": "industriel",
+      "label_fr": "Espacement des colonnes",
+      "label_en": "Column spacing",
+      "input": "text",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "floor_load",
+      "category": "industriel",
+      "label_fr": "Capacité portante du plancher (lb/pi²)",
+      "label_en": "Floor load capacity (lb/sq ft)",
+      "input": "number",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "crane",
+      "category": "industriel",
+      "label_fr": "Pont roulant (présence)",
+      "label_en": "Overhead crane (present)",
+      "input": "bool",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "crane_capacity",
+      "category": "industriel",
+      "label_fr": "Capacité du pont roulant (tonnes)",
+      "label_en": "Crane capacity (tons)",
+      "input": "number",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "mezzanine_area",
+      "category": "industriel",
+      "label_fr": "Superficie de mezzanine",
+      "label_en": "Mezzanine area",
+      "input": "number",
+      "unit": "pi²",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "power_service",
+      "category": "industriel",
+      "label_fr": "Service électrique (voltage/ampérage/phase)",
+      "label_en": "Power service (voltage/amperage/phase)",
+      "input": "text",
+      "types": [
+        "industriel",
+        "commercial"
+      ]
+    },
+    {
+      "key": "sprinklers",
+      "category": "industriel",
+      "label_fr": "Gicleurs (type, ESFR)",
+      "label_en": "Sprinklers (type, ESFR)",
+      "input": "text",
+      "types": [
+        "industriel",
+        "commercial",
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "warehouse_heating",
+      "category": "industriel",
+      "label_fr": "Chauffage de l'entrepôt",
+      "label_en": "Warehouse heating",
+      "input": "text",
+      "types": [
+        "industriel"
+      ]
+    },
+    {
+      "key": "commercial_area",
+      "category": "commercial",
+      "label_fr": "Superficie commerciale",
+      "label_en": "Commercial area",
+      "input": "number",
+      "unit": "pi²",
+      "types": [
+        "commercial"
+      ]
+    },
+    {
+      "key": "num_commercial_units",
+      "category": "commercial",
+      "label_fr": "Nombre de locaux commerciaux",
+      "label_en": "Number of commercial units",
+      "input": "number",
+      "types": [
+        "commercial"
+      ]
+    },
+    {
+      "key": "storefront",
+      "category": "commercial",
+      "label_fr": "Vitrine / frontage commercial",
+      "label_en": "Storefront / commercial frontage",
+      "input": "text",
+      "types": [
+        "commercial"
+      ]
+    },
+    {
+      "key": "signage",
+      "category": "commercial",
+      "label_fr": "Affichage / pylône",
+      "label_en": "Signage / pylon",
+      "input": "text",
+      "types": [
+        "commercial"
+      ]
+    },
+    {
+      "key": "common_area",
+      "category": "commercial",
+      "label_fr": "Aire commune (CAM)",
+      "label_en": "Common area (CAM)",
+      "input": "number",
+      "unit": "pi²",
+      "types": [
+        "commercial"
+      ]
+    },
+    {
+      "key": "anchor_tenant",
+      "category": "commercial",
+      "label_fr": "Locataire d'ancrage",
+      "label_en": "Anchor tenant",
+      "input": "text",
+      "types": [
+        "commercial"
+      ]
+    },
+    {
+      "key": "foot_traffic",
+      "category": "commercial",
+      "label_fr": "Achalandage / débit de circulation",
+      "label_en": "Foot traffic / vehicle count",
+      "input": "text",
+      "types": [
+        "commercial"
+      ]
+    },
+    {
+      "key": "num_rental_units",
+      "category": "revenus",
+      "label_fr": "Nombre d'unités locatives",
+      "label_en": "Number of rental units",
+      "input": "number",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "unit_mix",
+      "category": "revenus",
+      "label_fr": "Répartition des logements (3½, 4½…)",
+      "label_en": "Unit mix",
+      "input": "text",
+      "types": [
+        "multi",
+        "rpa"
+      ]
+    },
+    {
+      "key": "gross_revenue",
+      "category": "revenus",
+      "label_fr": "Revenus bruts potentiels",
+      "label_en": "Potential gross revenue",
+      "input": "currency",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "effective_revenue",
+      "category": "revenus",
+      "label_fr": "Revenus effectifs",
+      "label_en": "Effective revenue",
+      "input": "currency",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "operating_expenses",
+      "category": "revenus",
+      "label_fr": "Dépenses d'exploitation",
+      "label_en": "Operating expenses",
+      "input": "currency",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "noi",
+      "category": "revenus",
+      "label_fr": "Revenu net d'exploitation (RNE)",
+      "label_en": "Net operating income (NOI)",
+      "input": "currency",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "cap_rate",
+      "category": "revenus",
+      "label_fr": "Taux global d'actualisation (TGA)",
+      "label_en": "Capitalization rate",
+      "input": "percent",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "grm",
+      "category": "revenus",
+      "label_fr": "Multiplicateur de revenu brut (MRB)",
+      "label_en": "Gross revenue multiplier",
+      "input": "number",
+      "types": [
+        "multi",
+        "commercial"
+      ]
+    },
+    {
+      "key": "price_per_door",
+      "category": "revenus",
+      "label_fr": "Prix par porte",
+      "label_en": "Price per door",
+      "input": "currency",
+      "types": [
+        "multi"
+      ]
+    },
+    {
+      "key": "vacancy",
+      "category": "revenus",
+      "label_fr": "Taux d'inoccupation",
+      "label_en": "Vacancy rate",
+      "input": "percent",
+      "types": [
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "lease_type",
+      "category": "revenus",
+      "label_fr": "Type de baux (brut/net/TMI)",
+      "label_en": "Lease type (gross/net/NNN)",
+      "input": "text",
+      "types": [
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "lease_term",
+      "category": "revenus",
+      "label_fr": "Échéances des baux",
+      "label_en": "Lease terms / expiries",
+      "input": "text",
+      "types": [
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "separate_meters",
+      "category": "revenus",
+      "label_fr": "Compteurs séparés",
+      "label_en": "Separate meters",
+      "input": "bool",
+      "types": [
+        "multi"
+      ]
+    },
+    {
+      "key": "laundry",
+      "category": "revenus",
+      "label_fr": "Buanderie commune",
+      "label_en": "Common laundry",
+      "input": "bool",
+      "types": [
+        "multi"
+      ]
+    },
+    {
+      "key": "care_level",
+      "category": "rpa",
+      "label_fr": "Niveau de soins",
+      "label_en": "Level of care",
+      "input": "text",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "licensed_beds",
+      "category": "rpa",
+      "label_fr": "Nombre de places autorisées",
+      "label_en": "Licensed beds",
+      "input": "number",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "num_residents",
+      "category": "rpa",
+      "label_fr": "Nombre de chambres / résidents",
+      "label_en": "Number of rooms / residents",
+      "input": "number",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "certification",
+      "category": "rpa",
+      "label_fr": "Certification RPA",
+      "label_en": "Senior-residence certification",
+      "input": "text",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "services_included",
+      "category": "rpa",
+      "label_fr": "Services inclus (repas/soins/loisirs)",
+      "label_en": "Included services (meals/care/activities)",
+      "input": "text",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "staff",
+      "category": "rpa",
+      "label_fr": "Personnel (ÉTP)",
+      "label_en": "Staff (FTE)",
+      "input": "number",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "occupancy_rate",
+      "category": "rpa",
+      "label_fr": "Taux d'occupation",
+      "label_en": "Occupancy rate",
+      "input": "percent",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "ebitda",
+      "category": "rpa",
+      "label_fr": "BAIIA (EBITDA)",
+      "label_en": "EBITDA",
+      "input": "currency",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "common_rooms",
+      "category": "rpa",
+      "label_fr": "Salles communes / salle à manger",
+      "label_en": "Common rooms / dining",
+      "input": "text",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "nurse_call",
+      "category": "rpa",
+      "label_fr": "Système d'appel de garde",
+      "label_en": "Nurse-call system",
+      "input": "bool",
+      "types": [
+        "rpa"
+      ]
+    },
+    {
+      "key": "generator",
+      "category": "rpa",
+      "label_fr": "Génératrice d'urgence",
+      "label_en": "Emergency generator",
+      "input": "bool",
+      "types": [
+        "rpa",
+        "commercial",
+        "industriel"
+      ]
+    },
+    {
+      "key": "asking_price",
+      "category": "financier",
+      "label_fr": "Prix demandé",
+      "label_en": "Asking price",
+      "input": "currency",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "price_per_sqft",
+      "category": "financier",
+      "label_fr": "Prix au pi²",
+      "label_en": "Price per sq ft",
+      "input": "currency",
+      "types": [
+        "commercial",
+        "industriel",
+        "multi"
+      ]
+    },
+    {
+      "key": "muni_assessment",
+      "category": "financier",
+      "label_fr": "Évaluation municipale",
+      "label_en": "Municipal assessment",
+      "input": "currency",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "assessment_year",
+      "category": "financier",
+      "label_fr": "Année d'évaluation",
+      "label_en": "Assessment year",
+      "input": "number",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "muni_taxes",
+      "category": "financier",
+      "label_fr": "Taxes municipales",
+      "label_en": "Municipal taxes",
+      "input": "currency",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "school_taxes",
+      "category": "financier",
+      "label_fr": "Taxes scolaires",
+      "label_en": "School taxes",
+      "input": "currency",
+      "types": [
+        "condo",
+        "unifamilial",
+        "multi",
+        "commercial",
+        "industriel",
+        "rpa"
+      ]
+    },
+    {
+      "key": "condo_fees",
+      "category": "financier",
+      "label_fr": "Frais de copropriété",
+      "label_en": "Condo fees",
+      "input": "currency",
+      "types": [
+        "condo"
+      ]
+    }
   ]
 }

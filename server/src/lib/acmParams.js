@@ -19,13 +19,16 @@ function defaults() {
   return raw;
 }
 
-// Fusion peu profonde + fusion en profondeur des tables imbriquées (inclusions, features,
-// age_features) pour permettre des overrides partiels (un seul taux d'option, p. ex.).
+// Fusion peu profonde + fusion en profondeur des tables imbriquées pour permettre des overrides
+// partiels (un seul taux/option/inclusion). Groupes simples : area, age, inclusions. Groupes à
+// options : features_pct, features_dollar.
 function merge(base, over) {
   if (!over || typeof over !== 'object') return { ...base };
   const out = { ...base, ...over };
-  if (over.inclusions || base.inclusions) out.inclusions = { ...(base.inclusions || {}), ...(over.inclusions || {}) };
-  for (const grp of ['features', 'age_features']) {
+  for (const grp of ['area', 'age', 'inclusions']) {
+    if (over[grp] || base[grp]) out[grp] = { ...(base[grp] || {}), ...(over[grp] || {}) };
+  }
+  for (const grp of ['features_pct', 'features_dollar']) {
     if (!over[grp] && !base[grp]) continue;
     const merged = { ...(base[grp] || {}) };
     for (const [key, cfg] of Object.entries(over[grp] || {})) {

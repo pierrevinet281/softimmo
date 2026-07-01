@@ -17,6 +17,8 @@ export { default as Units } from './units.js';
 export { default as Expenses } from './expenses.js';
 export { default as Transactions } from './transactions.js';
 export { default as Comparables } from './comparables.js';
+export { default as Evaluations } from './evaluations.js';
+export { default as MarketAnalyses } from './marketAnalyses.js';
 export { default as Reports } from './reports.js';
 export { default as Documents } from './documents.js';
 export { default as PropertyMedia } from './propertyMedia.js';

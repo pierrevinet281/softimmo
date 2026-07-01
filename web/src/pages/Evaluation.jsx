@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  FileBarChart, Scale, Calculator, AlertTriangle, Info, ShieldAlert, Save, Upload, Plus, Trash2, Ruler,
+  FileBarChart, Scale, Calculator, AlertTriangle, Info, ShieldAlert, Save, Upload, Plus, Trash2, Ruler, Eye, EyeOff,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { Card, Button, Select, Modal, EmptyState, Badge } from '../components/ui.jsx';
 import { EntityTable, InclusionsField } from '../components/EntityTable.jsx';
+import AttrField from '../components/AttrField.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { money, num } from '../lib/format.js';
 
@@ -14,18 +15,47 @@ const DISCLAIMER_FR = "Le présent document constitue une opinion de la valeur m
 
 const KIND_TONE = { sold: 'success', active: 'info', expired: 'warning' };
 
+// Inclusions ACM (quantités à prix) dérivées des attributs de l'aperçu (éditables ensuite).
+function deriveIncl(a = {}) {
+  const q = (k) => Number(a[k]) || 0;
+  const out = {};
+  for (const k of ['spa', 'sauna', 'cabanon', 'abri_auto']) if (q(k)) out[k] = q(k);
+  if (q('garage_count')) out.garage = q('garage_count');
+  if (q('floors_above')) out.etages_hors_sol = q('floors_above');
+  if (q('floors_basement')) out.etages_sous_sol = q('floors_basement');
+  for (const p of (Array.isArray(a.pools) ? a.pools : [])) {
+    if (p && p.type === 'hors_terre') out.piscine_hors_terre = (out.piscine_hors_terre || 0) + 1;
+    else out.piscine_creusee = (out.piscine_creusee || 0) + 1;
+  }
+  if (a.basement === 'complete') out.sous_sol_fini = 1;
+  const heat = (Array.isArray(a.heating_systems) ? a.heating_systems : []).flatMap((g) => (g && g.systems) || []);
+  if (heat.some((s) => s.startsWith('foyer'))) out.foyer = 1;
+  if (heat.some((s) => s.includes('thermopompe'))) out.thermopompe = 1;
+  if ((Array.isArray(a.cooling) ? a.cooling : []).length) out.climatisation = 1;
+  return out;
+}
+
 // Champs des caractéristiques catégorielles (selects) + âges (nombres), dérivés des paramètres.
 function buildFeatureFields(params) {
+  // Champs comparables alignés sur le sujet : mêmes clés (cfg.attr) et mêmes valeurs d'options
+  // que l'aperçu, afin que le moteur compare option↔option. + superficies/niveaux/sous-sol/âges.
   const fields = [];
-  for (const [key, cfg] of Object.entries(params?.features || {})) {
-    fields.push({
-      key, label: cfg.label || prettyIncl(key), type: 'select', half: true,
-      options: [{ value: '', label: '—' }, ...Object.keys(cfg.options || {}).map((o) => ({ value: o, label: prettyIncl(o) }))],
-    });
-  }
-  for (const [key, cfg] of Object.entries(params?.age_features || {})) {
-    fields.push({ key, label: cfg.label || prettyIncl(key), type: 'number', half: true });
-  }
+  const addOpts = (grp) => {
+    for (const cfg of Object.values(params?.[grp] || {})) {
+      const key = cfg.attr; if (!key) continue;
+      fields.push({
+        key, label: cfg.label_fr || prettyIncl(key), type: 'select', half: true,
+        options: [{ value: '', label: '—' }, ...Object.keys(cfg.options || {}).map((o) => ({ value: o, label: prettyIncl(o) }))],
+      });
+    }
+  };
+  addOpts('features_pct'); addOpts('features_dollar');
+  fields.push({ key: 'land_area', label: 'Superficie terrain (pi²)', type: 'number', half: true });
+  fields.push({ key: 'storeys', label: "Nombre d'étages", type: 'number', half: true });
+  fields.push({ key: 'basement', label: 'Sous-sol', type: 'select', half: true, options: [{ value: '', label: '—' }, { value: 'oui', label: 'Oui' }, { value: 'non', label: 'Non' }] });
+  fields.push({ key: 'basement_finished', label: 'Sous-sol fini', type: 'checkbox', half: true });
+  fields.push({ key: 'windows_age', label: 'Âge fenêtres (ans)', type: 'number', half: true });
+  fields.push({ key: 'roof_age', label: 'Âge toiture (ans)', type: 'number', half: true });
   return fields;
 }
 
@@ -125,64 +155,70 @@ function StatsRatios({ city, genre, onRatios }) {
   );
 }
 
-function ParamsPanel({ params, onChange, onSave, saving, city, genre }) {
+function ParamsPanel({ params, onChange, onSave, onReset, saving, city, genre }) {
   const { t } = useI18n();
-  const setScalar = (k, v) => onChange({ ...params, [k]: v === '' ? null : Number(v) });
-  const setIncl = (k, v) => onChange({ ...params, inclusions: { ...params.inclusions, [k]: v === '' ? 0 : Number(v) } });
-  const setFeatPct = (feat, opt, v) => onChange({ ...params, features: { ...params.features, [feat]: { ...params.features[feat], options: { ...params.features[feat].options, [opt]: v === '' ? 0 : Number(v) / 100 } } } });
-  const setAgePct = (key, v) => onChange({ ...params, age_features: { ...params.age_features, [key]: { ...params.age_features[key], pct_per_year: v === '' ? 0 : Number(v) / 100 } } });
+  const setTop = (k, v, pct) => onChange({ ...params, [k]: v === '' ? null : (pct ? Number(v) / 100 : Number(v)) });
+  const setGroup = (grp, k, v) => onChange({ ...params, [grp]: { ...(params[grp] || {}), [k]: v === '' ? 0 : Number(v) } });
+  const setIncl = (k, v) => onChange({ ...params, inclusions: { ...(params.inclusions || {}), [k]: v === '' ? 0 : Number(v) } });
+  const setOpt = (grp, feat, opt, v, pct) => onChange({ ...params, [grp]: { ...params[grp], [feat]: { ...params[grp][feat], options: { ...params[grp][feat].options, [opt]: v === '' ? 0 : (pct ? Number(v) / 100 : Number(v)) } } } });
   const applyRatios = (r) => onChange({ ...params, sale_to_list_ratio: r.sale_to_list_ratio ?? params.sale_to_list_ratio, sale_to_assessment_ratio: r.sale_to_assessment_ratio ?? params.sale_to_assessment_ratio });
+  const dol = (label, val, onCh) => (<div className="field" key={label} style={{ marginBottom: 8 }}><label>{label} ($)</label><input className="input" type="number" value={val ?? ''} onChange={(e) => onCh(e.target.value)} /></div>);
+  const pc = (label, val, onCh) => (<div className="field" key={label} style={{ marginBottom: 8 }}><label>{label} (%)</label><input className="input" type="number" step={0.1} value={val == null ? '' : +(val * 100).toFixed(2)} onChange={(e) => onCh(e.target.value)} /></div>);
+  const area = params.area || {}; const age = params.age || {};
+  const inclLbl = params.inclusions_labels || {};
   return (
     <details className="card" style={{ marginBottom: 16 }}>
       <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('ev.params')}</summary>
       <div className="muted" style={{ fontSize: 12, margin: '8px 0 14px' }}>{t('ev.paramsNote')}</div>
       <StatsRatios city={city} genre={genre} onRatios={applyRatios} />
       <div className="field-row">
-        {SCALAR_PARAMS.map((p) => (
-          <div className="field" key={p.key}>
-            <label>{t(p.labelKey)}</label>
-            <input className="input" type="number" step={p.step || 1} value={params[p.key] ?? ''} onChange={(e) => setScalar(p.key, e.target.value)} />
-          </div>
-        ))}
-      </div>
-      <div className="section-label">{t('ev.inclPrices')}</div>
-      <div className="field-row">
-        {Object.entries(params.inclusions || {}).map(([k, v]) => (
-          <div className="field" key={k}>
-            <label>{prettyIncl(k)}</label>
-            <input className="input" type="number" value={v ?? ''} onChange={(e) => setIncl(k, e.target.value)} />
-          </div>
-        ))}
+        <div className="field"><label>{t('ev.p.saleList')}</label><input className="input" type="number" step={0.001} value={params.sale_to_list_ratio ?? ''} onChange={(e) => setTop('sale_to_list_ratio', e.target.value)} /></div>
+        <div className="field"><label>{t('ev.p.saleAssess')}</label><input className="input" type="number" step={0.001} value={params.sale_to_assessment_ratio ?? ''} onChange={(e) => setTop('sale_to_assessment_ratio', e.target.value)} /></div>
+        {pc(t('ev.p.apprec'), params.monthly_appreciation_pct, (v) => setTop('monthly_appreciation_pct', v, true))}
       </div>
 
-      {/* Caractéristiques catégorielles : valeur marché en % par option (éditable). */}
-      <div className="section-label">{t('ev.featPct')}</div>
-      {Object.entries(params.features || {}).map(([feat, cfg]) => (
-        <div key={feat} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{cfg.label || prettyIncl(feat)}</div>
-          <div className="field-row">
-            {Object.entries(cfg.options || {}).map(([opt, pct]) => (
-              <div className="field" key={opt} style={{ marginBottom: 8 }}>
-                <label>{prettyIncl(opt)} (%)</label>
-                <input className="input" type="number" step={0.1} value={pct == null ? '' : +(pct * 100).toFixed(2)} onChange={(e) => setFeatPct(feat, opt, e.target.value)} />
+      <div className="section-label">Superficie ($/pi²)</div>
+      <div className="field-row">
+        {dol('Terrain', area.land_per_sqft, (v) => setGroup('area', 'land_per_sqft', v))}
+        {dol('Construction — RDC', area.constr_rdc_per_sqft, (v) => setGroup('area', 'constr_rdc_per_sqft', v))}
+        {dol('Construction — étages', area.constr_etage_per_sqft, (v) => setGroup('area', 'constr_etage_per_sqft', v))}
+        {dol('Construction — sous-sol', area.constr_sous_sol_per_sqft, (v) => setGroup('area', 'constr_sous_sol_per_sqft', v))}
+      </div>
+
+      <div className="section-label">Âge</div>
+      <div className="field-row">
+        {pc('Construction / année', age.construction_pct_per_year, (v) => setGroup('age', 'construction_pct_per_year', v === '' ? '' : Number(v) / 100))}
+        {pc('Fenêtres (neuf↔fin)', age.windows_range_pct, (v) => setGroup('age', 'windows_range_pct', v === '' ? '' : Number(v) / 100))}
+        <div className="field"><label>Fenêtres — durée (ans)</label><input className="input" type="number" value={age.windows_lifespan ?? ''} onChange={(e) => setGroup('age', 'windows_lifespan', e.target.value)} /></div>
+        {pc('Toiture (neuf↔fin)', age.roof_range_pct, (v) => setGroup('age', 'roof_range_pct', v === '' ? '' : Number(v) / 100))}
+        <div className="field"><label>Toiture — durée (ans)</label><input className="input" type="number" value={age.roof_lifespan ?? ''} onChange={(e) => setGroup('age', 'roof_lifespan', e.target.value)} /></div>
+      </div>
+
+      {[['features_pct', 'Caractéristiques (%)', true], ['features_dollar', 'Caractéristiques ($)', false]].map(([grp, title, isPct]) => (
+        <div key={grp}>
+          <div className="section-label">{title}</div>
+          {Object.entries(params[grp] || {}).map(([feat, cfg]) => (
+            <div key={feat} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{cfg.label_fr || feat}</div>
+              <div className="field-row">
+                {Object.entries(cfg.options || {}).map(([opt, val]) => (
+                  isPct ? pc(prettyIncl(opt), val, (v) => setOpt(grp, feat, opt, v, true))
+                    : dol(prettyIncl(opt), val, (v) => setOpt(grp, feat, opt, v))))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       ))}
 
-      {/* Âges (fenêtres, toiture) : % du prix par an d'écart. */}
-      <div className="section-label">{t('ev.agePct')}</div>
+      <div className="section-label">Accessoires ($)</div>
       <div className="field-row">
-        {Object.entries(params.age_features || {}).map(([key, cfg]) => (
-          <div className="field" key={key}>
-            <label>{cfg.label || prettyIncl(key)} (%/an)</label>
-            <input className="input" type="number" step={0.1} value={cfg.pct_per_year == null ? '' : +(cfg.pct_per_year * 100).toFixed(2)} onChange={(e) => setAgePct(key, e.target.value)} />
-          </div>
-        ))}
+        {Object.entries(params.inclusions || {}).map(([k, v]) => dol(inclLbl[k] || prettyIncl(k), v, (val) => setIncl(k, val)))}
       </div>
 
-      <Button variant="outline" size="sm" icon={Save} onClick={onSave} disabled={saving}>{t('ev.saveParams')}</Button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <Button variant="outline" size="sm" icon={Save} onClick={onSave} disabled={saving}>{t('ev.saveParams')}</Button>
+        <Button variant="ghost" size="sm" onClick={onReset} disabled={saving}>{t('ev.resetParams')}</Button>
+      </div>
     </details>
   );
 }
@@ -204,7 +240,7 @@ function AddressLink({ s, className }) {
 }
 
 // ─────────────────────────── Grille d'ajustements ventilée (comps en colonnes) ───────────────────────────
-function AdjustmentGrid({ sold, clientView }) {
+function AdjustmentGrid({ sold, clientView, ignored, onToggle, onToggleAll }) {
   const { t } = useI18n();
   const comps = clientView ? sold.filter((s) => !s.excluded) : sold;
   const { keys, labels } = useMemo(() => {
@@ -217,13 +253,26 @@ function AdjustmentGrid({ sold, clientView }) {
   const r = clientView ? 1000 : 1;
   const amt = (v) => (v == null ? '—' : money(Math.round(v / r) * r));
   const cell = (s, k) => { const l = s.adjustments.find((x) => x.key === k); return l ? amt(l.amount) : '—'; };
+  const ig = ignored || new Set();
+  const allIgnored = keys.length > 0 && keys.every((k) => ig.has(k));
 
   return (
     <div className="table-wrap" style={{ overflowX: 'auto' }}>
       <table className="table">
         <thead>
           <tr>
-            <th>{t('ev.characteristic')}</th>
+            <th>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {onToggleAll && (
+                  <button type="button" className="adj-eye" onClick={() => onToggleAll(keys)}
+                    title={allIgnored ? t('ev.ignoreNone') : t('ev.ignoreAll')}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', lineHeight: 0 }}>
+                    {allIgnored ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                )}
+                {t('ev.characteristic')}
+              </span>
+            </th>
             {comps.map((s) => (
               <th key={s.id} className="num" style={s.excluded ? { textDecoration: 'line-through', opacity: 0.6 } : undefined}>
                 <AddressLink s={s} />
@@ -233,9 +282,26 @@ function AdjustmentGrid({ sold, clientView }) {
         </thead>
         <tbody>
           <tr><td>{t('ev.soldPrice')}</td>{comps.map((s) => <td key={s.id} className="num">{amt(s.soldPrice)}</td>)}</tr>
-          {keys.map((k) => (
-            <tr key={k}><td>{labels[k]}</td>{comps.map((s) => <td key={s.id} className="num">{cell(s, k)}</td>)}</tr>
-          ))}
+          {keys.map((k) => {
+            const isIg = ig.has(k);
+            return (
+              <tr key={k} className={isIg ? 'adj-row-ignored' : undefined}>
+                <td>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {onToggle && (
+                      <button type="button" className="adj-eye" onClick={() => onToggle(k)}
+                        title={isIg ? t('ev.unignore') : t('ev.ignore')}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', lineHeight: 0 }}>
+                        {isIg ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    )}
+                    {labels[k]}
+                  </span>
+                </td>
+                {comps.map((s) => <td key={s.id} className="num">{cell(s, k)}</td>)}
+              </tr>
+            );
+          })}
           {!clientView && (
             <tr><td className="muted">{t('ev.adjTotal')}</td>{comps.map((s) => <td key={s.id} className="num">{amt(s.adjustmentsTotal)}</td>)}</tr>
           )}
@@ -264,7 +330,9 @@ function ExplainedBreakdown({ sold, clientView }) {
             {' '}— {money(s.soldPrice)} → <strong>{money(Math.round(s.adjustedPrice / (clientView ? 1000 : 1)) * (clientView ? 1000 : 1))}</strong>
           </summary>
           <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
-            {s.adjustments.map((l, i) => <li key={i}>{l.explanation}</li>)}
+            {s.adjustments.map((l, i) => (
+              <li key={i} className={l.ignored ? 'adj-row-ignored' : undefined}>{l.explanation}</li>
+            ))}
           </ul>
         </details>
       ))}
@@ -273,7 +341,7 @@ function ExplainedBreakdown({ sold, clientView }) {
 }
 
 // ─────────────────────────── Résultats ACM ───────────────────────────
-function AcmResults({ result, clientView, setClientView }) {
+function AcmResults({ result, clientView, setClientView, ignored, onToggle, onToggleAll }) {
   const { t } = useI18n();
   const { expected, listingPrice, corroboration: cor, warnings } = result;
   return (
@@ -307,7 +375,7 @@ function AcmResults({ result, clientView, setClientView }) {
           <button className={`tab ${clientView ? 'active' : ''}`} onClick={() => setClientView(true)}>{t('ev.client')}</button>
         </div>
       </div>
-      <AdjustmentGrid sold={result.sold} clientView={clientView} />
+      <AdjustmentGrid sold={result.sold} clientView={clientView} ignored={ignored} onToggle={onToggle} onToggleAll={onToggleAll} />
 
       <div className="section-label" style={{ marginTop: 20 }}>{t('ev.breakdown')}</div>
       <ExplainedBreakdown sold={result.sold} clientView={clientView} />
@@ -410,13 +478,18 @@ export function ComparablesEditor({ propertyId }) {
 
 // ─────────────────────────── Page ───────────────────────────
 export default function Evaluation() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const qc = useQueryClient();
-  const [propertyId, setPropertyId] = useState('');
-  const [subject, setSubject] = useState(null);   // { living_area, year_built, inclusions, municipal_assessment }
+  // Préselection via ?property=<id> (bouton « Évaluer » de la fiche propriété).
+  const [propertyId, setPropertyId] = useState(() => new URLSearchParams(window.location.search).get('property') || '');
+  // Sujet = copie du Property Overview : attributs de la propriété (édités via AttrField) +
+  // inclusions ACM. Le sujet ACM est dérivé de ces attributs au calcul (buildSubject).
+  const [attrs, setAttrs] = useState(null);
+  const [incl, setIncl] = useState({});
   const [params, setParams] = useState(null);
   const [clientView, setClientView] = useState(false);
   const [result, setResult] = useState(null);
+  const [ignored, setIgnored] = useState(() => new Set()); // postes d'ajustement ignorés (grisés + exclus du rapport)
   const [calcOpen, setCalcOpen] = useState(false);
 
   const { data: props } = useQuery({ queryKey: ['properties', 'all'], queryFn: () => api.get('/properties?limit=500&sort=updated_at&dir=desc') });
@@ -426,40 +499,72 @@ export default function Evaluation() {
     queryFn: () => api.get(`/properties/${propertyId}/bundle`),
     enabled: !!propertyId,
   });
+  const { data: schema } = useQuery({
+    queryKey: ['sa-form', bundle?.property?.genre],
+    queryFn: () => api.get(`/sales-attributes/form/${bundle.property.genre}`),
+    enabled: !!bundle?.property?.genre,
+  });
 
   // Initialisation au rendu (TanStack Query v5 : pas d'onSuccess sur useQuery). Converge :
   // une fois params/subject définis, les conditions deviennent fausses.
   if (paramData && !params) setParams(paramData.params);
-  if (bundle && subject == null) {
-    const livable = (bundle.buildings || []).reduce((s, x) => s + (Number(x.livable_area) || 0), 0) || '';
-    const b0 = (bundle.buildings || []).find((x) => x.year_built) || (bundle.buildings || [])[0] || {};
-    setSubject({
-      living_area: livable, year_built: b0.year_built ?? '', inclusions: {},
-      municipal_assessment: bundle.property?.municipal_assessment ?? '',
-      // Caractéristiques pré-remplies depuis le bâtiment principal (éditables).
-      foundation: b0.foundation ?? '', cladding: b0.exterior_cladding ?? '',
-      windows_type: b0.fenestration ?? '', flooring: b0.flooring ?? '',
-      windows_age: '', roof_age: '',
-    });
+  if (bundle && attrs == null) {
+    // Pré-remplissage depuis les VRAIES données de la propriété (Property Overview).
+    const a = { ...(bundle.property?.attributes || {}) };
+    // Repli : superficie/année depuis les bâtiments si non saisies dans l'aperçu.
+    if (!a.living_area) { const liv = (bundle.buildings || []).reduce((s, x) => s + (Number(x.livable_area) || 0), 0); if (liv) a.living_area = String(liv); }
+    if (!a.year_built) { const b0 = (bundle.buildings || []).find((x) => x.year_built); if (b0) a.year_built = String(b0.year_built); }
+    setAttrs(a);
+    setIncl(deriveIncl(a)); // inclusions ACM dérivées des attributs (spa, sauna, cabanon, garage, étages, piscines…)
   }
+  const genre = bundle?.property?.genre;
+  const setAttr = (k, v) => setAttrs((s) => ({ ...(s || {}), [k]: v }));
+  const ageFrom = (y) => { const nn = Number(y); return nn ? (new Date().getFullYear() - nn) : ''; };
+  const numOr = (v) => (v === '' || v == null ? undefined : Number(v));
+  // Sujet ACM dérivé des attributs de l'aperçu (mappé pour la comparaison aux comparables).
+  const buildSubject = () => {
+    const a = attrs || {};
+    return {
+      living_area: numOr(a.living_area), land_area: numOr(a.land_area),
+      floors_above: numOr(a.floors_above), num_storeys: numOr(a.num_storeys),
+      has_basement: a.basement && a.basement !== 'aucun', basement: a.basement, basement_finished: a.basement === 'complete',
+      year_built: numOr(a.year_built),
+      municipal_assessment: numOr(a.muni_assessment) ?? (bundle?.property?.municipal_assessment ?? undefined),
+      windows_age: ageFrom(a.windows_year), roof_age: ageFrom(a.roofing_year),
+      foundation: a.foundation, ext_cladding: a.ext_cladding, windows_material: a.windows_material,
+      flooring: a.flooring, roofing_type: a.roofing_type, driveway: a.driveway,
+      kitchen_cabinets: a.kitchen_cabinets, countertops: a.countertops,
+      inclusions: incl,
+    };
+  };
 
   // Inclusions oui/non (case à cocher, pas de quantité). Repli local au cas où les paramètres
   // du serveur ne contiennent pas encore `boolean_inclusions` (seed mis en cache au démarrage).
-  const boolIncl = useMemo(() => new Set([...(params?.boolean_inclusions || []), 'sous_sol_fini', 'climatisation', 'thermopompe']), [params]);
-  const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).map((k) => ({ value: k, label: prettyIncl(k), boolean: boolIncl.has(k) })), [params, boolIncl]);
+  const boolIncl = useMemo(() => new Set([...(params?.boolean_inclusions || []), 'sous_sol_fini', 'thermopompe']), [params]);
+  const inclLbls = params?.inclusions_labels || {};
+  // sous_sol_fini est calculé à la superficie (moteur) — exclu de la saisie d'inclusions du sujet.
+  const inclOptions = useMemo(() => Object.keys(params?.inclusions || {}).filter((k) => k !== 'sous_sol_fini')
+    .map((k) => ({ value: k, label: inclLbls[k] || prettyIncl(k), boolean: boolIncl.has(k) })), [params, boolIncl, inclLbls]);
   const featureFields = useMemo(() => buildFeatureFields(params), [params]);
 
   const putParams = useMutation({
     mutationFn: (p) => api.put('/acm/params', p),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['acmParams'] }),
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['acmParams'] }); if (r?.params) setParams(r.params); },
+  });
+  const resetParams = useMutation({
+    mutationFn: () => api.put('/acm/params', {}),
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['acmParams'] }); if (r?.params) setParams(r.params); },
   });
 
   const compute = useMutation({
-    mutationFn: () => api.post(`/properties/${propertyId}/acm`, { subject, params }),
-    onSuccess: (r) => setResult(r),
+    mutationFn: ({ ig, save } = {}) => api.post(`/properties/${propertyId}/acm`, { subject: buildSubject(), params, ignored: [...(ig || ignored)], save: !!save }),
+    onSuccess: (r, vars) => { setResult(r); if (vars?.save) qc.invalidateQueries({ queryKey: ['bundle', propertyId] }); },
   });
+  // Bascule « ignorer » d'un poste (ou de tous) : recalcule sans créer de nouvelle évaluation (save=false).
+  const toggleIgnore = (key) => { const nx = new Set(ignored); nx.has(key) ? nx.delete(key) : nx.add(key); setIgnored(nx); compute.mutate({ ig: nx, save: false }); };
+  const toggleIgnoreAll = (keys) => { const nx = keys.every((k) => ignored.has(k)) ? new Set() : new Set(keys); setIgnored(nx); compute.mutate({ ig: nx, save: false }); };
 
-  const onSelect = (id) => { setPropertyId(id); setSubject(null); setResult(null); };
+  const onSelect = (id) => { setPropertyId(id); setAttrs(null); setIncl({}); setResult(null); setIgnored(new Set()); };
   const refetchComps = () => qc.invalidateQueries({ queryKey: ['bundle', propertyId] });
 
   const propRows = props?.rows || [];
@@ -474,7 +579,7 @@ export default function Evaluation() {
         <div className="spacer" style={{ flex: 1 }} />
         <Button variant="outline" icon={Ruler} onClick={() => setCalcOpen(true)}>{t('ev.calc.btn')}</Button>
       </div>
-      {calcOpen && <SurfaceCalculator onClose={() => setCalcOpen(false)} onApply={(total) => { setCalcOpen(false); if (subject) setSubject({ ...subject, living_area: total }); }} />}
+      {calcOpen && <SurfaceCalculator onClose={() => setCalcOpen(false)} onApply={(total) => { setCalcOpen(false); setAttr('living_area', String(total)); }} />}
 
       <Card style={{ marginBottom: 16 }}>
         <div className="field" style={{ marginBottom: 0, maxWidth: 480 }}>
@@ -488,35 +593,25 @@ export default function Evaluation() {
 
       {!propertyId ? (
         <EmptyState icon={FileBarChart} title={t('ev.pickFirst')} hint={t('ev.pickHint')} />
-      ) : !subject || !params ? (
+      ) : !attrs || !params ? (
         <div className="muted">…</div>
       ) : (
         <>
-          {/* 1. Sujet */}
+          {/* 1. Sujet = copie du Property Overview (pré-rempli depuis la propriété) */}
           <div className="section-label">{t('ev.subject')}</div>
           <Card style={{ marginBottom: 16 }}>
-            <div className="field-row">
-              <div className="field"><label>{t('ev.livable')} (pi²)</label><input className="input" type="number" value={subject.living_area ?? ''} onChange={(e) => setSubject({ ...subject, living_area: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
-              <div className="field"><label>{t('d.bld.year')}</label><input className="input" type="number" value={subject.year_built ?? ''} onChange={(e) => setSubject({ ...subject, year_built: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
-              <div className="field"><label>{t('ev.assessment')}</label><input className="input" type="number" value={subject.municipal_assessment ?? ''} onChange={(e) => setSubject({ ...subject, municipal_assessment: e.target.value === '' ? '' : Number(e.target.value) })} /></div>
-            </div>
-            <div className="field-row">
-              {featureFields.map((f) => (
-                <div className="field" key={f.key}>
-                  <label>{f.label}</label>
-                  {f.type === 'select' ? (
-                    <Select value={subject[f.key] ?? ''} onChange={(e) => setSubject({ ...subject, [f.key]: e.target.value })}>
-                      {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </Select>
-                  ) : (
-                    <input className="input" type="number" value={subject[f.key] ?? ''} onChange={(e) => setSubject({ ...subject, [f.key]: e.target.value === '' ? '' : Number(e.target.value) })} />
-                  )}
+            <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t('ev.subjectHint')}</div>
+            {!schema ? <div className="muted">…</div> : schema.categories.map((c) => (
+              <div key={c.key} style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{lang === 'en' ? c.label_en : c.label_fr}</div>
+                <div className="sa-formgrid">
+                  {c.attributes.map((a) => <AttrField key={a.key} a={a} attrs={attrs} setAttr={setAttr} units={bundle?.units || []} />)}
                 </div>
-              ))}
-            </div>
-            <div className="field" style={{ marginBottom: 0 }}>
+              </div>
+            ))}
+            <div className="field" style={{ marginTop: 12 }}>
               <label>{t('ev.inclusions')} ({t('ev.inclQty')})</label>
-              <InclusionsField value={subject.inclusions} options={inclOptions} onChange={(v) => setSubject({ ...subject, inclusions: v })} />
+              <InclusionsField value={incl} options={inclOptions} onChange={setIncl} />
             </div>
           </Card>
 
@@ -533,15 +628,15 @@ export default function Evaluation() {
 
           {/* 3. Paramètres */}
           <div className="section-label" style={{ marginTop: 20 }}>{t('ev.paramsTitle')}</div>
-          <ParamsPanel params={params} onChange={setParams} onSave={() => putParams.mutate(params)} saving={putParams.isPending} city={bundle?.property?.city} genre={bundle?.property?.genre} />
+          <ParamsPanel params={params} onChange={setParams} onSave={() => putParams.mutate(params)} onReset={() => { if (window.confirm(t('ev.resetConfirm'))) resetParams.mutate(); }} saving={putParams.isPending || resetParams.isPending} city={bundle?.property?.city} genre={bundle?.property?.genre} />
 
           {/* 4. Calcul */}
           <div className="toolbar" style={{ marginBottom: 16 }}>
-            <Button variant="primary" icon={Calculator} onClick={() => compute.mutate()} disabled={compute.isPending}>{t('ev.compute')}</Button>
+            <Button variant="primary" icon={Calculator} onClick={() => compute.mutate({ save: true })} disabled={compute.isPending}>{t('ev.compute')}</Button>
             {compute.isError && <span className="notice notice-warn" style={{ margin: 0 }}><AlertTriangle size={16} />{String(compute.error?.message)}</span>}
           </div>
 
-          {result && <AcmResults result={result} clientView={clientView} setClientView={setClientView} />}
+          {result && <AcmResults result={result} clientView={clientView} setClientView={setClientView} ignored={ignored} onToggle={toggleIgnore} onToggleAll={toggleIgnoreAll} />}
         </>
       )}
     </div>

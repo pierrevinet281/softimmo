@@ -56,12 +56,19 @@ const COLUMN_ADDITIONS = {
     ['transaction_type', 'TEXT'], ['zoning_detail', 'TEXT'], ['mrc', 'TEXT'],  // mandat + zonage + MRC
     ['marketing', 'TEXT'],  // textes marketing édités (JSON par langue)
   ],
+  property_media: [
+    ['kind', 'TEXT'],  // photo|plan
+  ],
   comparables: [
     ['centris_no', 'TEXT'], ['sale_date', 'TEXT'], ['list_price', 'REAL'], ['sold_price', 'REAL'],
     ['livable_area', 'REAL'], ['municipal_assessment', 'REAL'], ['days_on_market', 'INTEGER'],
     ['inclusions', 'TEXT'],
     ['foundation', 'TEXT'], ['cladding', 'TEXT'], ['windows_type', 'TEXT'], ['flooring', 'TEXT'],
     ['windows_age', 'INTEGER'], ['roof_age', 'INTEGER'],
+    // ACM « Tableau des ajustements » : caractéristiques alignées sur le sujet + superficie/niveaux/sous-sol
+    ['ext_cladding', 'TEXT'], ['windows_material', 'TEXT'], ['roofing_type', 'TEXT'],
+    ['driveway', 'TEXT'], ['kitchen_cabinets', 'TEXT'], ['countertops', 'TEXT'],
+    ['land_area', 'REAL'], ['storeys', 'INTEGER'], ['basement', 'TEXT'], ['basement_finished', 'INTEGER'],
   ],
   // Module 1 : éditeur Bâtiments & unités/pièces (dimensions + unités pi/m, fonction)
   buildings: [
