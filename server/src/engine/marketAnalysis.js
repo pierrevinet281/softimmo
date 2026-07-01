@@ -8,7 +8,7 @@
 // (workers Python aux phases suivantes — voir mémoire market-analysis-data-sources).
 
 import { lookupMunicipality, municipalitiesIn } from '../lib/quebecGeo.js';
-import { muniDemographics, mrcDemographics, regionDemographics, muniCensus, mrcCensus, topMunicipalitiesByPop } from '../lib/quebecDemographics.js';
+import { muniDemographics, mrcDemographics, regionDemographics, muniCensus, mrcCensus, topMunicipalitiesByPop, topMunicipalitiesInMrc } from '../lib/quebecDemographics.js';
 
 const SRC = {
   mamh: 'MAMH — Répertoire des municipalités du Québec',
@@ -196,7 +196,9 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Âge médian', 'Median age', fmtAge(cenMrc?.median_age), SRC.census),
         item('Revenu médian des ménages', 'Median household income', fmtMoney(cenMrc?.median_hh_income), SRC.census),
         item('Nombre de municipalités', 'Number of municipalities', demMrc?.n_munis ?? null, SRC.mamh),
-        item('Municipalités de la MRC', 'Municipalities in the MRC', geoList(inMrc), SRC.donneesQc),
+        item('Municipalités de la MRC (par population)', 'Municipalities in the MRC (by population)',
+          (() => { const top = topMunicipalitiesInMrc(mrc, 40); return top.length ? top.map((m) => `${m.name} (${Number(m.pop).toLocaleString('fr-CA')})`).join(', ') : geoList(inMrc); })(),
+          SRC.mamh),
         ...socioIndicators(cenMrc).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
         item('Autres données caractérisant la MRC', 'Other MRC characteristics', null, SRC.isq),
       ],

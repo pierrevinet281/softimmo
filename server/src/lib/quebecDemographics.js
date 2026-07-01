@@ -21,16 +21,17 @@ function census() {
   return _c;
 }
 
-// Municipalités d'une région, triées par population décroissante (top n).
-export function topMunicipalitiesByPop(region, n = 10) {
-  if (!region) return [];
-  const r = norm(region);
+// Municipalités triées par population décroissante (top n), filtrées par région ou MRC.
+function topMunicipalities({ region, mrc } = {}, n = 10) {
+  const r = norm(region); const k = norm(mrc);
   return Object.values(data().municipalities)
-    .filter((m) => norm(m.region) === r && m.pop != null)
+    .filter((m) => m.pop != null && (!r || norm(m.region) === r) && (!k || norm(m.mrc) === k))
     .sort((a, b) => (b.pop || 0) - (a.pop || 0))
     .slice(0, n)
     .map((m) => ({ name: m.name, pop: m.pop }));
 }
+export function topMunicipalitiesByPop(region, n = 10) { return region ? topMunicipalities({ region }, n) : []; }
+export function topMunicipalitiesInMrc(mrc, n = 40) { return mrc ? topMunicipalities({ mrc }, n) : []; }
 
 export function muniDemographics(name) { return name ? (data().municipalities[norm(name)] || null) : null; }
 export function mrcDemographics(name) { return name ? (data().mrc[norm(name)] || null) : null; }
