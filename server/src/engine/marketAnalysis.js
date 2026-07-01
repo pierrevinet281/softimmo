@@ -23,7 +23,8 @@ const SRC = {
 
 // Indicateurs socio-économiques (région / MRC / municipalité). Remplis depuis le recensement quand
 // disponible (cen = census CSD/CD) ; sinon « à intégrer ». La population vient séparément (MAMH).
-function socioIndicators(cen) {
+function socioIndicators(cen, pop) {
+  const econIdx = (cen?.businesses && pop) ? `${(cen.businesses / pop * 1000).toFixed(1)} entreprises / 1 000 hab.` : null;
   const emp = cen?.unemployment_rate != null
     ? `Chômage ${cen.unemployment_rate} %${cen.participation_rate != null ? ` · activité ${cen.participation_rate} %` : ''}` : null;
   const growth = cen?.pop_change_pct != null ? `${cen.pop_change_pct > 0 ? '+' : ''}${cen.pop_change_pct} % (2016→2021)` : null;
@@ -40,7 +41,7 @@ function socioIndicators(cen) {
     { key: 'demographics', label_fr: 'Ménages & logement', label_en: 'Households & housing', value: hh, source: SRC.census },
     { key: 'languages', label_fr: 'Langues (connaissance fr/en)', label_en: 'Official languages (knowledge)', value: lang, source: SRC.census },
     { key: 'industries', label_fr: 'Industries (top secteurs par entreprises)', label_en: 'Industries (top sectors by businesses)', value: industries, source: SRC.bizreg },
-    { key: 'economic_index', label_fr: 'Indice d’activité économique', label_en: 'Economic activity index', value: null, source: SRC.isq },
+    { key: 'economic_index', label_fr: 'Activité entrepreneuriale (entreprises / 1 000 hab.)', label_en: 'Business density (per 1,000 pop.)', value: econIdx, source: SRC.bizreg },
     { key: 'employment', label_fr: 'Marché de l’emploi (chômage / activité)', label_en: 'Labour market (unemployment / participation)', value: emp, source: SRC.census },
     { key: 'vacancy', label_fr: 'Taux d’inoccupation résidentiels', label_en: 'Residential vacancy rate', value: null, source: SRC.schl },
     { key: 'pop_growth', label_fr: 'Croissance de population (2016→2021)', label_en: 'Population change (2016→2021)', value: growth, source: SRC.census },
@@ -188,7 +189,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Principales municipalités (top 10 par population)', 'Main municipalities (top 10 by population)',
           (() => { const top = topMunicipalitiesByPop(region, 10); return top.length ? top.map((m) => `${m.name} (${Number(m.pop).toLocaleString('fr-CA')})`).join(', ') : geoList(inRegion); })(),
           SRC.mamh),
-        ...socioIndicators(null).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
+        ...socioIndicators(null, null).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
       ],
     },
     {
@@ -202,7 +203,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Municipalités de la MRC (par population)', 'Municipalities in the MRC (by population)',
           (() => { const top = topMunicipalitiesInMrc(mrc, 40); return top.length ? top.map((m) => `${m.name} (${Number(m.pop).toLocaleString('fr-CA')})`).join(', ') : geoList(inMrc); })(),
           SRC.mamh),
-        ...socioIndicators(cenMrc).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
+        ...socioIndicators(cenMrc, demMrc?.pop).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
         item('Autres données caractérisant la MRC', 'Other MRC characteristics', null, SRC.isq),
       ],
     },
@@ -218,7 +219,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Revenu médian des ménages', 'Median household income', fmtMoney(cenMuni?.median_hh_income), SRC.census),
         item('Nombre d’entreprises (avec employés)', 'Number of businesses (with employees)', cenMuni?.businesses != null ? Number(cenMuni.businesses).toLocaleString('fr-CA') : null, SRC.bizreg),
         item('Principales entreprises', 'Main businesses', null, SRC.osm),
-        ...socioIndicators(cenMuni).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
+        ...socioIndicators(cenMuni, demMuni?.pop).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
         item('Statistiques de marché (prix médian, ventes, délais)', 'Market stats (median price, sales, DOM)', null, SRC.apciq),
       ],
     },
