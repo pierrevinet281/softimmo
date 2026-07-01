@@ -13,6 +13,7 @@ import { muniDemographics, mrcDemographics, regionDemographics, muniCensus, mrcC
 const SRC = {
   mamh: 'MAMH — Répertoire des municipalités du Québec',
   census: 'Statistique Canada — Recensement 2021 (api.statcan.gc.ca)',
+  bizreg: 'Statistique Canada — Registre des entreprises (Business Counts)',
   osm: 'OpenStreetMap / Overpass (ODbL)',
   donneesQc: 'Données Québec (CC-BY 4.0)',
   schl: 'SCHL / CMHC HMIP',
@@ -33,10 +34,12 @@ function socioIndicators(cen) {
   }
   const hh = cen?.avg_hh_size != null
     ? `Taille moy. ${cen.avg_hh_size} pers.${cen.pct_single != null ? ` · ${cen.pct_single} % unifamiliales` : ''}` : null;
+  const industries = cen?.top_industries?.length
+    ? cen.top_industries.map((t) => `${t.fr} (${Number(t.count).toLocaleString('fr-CA')})`).join(', ') : null;
   return [
     { key: 'demographics', label_fr: 'Ménages & logement', label_en: 'Households & housing', value: hh, source: SRC.census },
     { key: 'languages', label_fr: 'Langues (connaissance fr/en)', label_en: 'Official languages (knowledge)', value: lang, source: SRC.census },
-    { key: 'industries', label_fr: 'Industries / secteurs d’activité', label_en: 'Industries', value: null, source: SRC.census },
+    { key: 'industries', label_fr: 'Industries (top secteurs par entreprises)', label_en: 'Industries (top sectors by businesses)', value: industries, source: SRC.bizreg },
     { key: 'economic_index', label_fr: 'Indice d’activité économique', label_en: 'Economic activity index', value: null, source: SRC.isq },
     { key: 'employment', label_fr: 'Marché de l’emploi (chômage / activité)', label_en: 'Labour market (unemployment / participation)', value: emp, source: SRC.census },
     { key: 'vacancy', label_fr: 'Taux d’inoccupation résidentiels', label_en: 'Residential vacancy rate', value: null, source: SRC.schl },
@@ -213,7 +216,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         item('Gentilé', 'Demonym', demMuni?.gentile || null, SRC.mamh),
         item('Âge médian', 'Median age', fmtAge(cenMuni?.median_age), SRC.census),
         item('Revenu médian des ménages', 'Median household income', fmtMoney(cenMuni?.median_hh_income), SRC.census),
-        item('Nombre d’entreprises', 'Number of businesses', null, SRC.donneesQc),
+        item('Nombre d’entreprises (avec employés)', 'Number of businesses (with employees)', cenMuni?.businesses != null ? Number(cenMuni.businesses).toLocaleString('fr-CA') : null, SRC.bizreg),
         item('Principales entreprises', 'Main businesses', null, SRC.osm),
         ...socioIndicators(cenMuni).map((s) => item(s.label_fr, s.label_en, s.value, s.source)),
         item('Statistiques de marché (prix médian, ventes, délais)', 'Market stats (median price, sales, DOM)', null, SRC.apciq),
@@ -278,6 +281,7 @@ export function buildMarketAnalysis({ property = {}, attrs = {}, local = null } 
         { label: 'Ni l’un/l’autre', count: cenMuni.lang.neither },
       ] : null,
       dwelling: cenMuni?.dwelling_types || null,
+      industries: cenMuni?.top_industries ? cenMuni.top_industries.map((t) => ({ label: t.fr, count: t.count })) : null,
     },
     sections,            // grille détaillée (région/MRC/municipalité/secteur/accès)
     summary: { data_points: dataCount, pending_points: pendingCount, local: !!local },

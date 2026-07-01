@@ -187,12 +187,13 @@ function MarketAnalysisReport({ report }) {
     return out;
   };
   const ch = report.charts || {};
-  const chartsBlock = (ch.age || ch.income || ch.lang || ch.dwelling) ? (
+  const chartsBlock = (ch.age || ch.income || ch.lang || ch.dwelling || ch.industries) ? (
     <div className="ma-charts">
       {ch.age && <div className="ma-chart"><div className="ma-chart-title"><Cake size={13} /> {t('ma.ageChart')}</div><MiniBars data={ch.age} /></div>}
       {ch.income && <div className="ma-chart"><div className="ma-chart-title"><Wallet size={13} /> {t('ma.incomeChart')}</div><MiniBars data={ch.income} color="var(--color-success)" /></div>}
       {ch.lang && <div className="ma-chart"><div className="ma-chart-title"><Languages size={13} /> {t('ma.langChart')}</div><MiniBars data={ch.lang} color="var(--color-info)" /></div>}
       {ch.dwelling && <div className="ma-chart"><div className="ma-chart-title"><Home size={13} /> {t('ma.dwellingChart')}</div><MiniBars data={ch.dwelling} color="var(--color-warning)" /></div>}
+      {ch.industries && <div className="ma-chart"><div className="ma-chart-title"><Factory size={13} /> {t('ma.industryChart')}</div><MiniBars data={ch.industries} color="var(--color-accent)" /></div>}
     </div>
   ) : null;
 
