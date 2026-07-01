@@ -243,8 +243,8 @@ code, .mono { font-family: var(--font-mono); }
 /* Bloc avec photo (alternance gauche/droite) */
 .ma-split { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
 .ma-split.rev { grid-template-columns: 1fr 300px; }
-.ma-split.rev .ma-photo { order: 2; }
-@media (max-width: 720px) { .ma-split, .ma-split.rev { grid-template-columns: 1fr; } .ma-split.rev .ma-photo { order: 0; } }
+.ma-split.rev .ma-photostack { order: 2; }
+@media (max-width: 720px) { .ma-split, .ma-split.rev { grid-template-columns: 1fr; } .ma-split.rev .ma-photostack { order: 0; } }
 .ma-photostack { display: flex; flex-direction: column; gap: 12px; }
 .ma-photo { margin: 0; }
 .ma-photo img { width: 100%; border-radius: var(--radius-md); display: block; object-fit: cover; max-height: 220px; }
