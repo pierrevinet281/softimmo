@@ -14,9 +14,15 @@ dans la liste `/properties`.
 5. **Profitability** — rentabilité (lecture, `ProfitabilityTab`).
 6. **Transactions** — `EntityTable` (`transactionsConfig`).
 7. **Comparables** — import PDF (matrice) + ajout manuel (`ComparablesEditor`, réutilisé d'`/evaluation`).
-8. **Photos** — téléversement + tag par **pièce** (`PhotosTab`).
-9. **Marketing** — annonces éditables + sauvegardables (`MarketingTab`).
-10. **Reports** — lecture seule (`ReadOnlyList`). *À rendre éditable (issue #53).*
+8. **Évaluations** (S40) — table des opinions de valeur enregistrées (`EvaluationsTab` ; auto-
+   enregistrées au *Calculer* d'`/evaluation`) ; ouvrir/supprimer.
+9. **Market Analysis** (S40) — analyse de marché du secteur (`MarketAnalysisPanel`, réutilisé de
+   `/market-analysis`). Voir *Market Analysis.md*.
+10. **Photos** — téléversement + tag par **pièce** (`PhotosTab`).
+11. **Marketing** — annonces éditables + sauvegardables (`MarketingTab`).
+12. **Reports** — lecture seule (`ReadOnlyList`). *À rendre éditable (issue #53).*
+
+En-tête : boutons **Évaluer** (`/evaluation`), **Market Analysis** (`/market-analysis`), **Brochure**.
 
 Les onglets 5–10 réutilisent des composants **exportés de `PropertyDetail.jsx`** (et
 `ComparablesEditor` de `Evaluation.jsx`). En mode édition, le `bundle` (`/properties/:id/bundle`)

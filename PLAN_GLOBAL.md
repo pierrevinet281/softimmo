@@ -12,13 +12,16 @@ d'abord (IA pour *bâtir*, pas au runtime). Conformité OACIQ/LCI, Loi 25, Loi 9
 | # | Module | État |
 |---|--------|------|
 | 1 | Analyse de propriété | **Livré + refonte fiche (S39)** — **page d'édition unifiée** `/properties/edit` (10 onglets ; `/properties/:id` redirige), **matrice « Attributs Ventes »** → formulaire de caractérisation par type, **bâtiments/unités détaillés** + **édition en ligne** (dimensions+unités, étage, fonction, recouvrement), **géo QC** (ville→région+MRC auto), photos **par pièce**, **marketing éditable**. `finance.js`, anomalies superficie |
-| 2 | Évaluation (ACM) | **Cœur livré** — `acm.js`, page `/evaluation` (+ `ComparablesEditor` réutilisé sur la fiche). Suites : stats APCIQ, coût/revenu, AVM (#53) |
+| 2 | Évaluation (ACM) + Analyse de marché | **Livré + enrichi (S40)** — ACM refondé (« Tableau des ajustements » ; sujet↔comparables alignés ; postes « ignorés » ; **évaluations enregistrées**). **Module Analyse de marché** `/market-analysis` : caractérisation du secteur 100 % données publiques gratuites (StatCan/MAMH/OSM/Wikimedia) — démographie, revenus, emploi, langues, logement, entreprises/industries ; scores de secteur, 5 graphiques, images par bloc. Suites : coût/revenu, AVM/carte 3D, stats de marché MLS (#53) |
 | 3 | Offre de services | **Livré + complet** — générateur PDF, offres sauvegardables, customizer par offre, aller-retour PPTX, Profil du courtier |
 | 4 | Matériel marketing | **En cours** — **brochure RPA complète** + **bibliothèque de brochures** ; **round-trip PPTX granulaire par élément étendu aux familles standard (S39)**. Reste : **alimenter la brochure avec les nouvelles données saisies**, Commercial/Industriel dédiés (#53) |
 | 5 | Trousse de soutien client | **À faire** — guides vendeur/acheteur PDF (réutilise Platypus) (#53) |
 | 6 | Recherche & enrichissement | **Hérité/fonctionnel** (socle) — ré-orientation immobilier P2/P3 |
 
 ## Prochaines étapes (ordre suggéré)
+0. **Analyse de marché — compléments** : carte animée 3D (Google Aerial View, **clé requise**),
+   rapport PDF 3-4 pages, inoccupation SCHL (niveau RMR), scolarité/immigration/ethnies (worker
+   WDS à la demande). Reste bloqué : prévisions ISQ, stats de marché MLS (#53).
 1. **Alimenter la brochure (et l'analyse/évaluation) avec les nouvelles données de la fiche** :
    attributs de vente par type, bâtiments/unités détaillés, photos par pièce, marketing édité —
    fermer la chaîne **matrice → formulaire → brochure** (#53).

@@ -27,7 +27,12 @@
 
 ## 3. Modèle de données (tables clés)
 - Métier : `clients`, `properties`, `buildings`, `units`, `expenses`, `transactions`,
-  `comparables`, `reports`, `documents`, `property_media`.
+  `comparables`, `evaluations`, `market_analyses`, `reports`, `documents`, `property_media`.
+  - **Module 2 (Session 40)** — `evaluations` (instantané ACM : opinion, fourchette, prix
+    d'inscription, nb comparables, subject/ignored/result JSON) ; `market_analyses` (rapport
+    d'analyse de marché JSON + municipality/mrc/region). `comparables` étendu : `ext_cladding,
+    windows_material, roofing_type, driveway, kitchen_cabinets, countertops, land_area, storeys,
+    basement, basement_finished` (alignés sur le sujet ACM).
   - **Champs étendus (Session 39)** — `properties` : `attributes` (JSON : valeurs d'attributs de
     vente par type), `transaction_type`, `mrc`, `zoning_detail`, `marketing` (JSON par langue).
     `buildings`/`units` : dimensions (`width`/`length` + `width_unit`/`length_unit`/`area_unit`
@@ -108,6 +113,29 @@
 - **CSS dark mode** : les menus/popovers custom doivent utiliser `--color-bg-card` /
   `--color-bg-secondary` / `--color-text-primary` (les tokens `--color-surface*` / `--color-text`
   N'EXISTENT PAS → rendu blanc en sombre).
+
+## 4c. Module 2 — Évaluation (ACM refonte) & Analyse de marché (Session 40)
+- **ACM** (`engine/acm.js`, `lib/acmParams.js`, seed `acm-params.seed.json`) refondé selon le
+  « Tableau des ajustements » (`Statistiques/`) : superficie $/pi² **par niveau** (répartition
+  heuristique de la superficie habitable), caractéristiques **% et $ par option** (multi → moyenne),
+  accessoires $/quantité, âges (plage neuf↔fin sur durée de vie), date %/mois. `ParamsPanel` = le
+  tableau éditable + reset. Sujet ↔ comparables **alignés sur les mêmes clés d'options**. Poste
+  **« ignoré »** (œil) → grisé, exclu des totaux/opinion, masqué à l'impression. **Évaluations
+  auto-enregistrées** (`evaluations`). Détails : *Pages Technical Documentation/Evaluation.md*.
+- **Analyse de marché** (`engine/marketAnalysis.js`, `lib/quebecDemographics.js`,
+  `python/market_local.py`, page `web/src/pages/MarketAnalysis.jsx`) : **100 % déterministe, données
+  publiques gratuites à usage commercial**. Génération rapide (seeds) + **enrichissement best-effort**
+  découplé (worker : géocodage Nominatim, POI Overpass, images/écussons Wikimedia). Scores de secteur
+  0-100 depuis OSM, synthèse + impact valeur, 5 graphiques, panneau 3 images/bloc (contour + aérien
+  Sentinel-2 + landmark). **Seeds de données** (générés une fois, licence ouverte) :
+  `quebec-demographics.seed.json` (MAMH : pop/superficie/gentilé + agrégats MRC/région) et
+  `quebec-census.seed.json` (StatCan Recensement 2021 via WDS + Registre des entreprises 33-10 :
+  âge, revenu, croissance, emploi, langues, ménages/logement, entreprises/industries). Endpoints
+  `/properties/:id/market-analysis` (créer) + `/market-analysis/:id/enrich`. Détails : *Pages
+  Technical Documentation/Market Analysis.md* + mémoire `market-analysis-data-sources`.
+- **Imagerie libre uniquement** (usage commercial ; attribution affichée si requise) : Sentinel-2
+  cloudless & terrain-light **EOX** (CC-BY-4.0), contours & photos **Wikimedia** (allowlist CC0/PD/
+  CC-BY/CC-BY-SA ; rejet NC/ND/inconnu), écussons d'autoroute (domaine public). Aucune source à frais.
 
 ## 5. Conventions
 - Aucune donnée codée en dur (références/contenus → JSON sous `engine/` ou `db/seeds/`).

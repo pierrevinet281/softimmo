@@ -164,6 +164,14 @@ npm run build && npm start  # build web puis sert API+UI sur :8787
 - **Géo Québec** : `datasources/MUN.xlsx` (MAMH, conservé dans le repo) → seed
   `quebec-municipalities.seed.json` (nom, région, MRC) via un générateur jetable ; `lib/quebecGeo.js`
   ; endpoints `/geo/municipalities`, `/geo/regions`. Ville = combobox (`CityField.jsx`) → région+MRC auto (QC).
+- **Module 2 — Évaluation (ACM) & Analyse de marché (S40)** : ACM refondé selon le « Tableau des
+  ajustements » (`engine/acm.js`, `acm-params.seed.json`) ; postes « ignorés » ; **évaluations
+  enregistrées**. **Analyse de marché** (`/market-analysis`, *Market Analysis.md*, *Evaluation.md*) :
+  `engine/marketAnalysis.js` + `lib/quebecDemographics.js` + worker `python/market_local.py` ; seeds
+  `quebec-demographics` (MAMH) + `quebec-census` (StatCan WDS + Business Counts). **Règle images/
+  données : uniquement sources libres, gratuites, à usage commercial** (idéalement sans attribution ;
+  sinon attribution affichée). Aucune source à frais/restriction. Voir mémoire
+  `market-analysis-data-sources`.
 - **Routeur** : `main.jsx` utilise un **data router** (`createBrowserRouter`) pour `useBlocker`
   (garde-fou « quitter sans enregistrer »). App garde son shell + `<Routes>` via la route attrape-tout.
 - **CSS dark mode** : pour les menus/popovers custom, utiliser `--color-bg-card` /
